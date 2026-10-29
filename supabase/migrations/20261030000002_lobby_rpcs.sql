@@ -44,6 +44,10 @@ begin
     raise exception 'player_not_found';
   end if;
   v_room := private.lock_host_room(v_room_id);
+  perform 1 from public.room_players where id = p_player for update;
+  if not found then
+    raise exception 'player_not_found';
+  end if;
   if v_room.phase <> 'LOBBY' then
     raise exception 'wrong_phase';
   end if;
@@ -68,6 +72,10 @@ begin
     raise exception 'player_not_found';
   end if;
   v_room := private.lock_host_room(v_room_id);
+  perform 1 from public.room_players where id = p_player for update;
+  if not found then
+    raise exception 'player_not_found';
+  end if;
   if v_room.phase <> 'LOBBY' then
     raise exception 'wrong_phase';
   end if;

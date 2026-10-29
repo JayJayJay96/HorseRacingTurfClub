@@ -79,3 +79,26 @@ describe('set_ready', () => {
     );
   });
 });
+
+describe('join_room outside the lobby', () => {
+  async function shopRoom() {
+    const r = await readyRoom();
+    await ok(r.host.rpc('set_ticked', { p_player: r.ali.id, p_ticked: true }));
+    await ok(r.host.rpc('set_ticked', { p_player: r.siti.id, p_ticked: true }));
+    await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }));
+    return r;
+  }
+
+  it('refuses new names and host-typed claims', async () => {
+    const { room } = await shopRoom();
+    const late = await anonClient();
+    expect(await fails(late.rpc('join_room', { p_code: room.code, p_name: 'Bob' }))).toBe('wrong_phase');
+    expect(await fails(late.rpc('join_room', { p_code: room.code, p_name: 'Siti' }))).toBe('wrong_phase');
+  });
+
+  it('still lets a known device rejoin', async () => {
+    const { phone, room, ali } = await shopRoom();
+    const again = await ok(phone.rpc('join_room', { p_code: room.code, p_name: '' }));
+    expect(again.id).toBe(ali.id);
+  });
+});

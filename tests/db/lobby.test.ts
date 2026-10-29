@@ -76,6 +76,13 @@ describe('remove_player', () => {
     expect(await ok(phone.from('rooms').select('id').eq('id', room.id))).toHaveLength(0);
   });
 
+  it('reports a player removed twice', async () => {
+    const { host, room } = await newRoom();
+    const p = await ok(host.rpc('add_player', { p_room: room.id, p_name: 'Siti' }));
+    await ok(host.rpc('remove_player', { p_player: p.id }));
+    expect(await fails(host.rpc('remove_player', { p_player: p.id }))).toBe('player_not_found');
+  });
+
   it('reports unknown players', async () => {
     const { host } = await newRoom();
     expect(

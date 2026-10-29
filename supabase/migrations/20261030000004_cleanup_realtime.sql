@@ -20,4 +20,16 @@ create extension if not exists pg_cron;
 select cron.schedule('cleanup-rooms', '17 * * * *', 'select public.cleanup_rooms()');
 
 -- Clients refetch on any change; RLS decides who receives each event.
-alter publication supabase_realtime add table public.rooms, public.room_players;
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['rooms', 'room_players'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;

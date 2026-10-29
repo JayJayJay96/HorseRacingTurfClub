@@ -32,8 +32,7 @@ create table public.room_players (
 create unique index room_players_room_name_key on public.room_players (room_id, lower(name));
 create index room_players_uid_idx on public.room_players (uid);
 
-revoke all on public.rooms, public.room_players from anon;
-revoke insert, update, delete, truncate on public.rooms, public.room_players from authenticated;
+revoke all on public.rooms, public.room_players from anon, authenticated;
 grant select on public.rooms, public.room_players to authenticated;
 
 create function private.is_room_member(p_room uuid)
@@ -132,13 +131,14 @@ set search_path = ''
 as $$
 declare
   v_room_id uuid;
+  v_phase text;
   v_name text := btrim(coalesce(p_name, ''));
   v_player public.room_players;
 begin
   if auth.uid() is null then
     raise exception 'not_signed_in';
   end if;
-  select id into v_room_id from public.rooms where code = upper(btrim(p_code));
+  select id, phase into v_room_id, v_phase from public.rooms where code = upper(btrim(p_code));
   if not found then
     raise exception 'room_not_found';
   end if;
@@ -149,6 +149,9 @@ begin
     return v_player;
   end if;
 
+  if v_phase <> 'LOBBY' then
+    raise exception 'wrong_phase';
+  end if;
   if char_length(v_name) not between 1 and 24 then
     raise exception 'bad_name';
   end if;
@@ -173,7 +176,12 @@ begin
   returning * into v_player;
   return v_player;
 exception when unique_violation then
-  raise exception 'name_taken'; -- lost a race with a concurrent join of the same name
+  -- lost a race: same device joined twice (return its entry) or same name taken
+  select * into v_player from public.room_players where room_id = v_room_id and uid = auth.uid();
+  if found then
+    return v_player;
+  end if;
+  raise exception 'name_taken';
 end;
 $$;
 revoke execute on function public.join_room(text, text) from public, anon;

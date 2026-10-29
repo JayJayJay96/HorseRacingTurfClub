@@ -96,18 +96,19 @@ Format `<type>:<target><n>`, used in logic, logs and the odds board; each code h
 
 | Code | Name | Effect |
 |---|---|---|
-| `speed:self1` | Carrot | +40% speed, 3 s |
-| `speed:self3` | Golden Carrot | 3 × (+40%, 2 s) |
-| `speed:star` | Thunder Hooves | +55%, 5 s, immune to attacks |
-| `speed:pass3` | Stampede *(mystery only, back half)* | Sprints past up to 3 horses, immune |
+| `speed:self1` | Carrot | +20% speed, 2 s |
+| `speed:self3` | Golden Carrot | 3 × (+20%, 1.5 s) |
+| `speed:star` | Thunder Hooves | +20%, 3.5 s |
+| `speed:pass3` | Stampede *(mystery only, back half)* | Sprints (+80%) past up to 3 horses, max 8 s; can still be hit |
 | `attack:behind1` | Banana Peel | Horse directly behind: −50%, 1.5 s |
 | `attack:behind3` | Dust Kick | 3 horses behind: −25%, 2 s |
 | `attack:front1` | Horseshoe Toss | Horse directly ahead: −50%, 2 s |
 | `attack:front3` | Mud Cloud | 3 horses ahead: −25%, 2 s |
 | `attack:leader` | Golden Lasso | 1st place stops, 2 s |
+| `attack:top3` | Hornet Swarm | Current 1st–3rd (not the sender): −60%, 3.5 s |
 | `attack:all` | Thunderclap *(mystery only, last place)* | All others −30%, 1.5 s |
 | `defense:block1` | Horseshoe Shield | Blocks next attack |
-| `defense:immune` | Lucky Bubble | Immune 6 s |
+| `defense:immune` | Lucky Bubble | Immune 6 s (the only source of immunity) |
 | `defense:reflect` | Mirror Saddle | Next attack bounces back to its sender |
 | `dud:stop` | Snack Break | Stops 1.5 s |
 | `dud:slow` | Sleepy Jockey | −30%, 2.5 s |
@@ -122,16 +123,18 @@ Position band is set at pickup: front third / middle / back third of the current
 | Band | Speed | Attack | Defense | Dud |
 |---|---|---|---|---|
 | Front | 15% | 30% | 25% | 30% |
-| Middle | 25% | 30% | 25% | 20% |
-| Back | 40% | 30% | 15% | 15% |
+| Middle | 25% | 40% | 20% | 15% |
+| Back | 40% | 40% | 10% | 10% |
 
 **Attack item (any Attack box, bought or mystery):**
 
-| Band | behind1 | behind3 | front1 | front3 | leader |
-|---|---|---|---|---|---|
-| Front | 45% | 30% | 15% | 10% | 0% |
-| Middle | 20% | 15% | 30% | 20% | 15% |
-| Back | 5% | 5% | 30% | 25% | 35% |
+| Band | behind1 | behind3 | front1 | front3 | leader | top3 |
+|---|---|---|---|---|---|---|
+| Front | 45% | 30% | 15% | 10% | 0% | 0% |
+| Middle | 10% | 10% | 15% | 15% | 10% | 40% |
+| Back | 5% | 5% | 10% | 10% | 25% | 45% |
+
+*Rebalanced 2026-10-29 (owner decision):* the original +40–55% boosts made 3 bought Speed boxes win ~61% of 10-horse races. Weaker boosts, immunity moved to Defense only, and the Hornet Swarm (attacks aimed at the top 3) bring it to ~17% while keeping a real finishing spread (~3 s first to last). A catch-up "slipstream" was tried and rejected: it met the target only by turning every race into a ~1 m photo finish.
 
 - Impossible targets (nobody ahead or behind) are removed and the remaining weights renormalized.
 - Mystery-only extras: `speed:pass3` replaces a Speed roll at 25% in the back half. `attack:all` replaces 5% of last place's Attack rolls.
@@ -150,7 +153,7 @@ Own lane only, max **3 bought boxes** per lane, any mix.
 ### Balance targets (automated, 10,000 races, both lengths)
 
 - Equal 10-horse field: each horse wins 10% ± 1%.
-- One horse with 3 Speed boxes: win ≤ ~18%. Attack boxes: smaller edge than Speed (≤ ~13% with 3).
+- One horse with 3 Speed boxes: win ≤ ~18% (currently 17.5% short / 16.6% long; re-run the suite after any item change). Attack boxes: smaller edge than Speed (≤ ~13% with 3).
 - Winner time within ±20 s of nominal length in 99% of races.
 - 100% of races finish.
 

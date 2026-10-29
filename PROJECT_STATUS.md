@@ -37,4 +37,4 @@
 - Checks: `npm test` 56 pass, typecheck and lint clean, `npm run test:balance` 8/8.
 - Known: 3-Speed sits close to its 18% limit — re-run the balance suite after any item change. Speed boosts are short; give them strong visuals in Phase 4.
 
-Next: write the Phase 2 plan (Supabase schema, private rooms, lobby).
+Next: execute Phase 2 per `docs/superpowers/plans/2026-10-30-phase2-private-rooms-lobby.md` (Supabase local stack, private rooms, lobby). Needs Docker Desktop running.

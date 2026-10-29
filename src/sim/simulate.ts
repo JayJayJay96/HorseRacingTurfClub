@@ -42,6 +42,8 @@ interface Horse {
   stampede: { readonly target: number; readonly until: number } | null;
   nextBox: number;
   finishTime: number | null;
+  /** Unrounded finish time, used only to order same-tick finishers. */
+  finishExact: number;
 }
 
 const toTicks = (seconds: number): number => Math.round(seconds * TICK_HZ);
@@ -61,14 +63,16 @@ function targetsOf(running: readonly Horse[], i: number): Record<AttackTarget, r
 
 export function validateRaceInput(input: RaceInput): void {
   const n = input.horses.length;
-  if (!Number.isInteger(input.seed)) throw new RangeError(`seed must be an integer, got ${input.seed}`);
+  if (!Number.isInteger(input.seed))
+    throw new RangeError(`seed must be an integer, got ${input.seed}`);
   if (n < MIN_HORSES || n > MAX_HORSES) {
     throw new RangeError(`a race needs ${MIN_HORSES}-${MAX_HORSES} horses, got ${n}`);
   }
   if (new Set(input.horses).size !== n) throw new RangeError('horse ids must be unique');
   for (const [id, boxes] of Object.entries(input.bought)) {
     if (!input.horses.includes(id)) throw new RangeError(`bought boxes for unknown horse ${id}`);
-    if (boxes.length > MAX_BOUGHT) throw new RangeError(`horse ${id} has more than ${MAX_BOUGHT} bought boxes`);
+    if (boxes.length > MAX_BOUGHT)
+      throw new RangeError(`horse ${id} has more than ${MAX_BOUGHT} bought boxes`);
   }
 }
 
@@ -89,7 +93,8 @@ export function simulateRace(input: RaceInput): Timeline {
     knots: Array.from({ length: Math.ceil(maxTicks / knotTicks) + 2 }, () => fraction(rng) * 2 - 1),
     kickAt: distance * (KICK.fromFraction + fraction(rng) * (KICK.toFraction - KICK.fromFraction)),
     kickTicks:
-      toTicks(KICK.minSeconds) + rng.nextInt(toTicks(KICK.maxSeconds) - toTicks(KICK.minSeconds) + 1),
+      toTicks(KICK.minSeconds) +
+      rng.nextInt(toTicks(KICK.maxSeconds) - toTicks(KICK.minSeconds) + 1),
     progress: 0,
     kickStart: null,
     mods: [],
@@ -98,8 +103,11 @@ export function simulateRace(input: RaceInput): Timeline {
     stampede: null,
     nextBox: 0,
     finishTime: null,
+    finishExact: 0,
   }));
-  const progress: Record<HorseId, number[]> = Object.fromEntries(input.horses.map((id) => [id, [0]]));
+  const progress: Record<HorseId, number[]> = Object.fromEntries(
+    input.horses.map((id) => [id, [0]]),
+  );
   const events: RaceEvent[] = [];
   const finishOrder: HorseId[] = [];
   const finishTimes: Record<HorseId, number> = {};
@@ -122,7 +130,13 @@ export function simulateRace(input: RaceInput): Timeline {
     h.mods.push({ mult: e.mult, from, until: from + toTicks(e.seconds) });
   };
 
-  const hit = (target: Horse, by: Horse, item: ItemCode, tick: number, allowReflect: boolean): void => {
+  const hit = (
+    target: Horse,
+    by: Horse,
+    item: ItemCode,
+    tick: number,
+    allowReflect: boolean,
+  ): void => {
     const t = round2(tick / TICK_HZ);
     const outcome = resolveHit(
       { immuneUntil: target.immuneUntil, held: target.held, stampeding: target.stampede !== null },
@@ -143,7 +157,7 @@ export function simulateRace(input: RaceInput): Timeline {
         hit(by, target, item, tick, false);
         return;
       case 'hit':
-        addMod(target, item, tick);
+        addMod(target, item, tick + 1);
         events.push({ t, type: 'hit', horse: target.id, by: by.id, item });
     }
   };
@@ -160,14 +174,14 @@ export function simulateRace(input: RaceInput): Timeline {
       case 'dud:stop':
       case 'dud:slow':
       case 'dud:trip':
-        addMod(h, item, tick);
+        addMod(h, item, tick + 1);
         return;
       case 'speed:star':
-        addMod(h, item, tick);
-        h.immuneUntil = Math.max(h.immuneUntil, tick + toTicks(EFFECTS[item].seconds));
+        addMod(h, item, tick + 1);
+        h.immuneUntil = Math.max(h.immuneUntil, tick + 1 + toTicks(EFFECTS[item].seconds));
         return;
       case 'speed:self3':
-        for (let k = 0; k < 3; k++) addMod(h, item, tick + k * toTicks(SELF3_GAP_SECONDS));
+        for (let k = 0; k < 3; k++) addMod(h, item, tick + 1 + k * toTicks(SELF3_GAP_SECONDS));
         return;
       case 'speed:pass3': {
         const ahead = running[Math.max(0, running.indexOf(h) - PASS3_PLACES)]!;
@@ -182,7 +196,7 @@ export function simulateRace(input: RaceInput): Timeline {
         h.held = item;
         return;
       case 'defense:immune':
-        h.immuneUntil = Math.max(h.immuneUntil, tick + toTicks(EFFECTS[item].seconds));
+        h.immuneUntil = Math.max(h.immuneUntil, tick + 1 + toTicks(EFFECTS[item].seconds));
         return;
       case 'attack:all':
         for (const other of running) if (other !== h) hit(other, h, item, tick, true);
@@ -195,7 +209,8 @@ export function simulateRace(input: RaceInput): Timeline {
   };
 
   for (let tick = 1; finishOrder.length < horses.length; tick++) {
-    if (tick > maxTicks) throw new Error(`race did not finish within ${maxTicks} ticks (seed ${input.seed})`);
+    if (tick > maxTicks)
+      throw new Error(`race did not finish within ${maxTicks} ticks (seed ${input.seed})`);
 
     const finishedNow: Horse[] = [];
     for (const h of horses) {
@@ -203,28 +218,38 @@ export function simulateRace(input: RaceInput): Timeline {
       const before = h.progress;
       if (h.kickStart === null && before >= h.kickAt) h.kickStart = tick;
       h.progress = before + pace(h, tick) / TICK_HZ;
-      if (h.stampede && (h.progress >= h.stampede.target || tick >= h.stampede.until)) h.stampede = null;
+      if (h.stampede && (h.progress >= h.stampede.target || tick >= h.stampede.until))
+        h.stampede = null;
       if (h.mods.length > 0) h.mods = h.mods.filter((m) => m.until > tick + 1);
       if (h.progress >= distance) {
-        h.finishTime = round3((tick - 1 + (distance - before) / (h.progress - before)) / TICK_HZ);
+        h.finishExact = (tick - 1 + (distance - before) / (h.progress - before)) / TICK_HZ;
+        h.finishTime = round3(h.finishExact);
         h.progress = distance;
         finishedNow.push(h);
       }
     }
-    finishedNow.sort((a, b) => a.finishTime! - b.finishTime! || a.index - b.index);
+    finishedNow.sort((a, b) => a.finishExact - b.finishExact || a.index - b.index);
     for (const h of finishedNow) {
       finishOrder.push(h.id);
       finishTimes[h.id] = h.finishTime!;
       events.push({ t: h.finishTime!, type: 'finish', horse: h.id, place: finishOrder.length });
     }
 
-    // Boxes open after everyone has moved this tick; the ranking is only computed when needed.
-    let ranked: Horse[] | null = null;
-    for (const h of horses) {
+    // Boxes open after everyone has moved this tick, front-runner first so no lane is favoured;
+    // the ranking is only computed when some horse crossed a box.
+    const crossed = (h: Horse): boolean =>
+      h.finishTime === null &&
+      h.nextBox < boxes[h.id]!.length &&
+      boxes[h.id]![h.nextBox]!.at <= h.progress;
+    const ranked = horses.some(crossed) ? [...horses].sort(byPosition) : [];
+    for (const h of ranked) {
       const lane = boxes[h.id]!;
-      while (h.finishTime === null && h.nextBox < lane.length && lane[h.nextBox]!.at <= h.progress) {
+      while (
+        h.finishTime === null &&
+        h.nextBox < lane.length &&
+        lane[h.nextBox]!.at <= h.progress
+      ) {
         const spot = lane[h.nextBox++]!;
-        ranked ??= [...horses].sort(byPosition);
         const running = ranked.filter((r) => r.finishTime === null);
         const targets = targetsOf(running, running.indexOf(h));
         const item = rollBox(rng, spot.kind, {
@@ -238,7 +263,13 @@ export function simulateRace(input: RaceInput): Timeline {
             leader: targets.leader.length > 0,
           },
         });
-        events.push({ t: round2(tick / TICK_HZ), type: 'pickup', horse: h.id, kind: spot.kind, item });
+        events.push({
+          t: round2(tick / TICK_HZ),
+          type: 'pickup',
+          horse: h.id,
+          kind: spot.kind,
+          item,
+        });
         if (item) use(h, item, tick, running, targets);
       }
     }

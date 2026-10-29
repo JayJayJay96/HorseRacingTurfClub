@@ -85,17 +85,29 @@ describe('simulateRace', () => {
         if ((e.type === 'hit' || e.type === 'pickup') && stampeding(e.horse, e.t)) continue;
         if (e.type === 'hit' && e.item === 'attack:leader') {
           const p = tl.progress[e.horse]!;
-          for (let k = 1; k < 2 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
+          for (let k = 1; k <= 2 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
           lassoChecked++;
         }
         if (e.type === 'pickup' && e.item === 'dud:stop') {
           const p = tl.progress[e.horse]!;
-          for (let k = 1; k < 1.5 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
+          for (let k = 1; k <= 1.5 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
           snackChecked++;
         }
       }
     }
     expect(lassoChecked).toBeGreaterThan(0);
     expect(snackChecked).toBeGreaterThan(0);
+  });
+
+  it('same-tick pickups do not favour any lane', () => {
+    const wins = Array.from({ length: 10 }, () => 0);
+    for (let seed = 1; seed <= 300; seed++) {
+      const winner = race({ seed, horses: ids(10) }).finishOrder[0]!;
+      wins[ids(10).indexOf(winner)]!++;
+    }
+    for (const w of wins) {
+      expect(w).toBeGreaterThanOrEqual(15);
+      expect(w).toBeLessThanOrEqual(45);
+    }
   });
 });

@@ -17,7 +17,12 @@ export function App() {
   const [timeline, setTimeline] = useState<Timeline | null>(null);
   const run = (length: RaceLength) =>
     setTimeline(
-      simulateRace({ seed: createCryptoRng().nextInt(2 ** 32), horses: SAMPLE_HORSES, bought: {}, length }),
+      simulateRace({
+        seed: createCryptoRng().nextInt(2 ** 32),
+        horses: SAMPLE_HORSES,
+        bought: {},
+        length,
+      }),
     );
 
   return (

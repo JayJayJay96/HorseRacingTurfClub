@@ -44,6 +44,8 @@ Supabase (free tier)
   Realtime: race-room channels + presence
 ```
 
+- Phase/roster/ready reach clients as Postgres Changes on `rooms`/`room_players` (RLS-filtered; clients refetch on any change); presence uses the same channel.
+
 - **`sim/` package:** pure TypeScript with no DOM or React, shared by the Edge Functions (Deno) and the client. `simulateRace({ seed, horses, bought, length }) → Timeline` is deterministic (contract in `src/sim/types.ts`). The engine works in progress metres only; track geometry (laps, curves) belongs to the renderer.
 - **Timeline:** finish order and times, box spots per lane, per-horse progress samples (10 Hz, metres to 0.01), and an event list (pickup with the item it contained, hit, blocked, reflected, finish). Raw JSON is ~100–330 KB per race, so Phase 3 must shrink it before storing or broadcasting (e.g. send 2–5 Hz and interpolate, or integer decimetres + compression).
 - **Clients never decide outcomes.** They only play back a Timeline.
@@ -222,8 +224,8 @@ Computed once at **lock-odds**:
 
 | # | Phase | Acceptance |
 |---|---|---|
-| 1 | Foundation + `sim/` | Repo, Supabase schema, deterministic sim, balance tests pass for both lengths |
-| 2 | Private rooms + lobby | Host creates room; phones join by QR; roster ticks; realtime phases |
+| 1 | Foundation + `sim/` | Repo, deterministic sim, balance tests pass for both lengths |
+| 2 | Private rooms + lobby | Supabase schema; host creates room; phones join by QR; roster ticks; realtime phases |
 | 3 | Shop, odds, betting, ledger | Buy, lock odds, bet/unbet, idempotent Start with transactional payouts |
 | 4 | Playback + podium | Pixel 2D track, phone mini view, podium; **Private fully playable** |
 | 5 | Office mode | PIN login, `/admin`, carried wallets, horse customization; **MVP complete** |

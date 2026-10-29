@@ -21,3 +21,25 @@ src/
   sim/   pure TypeScript race engine (no DOM/React/Node; `.ts` imports so Deno can use it)
   app/   React app shell
 ```
+
+## Local development
+
+1. Install Docker Desktop and start it.
+2. `npm install`
+3. `npx supabase start` (first run downloads images)
+4. Copy `.env.example` to `.env.local`; fill it from `npx supabase status -o env` (`API_URL`, `ANON_KEY`).
+5. `npm run dev` — open `/` to host or join; `/sandbox` runs the race engine alone.
+
+Tests:
+
+- `npm test` — unit tests (no Docker)
+- `npm run test:db` — database/RPC/RLS tests against the local stack. The realtime test can fail on the first run right after `db reset`; rerun once.
+- `npm run test:balance` — 10,000-race balance suite (minutes)
+
+After changing a migration: `npx supabase db reset`, then regenerate types (Git Bash):
+`npx supabase gen types typescript --local > src/net/database.types.ts`
+
+Testing with several devices:
+
+- Real phones on the LAN: set `VITE_SUPABASE_URL=http://<pc-lan-ip>:54321` in `.env.local`, run `npm run dev -- --host`, and open the host page via `http://<pc-lan-ip>:5173`. `127.0.0.1` on a phone is the phone itself, and the QR code uses the host page's origin.
+- Several "devices" on one PC: use separate origins (`localhost`, `127.0.0.1`, `a.localhost`, `b.localhost`). Each has its own storage and anonymous user.

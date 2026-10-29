@@ -13,6 +13,23 @@
 - [x] Sandbox page
 - [x] Balance suite passing (both lengths)
 
+## Phase 2 — Private rooms + lobby (branch `phase2-rooms`)
+
+- [x] Task 0
+- [x] Task 1
+- [x] Task 2
+- [x] Task 3
+- [x] Task 4
+- [x] Task 5
+- [x] Task 6
+- [x] Task 7
+- [x] Task 8
+- [x] Task 9
+- [x] Task 10
+- [x] Task 11
+- [x] Task 12
+- [ ] Task 13: hosted Supabase + Vercel (pending owner)
+
 ## Session log
 
 ### 2026-10-29
@@ -37,4 +54,18 @@
 - Checks: `npm test` 56 pass, typecheck and lint clean, `npm run test:balance` 8/8.
 - Known: 3-Speed sits close to its 18% limit — re-run the balance suite after any item change. Speed boosts are short; give them strong visuals in Phase 4.
 
-Next: execute Phase 2 per `docs/superpowers/plans/2026-10-30-phase2-private-rooms-lobby.md` (Supabase local stack, private rooms, lobby). Needs Docker Desktop running.
+### 2026-10-30
+
+- Built Phase 2 per `docs/superpowers/plans/2026-10-30-phase2-private-rooms-lobby.md` (Tasks 0-12).
+- Checks: `npm test` 60 pass, `npm run test:db` 33 pass, typecheck, lint and build clean.
+- DB review fixes: joins only in LOBBY, tightened grants, RPC edge cases, idempotent realtime publication.
+- Smoke-test fixes: (A) `update_room_settings` treats a NULL argument as "keep current", with `setRaceLength`/`setPrize` wrappers, so length and prize edits no longer overwrite each other; (B) a removed phone listens for its own `room_players` DELETE event (RLS hides everything else from it) and refetches, so it notices removal at once.
+- LAN testing: phones need `VITE_SUPABASE_URL=http://<pc-lan-ip>:54321` and the host page opened via the LAN IP (see README).
+- Deferred:
+  - Private-room host handover ("any device can reopen /track").
+  - 4-char room codes are guessable with no rate limit (acceptable for office use).
+  - A removed phone can rejoin with a new name.
+  - `set_ready` doesn't require `ticked` and doesn't bump `last_activity_at`; Phase 3 "all ready" logic must filter on ticked and its RPCs must bump activity.
+  - `useRoom` receives every room's `room_players` DELETE events (primary key only).
+
+Next: Task 13 (owner: hosted Supabase + Vercel), then Phase 3 (shop, odds, betting, ledger).

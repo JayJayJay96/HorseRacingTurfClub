@@ -58,7 +58,9 @@ export function useRoom(code: string, presenceKey?: string) {
           if (presenceKey && payload.old.id === presenceKey) void refresh();
         },
       )
-      .on('presence', { event: 'sync' }, () => setOnline(new Set(Object.keys(channel.presenceState()))))
+      .on('presence', { event: 'sync' }, () =>
+        setOnline(new Set(Object.keys(channel.presenceState()))),
+      )
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return;
         if (presenceKey) void channel.track({});

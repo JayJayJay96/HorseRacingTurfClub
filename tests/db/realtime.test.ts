@@ -12,7 +12,12 @@ describe('realtime', () => {
         .channel(`test:${room.id}`)
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'room_players', filter: `room_id=eq.${room.id}` },
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'room_players',
+            filter: `room_id=eq.${room.id}`,
+          },
           () => {
             clearTimeout(timer);
             resolve();

@@ -43,10 +43,10 @@ describe('createSeededRng', () => {
 
   it('is uniform over 7 buckets (seeded, so the check is not flaky)', () => {
     const rng = createSeededRng(20261029);
-    const counts = new Array<number>(7).fill(0);
+    const counts = Array.from({ length: 7 }, () => 0);
     for (let i = 0; i < 70_000; i++) counts[rng.nextInt(7)]!++;
     // Critical chi-square value for df = 6 at p = 0.001 is 22.46.
-    expect(chiSquare(counts, new Array<number>(7).fill(1 / 7))).toBeLessThan(22.46);
+    expect(chiSquare(counts, Array.from({ length: 7 }, () => 1 / 7))).toBeLessThan(22.46);
   });
 });
 

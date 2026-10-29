@@ -24,8 +24,11 @@ export const removePlayer = (playerId: string) =>
   call(supabase.rpc('remove_player', { p_player: playerId }));
 export const setTicked = (playerId: string, ticked: boolean) =>
   call(supabase.rpc('set_ticked', { p_player: playerId, p_ticked: ticked }));
-export const updateRoomSettings = (roomId: string, length: RaceLength, prize: string) =>
-  call(supabase.rpc('update_room_settings', { p_room: roomId, p_length: length, p_prize: prize }));
+// Omitting an argument keeps that setting (SQL default null), so edits can't undo each other.
+export const setRaceLength = (roomId: string, length: RaceLength) =>
+  call(supabase.rpc('update_room_settings', { p_room: roomId, p_length: length }));
+export const setPrize = (roomId: string, prize: string) =>
+  call(supabase.rpc('update_room_settings', { p_room: roomId, p_prize: prize }));
 export const setPhase = (roomId: string, phase: 'LOBBY' | 'SHOP') =>
   call(supabase.rpc('set_phase', { p_room: roomId, p_phase: phase }));
 export const setReady = (roomId: string, ready: boolean) =>

@@ -44,6 +44,14 @@ export function useRoom(code: string, presenceKey?: string) {
         { event: '*', schema: 'public', table: 'room_players', filter: `room_id=eq.${roomId}` },
         () => void refresh(),
       )
+      // Unfiltered on purpose: a removed phone is no longer a member, so RLS hides everything else from it.
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'room_players' },
+        (payload) => {
+          if (presenceKey && payload.old.id === presenceKey) void refresh();
+        },
+      )
       .on('presence', { event: 'sync' }, () => setOnline(new Set(Object.keys(channel.presenceState()))))
       .subscribe((status) => {
         if (status !== 'SUBSCRIBED') return;

@@ -6,7 +6,8 @@ import {
   removePlayer,
   setPhase,
   setTicked,
-  updateRoomSettings,
+  setPrize as savePrizeRpc,
+  setRaceLength,
   type Room,
   type RoomPlayer,
 } from '../net/rooms.ts';
@@ -66,7 +67,7 @@ function LobbyBoard({ room, players, online, act }: BoardProps) {
     setName('');
   };
   const savePrize = () => {
-    if (prize !== room.prize) act(() => updateRoomSettings(room.id, length, prize));
+    if (prize !== room.prize) act(() => savePrizeRpc(room.id, prize));
   };
 
   return (
@@ -85,7 +86,7 @@ function LobbyBoard({ room, players, online, act }: BoardProps) {
                 type="radio"
                 name="length"
                 checked={length === l}
-                onChange={() => act(() => updateRoomSettings(room.id, l, room.prize))}
+                onChange={() => act(() => setRaceLength(room.id, l))}
               />{' '}
               {LENGTH_LABEL[l]}{' '}
             </label>

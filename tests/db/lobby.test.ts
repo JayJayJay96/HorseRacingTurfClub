@@ -100,6 +100,15 @@ describe('update_room_settings', () => {
     expect(next).toMatchObject({ race_length: 'long', prize: 'Kopi' });
   });
 
+  it('keeps the current value for a null argument', async () => {
+    const { host, room } = await newRoom();
+    await ok(host.rpc('update_room_settings', { p_room: room.id, p_length: null, p_prize: 'Kopi' }));
+    const a = await ok(host.rpc('update_room_settings', { p_room: room.id, p_length: 'long', p_prize: null }));
+    expect(a).toMatchObject({ race_length: 'long', prize: 'Kopi' });
+    const b = await ok(host.rpc('update_room_settings', { p_room: room.id, p_length: null, p_prize: 'Teh' }));
+    expect(b).toMatchObject({ race_length: 'long', prize: 'Teh' });
+  });
+
   it('validates and refuses non-hosts', async () => {
     const { host, room } = await newRoom();
     const phone = await anonClient();

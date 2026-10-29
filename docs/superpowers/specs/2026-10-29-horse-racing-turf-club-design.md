@@ -44,8 +44,8 @@ Supabase (free tier)
   Realtime: race-room channels + presence
 ```
 
-- **`sim/` package:** pure TypeScript with no DOM or React, shared by the Edge Functions (Deno) and the client. `simulateRace(seed, field, boxes, track, length) → Timeline` is deterministic.
-- **Timeline:** finish order and times, per-horse progress samples (10 Hz, quantized), and an event list (box pickup, item fired, hit, blocked, reflected, lap, finish).
+- **`sim/` package:** pure TypeScript with no DOM or React, shared by the Edge Functions (Deno) and the client. `simulateRace({ seed, horses, bought, length }) → Timeline` is deterministic (contract in `src/sim/types.ts`). The engine works in progress metres only; track geometry (laps, curves) belongs to the renderer.
+- **Timeline:** finish order and times, box spots per lane, per-horse progress samples (10 Hz, metres to 0.01), and an event list (pickup with the item it contained, hit, blocked, reflected, finish). Raw JSON is ~100–330 KB per race, so Phase 3 must shrink it before storing or broadcasting (e.g. send 2–5 Hz and interpolate, or integer decimetres + compression).
 - **Clients never decide outcomes.** They only play back a Timeline.
 - **Renderer interface:** `RaceRenderer.play(timeline, track, startAtMs)`. MVP: `Pixel2DRenderer`. Later: `HD2DRenderer` (Three.js). Both read the same Timeline and the same track definition.
 - **Track definition:** a 3D centreline path (y = 0 for now), lane width, lane count, finish point, stand position. New maps are new track files.
@@ -88,7 +88,7 @@ LOBBY → SHOP → ODDS_LOCKED → BETTING → RUNNING → PODIUM → LOBBY
 - Pace = base × (1 + smooth noise ±6%) × active item modifiers. Each horse gets one random finishing kick (2–5 s burst) in the last 20%.
 - **Boxes:** each lane has **5 mystery boxes + up to 3 bought boxes**, spread over the race distance at seed-chosen spots (shown before the start). A horse picks up only boxes in its own lane, and items **fire automatically on pickup**.
 - Defense items don't stack: one held at a time, and a new one replaces the old.
-- Every race must finish (minimum pace floor, stop effects capped).
+- Every race must finish: every effect is time-limited, and the engine throws if a race runs past 3× its nominal length.
 
 ### Item codes
 
@@ -178,7 +178,7 @@ Computed once at **lock-odds**:
 ## 9. History & badges (Office)
 
 - **Race record:** date, length, prize line, field, boxes, odds, podium and times, all bets and payouts, item event log.
-- **Timeline (replay):** kept 90 days (~40 KB each). Results kept forever.
+- **Timeline (replay):** kept 90 days (size target ~40 KB each after Phase 3 compression). Results kept forever.
 - **Leaderboards:**
   - richest
   - biggest single payout

@@ -56,6 +56,10 @@ const ERROR_TEXT: Record<string, string> = {
   not_host: 'Only the host can do that.',
   not_in_room: "You're not in this room.",
   prize_too_long: 'Prize is at most 60 characters.',
+  player_not_found: 'That player is no longer in the room.',
+  bad_length: 'Race length must be Short or Long.',
+  no_free_code: 'Could not find a free room code. Try again.',
+  not_signed_in: 'Not signed in. Reload the page.',
 };
 
 export function errorText(e: unknown): string {

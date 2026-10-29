@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { errorText, fetchRoom, type RoomState } from './rooms.ts';
 import { supabase } from './supabase.ts';
 
@@ -11,14 +11,20 @@ export function useRoom(code: string, presenceKey?: string) {
   const [state, setState] = useState<RoomState | null>(null);
   const [online, setOnline] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const loaded = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
       const next = await fetchRoom(code);
-      if (next) setState(next);
-      else setError(errorText('room_not_found'));
+      if (next) {
+        loaded.current = true;
+        setState(next);
+        setError(null);
+      } else setError(errorText('room_not_found'));
     } catch (e) {
-      setError(errorText(e));
+      // After the first load a failed refetch (network blip, phone asleep) keeps the last state;
+      // the next change event or resubscribe retries.
+      if (!loaded.current) setError(errorText(e));
     }
   }, [code]);
 

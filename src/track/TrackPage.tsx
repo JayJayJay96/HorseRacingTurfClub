@@ -63,8 +63,7 @@ function LobbyBoard({ room, players, online, act }: BoardProps) {
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    act(() => addPlayer(room.id, name));
-    setName('');
+    act(() => addPlayer(room.id, name).then(() => setName('')));
   };
   const savePrize = () => {
     if (prize !== room.prize) act(() => savePrizeRpc(room.id, prize));

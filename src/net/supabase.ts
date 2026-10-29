@@ -11,8 +11,9 @@ export const supabase = createClient<Database>(url, key);
 
 /** Each device is an anonymous Supabase user; RLS and RPCs key off its uid. Session persists in localStorage. */
 export async function ensureSignedIn(): Promise<string> {
-  const { data } = await supabase.auth.getSession();
-  if (data.session) return data.session.user.id;
+  // getUser() checks the cached session with the server (it goes stale after a local `db reset`).
+  const { data } = await supabase.auth.getUser();
+  if (data.user) return data.user.id;
   const { data: signIn, error } = await supabase.auth.signInAnonymously();
   if (error || !signIn.user) throw error ?? new Error('Anonymous sign-in failed');
   return signIn.user.id;

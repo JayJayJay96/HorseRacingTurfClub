@@ -19,6 +19,7 @@ describe('realtime', () => {
           },
         )
         .subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') reject(new Error(status));
           if (status !== 'SUBSCRIBED') return;
           // Postgres Changes can drop events in the first moments after SUBSCRIBED.
           setTimeout(() => {

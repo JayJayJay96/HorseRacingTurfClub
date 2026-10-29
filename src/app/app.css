@@ -1,0 +1,54 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.track {
+  max-width: 1400px;
+  font-size: 1.25rem;
+}
+.play {
+  max-width: 480px;
+}
+.lobby {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 32px;
+}
+.code {
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-align: center;
+  margin: 8px 0;
+}
+.roster {
+  list-style: none;
+  padding: 0;
+  columns: 2;
+}
+.roster li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  break-inside: avoid;
+}
+button.primary {
+  font-size: 1.25rem;
+  padding: 12px 24px;
+}
+[role='alert'] {
+  color: #c62828;
+}
+@media (max-width: 700px) {
+  .lobby {
+    grid-template-columns: 1fr;
+  }
+}

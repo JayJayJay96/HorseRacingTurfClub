@@ -35,15 +35,16 @@ export interface Effect {
 
 /** Speed multiplier and duration per item. Shield and Mirror only set held state (mult 1). */
 export const EFFECTS: Readonly<Record<ItemCode, Effect>> = {
-  'speed:self1': { mult: 1.4, seconds: 3 },
-  'speed:self3': { mult: 1.4, seconds: 2 },
-  'speed:star': { mult: 1.55, seconds: 5 },
+  'speed:self1': { mult: 1.2, seconds: 2 },
+  'speed:self3': { mult: 1.2, seconds: 1.5 },
+  'speed:star': { mult: 1.2, seconds: 3.5 },
   'speed:pass3': { mult: 1.8, seconds: 8 },
   'attack:behind1': { mult: 0.5, seconds: 1.5 },
   'attack:behind3': { mult: 0.75, seconds: 2 },
   'attack:front1': { mult: 0.5, seconds: 2 },
   'attack:front3': { mult: 0.75, seconds: 2 },
   'attack:leader': { mult: 0, seconds: 2 },
+  'attack:top3': { mult: 0.4, seconds: 3.5 },
   'attack:all': { mult: 0.7, seconds: 1.5 },
   'defense:block1': { mult: 1, seconds: 0 },
   'defense:immune': { mult: 1, seconds: 6 },
@@ -71,15 +72,15 @@ export const DUD_ITEMS = ['dud:stop', 'dud:slow', 'dud:trip'] as const satisfies
 /** Mystery box type by position band (percent). */
 export const MYSTERY_TYPE_WEIGHTS: Readonly<Record<Band, Readonly<Record<MysteryType, number>>>> = {
   front: { speed: 15, attack: 30, defense: 25, dud: 30 },
-  middle: { speed: 25, attack: 30, defense: 25, dud: 20 },
-  back: { speed: 40, attack: 30, defense: 15, dud: 15 },
+  middle: { speed: 25, attack: 40, defense: 20, dud: 15 },
+  back: { speed: 40, attack: 40, defense: 10, dud: 10 },
 };
 
 /** Attack target by position band (percent), for every Attack box, bought or mystery. */
 export const ATTACK_WEIGHTS: Readonly<Record<Band, Readonly<Record<AttackTarget, number>>>> = {
-  front: { behind1: 45, behind3: 30, front1: 15, front3: 10, leader: 0 },
-  middle: { behind1: 20, behind3: 15, front1: 30, front3: 20, leader: 15 },
-  back: { behind1: 5, behind3: 5, front1: 30, front3: 25, leader: 35 },
+  front: { behind1: 45, behind3: 30, front1: 15, front3: 10, leader: 0, top3: 0 },
+  middle: { behind1: 10, behind3: 10, front1: 15, front3: 15, leader: 10, top3: 40 },
+  back: { behind1: 5, behind3: 5, front1: 10, front3: 10, leader: 25, top3: 45 },
 };
 
 /** Mystery Speed roll in the back half of the field becomes a Stampede this often. */

@@ -11,6 +11,7 @@ const ALL_TARGETS: Record<AttackTarget, boolean> = {
   front1: true,
   front3: true,
   leader: true,
+  top3: true,
 };
 const ctx = (rank: number, count = 10, canTarget = ALL_TARGETS): RollContext => ({
   rank,
@@ -38,14 +39,21 @@ describe('bandOf', () => {
 describe('rollAttack', () => {
   it('never picks a target that has nobody in it', () => {
     const rng = createSeededRng(1);
-    const leaderView = { ...ALL_TARGETS, front1: false, front3: false, leader: false };
+    const leaderView = { ...ALL_TARGETS, front1: false, front3: false, leader: false, top3: false };
     for (let i = 0; i < 2000; i++) {
       expect(rollAttack(rng, ctx(0, 10, leaderView))).toMatch(/^attack:behind[13]$/);
     }
   });
 
   it('returns null when no target is possible', () => {
-    const none = { behind1: false, behind3: false, front1: false, front3: false, leader: false };
+    const none = {
+      behind1: false,
+      behind3: false,
+      front1: false,
+      front3: false,
+      leader: false,
+      top3: false,
+    };
     expect(rollAttack(createSeededRng(1), ctx(5, 10, none))).toBeNull();
   });
 
@@ -57,8 +65,13 @@ describe('rollAttack', () => {
       counts[targets.indexOf(rollAttack(rng, ctx(4))!.slice('attack:'.length) as AttackTarget)]!++;
     }
     const shares = targets.map((t) => ATTACK_WEIGHTS.middle[t] / 100);
-    // Critical chi-square value for df = 4 at p = 0.001 is 18.47.
-    expect(chiSquare(counts, shares)).toBeLessThan(18.47);
+    // Critical chi-square value for df = 5 at p = 0.001 is 20.52.
+    expect(chiSquare(counts, shares)).toBeLessThan(20.52);
+  });
+
+  it('the front band never rolls Hornet Swarm', () => {
+    const rng = createSeededRng(7);
+    for (let i = 0; i < 5000; i++) expect(rollAttack(rng, ctx(i % 3))).not.toBe('attack:top3');
   });
 });
 
@@ -81,7 +94,7 @@ describe('rollBox', () => {
       expect(rollBox(rng, 'speed', ctx(rank))).toMatch(/^speed:(self1|self3|star)$/);
       expect(rollBox(rng, 'defense', ctx(rank))).toMatch(/^defense:/);
       expect(rollBox(rng, 'attack', ctx(rank))).toMatch(
-        /^attack:(behind1|behind3|front1|front3|leader)$/,
+        /^attack:(behind1|behind3|front1|front3|leader|top3)$/,
       );
     }
   });

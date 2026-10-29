@@ -77,12 +77,8 @@ describe('simulateRace', () => {
     let snackChecked = 0;
     for (let seed = 1; seed <= 200; seed++) {
       const tl = race({ seed, horses: ids(12) });
-      // A Stampede ignores slow-downs, so skip horses that started one in the last 8 s.
-      const stampeding = (horse: string, t: number): boolean =>
-        tl.events.some((s) => s.type === 'pickup' && s.horse === horse && s.item === 'speed:pass3' && s.t <= t && t - s.t <= 8);
       for (const e of tl.events) {
         const tick = Math.round(e.t * TICK_HZ);
-        if ((e.type === 'hit' || e.type === 'pickup') && stampeding(e.horse, e.t)) continue;
         if (e.type === 'hit' && e.item === 'attack:leader') {
           const p = tl.progress[e.horse]!;
           for (let k = 1; k <= 2 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
@@ -97,6 +93,44 @@ describe('simulateRace', () => {
     }
     expect(lassoChecked).toBeGreaterThan(0);
     expect(snackChecked).toBeGreaterThan(0);
+  });
+
+  it('Hornet Swarm hits only running top-3 horses, never its sender', () => {
+    let checked = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const tl = race({ seed, horses: ids(12) });
+      tl.events.forEach((e, k) => {
+        if (e.type !== 'hit' || e.item !== 'attack:top3') return;
+        expect(e.horse).not.toBe(e.by);
+        const prev = tl.events[k - 1];
+        if (prev?.type === 'reflected' && prev.by === e.horse) return; // bounced back to the sender
+        const tick = Math.round(e.t * TICK_HZ);
+        const third = tl.horses
+          .map((h) => tl.progress[h]![tick]!)
+          .filter((p) => p < tl.distance)
+          .sort((x, y) => y - x)[2]!;
+        // >= rather than membership: stored progress is rounded, so near-ties can swap places.
+        expect(tl.progress[e.horse]![tick]!).toBeGreaterThanOrEqual(third);
+        checked++;
+      });
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('only Lucky Bubble makes a horse immune (not Thunder Hooves or Stampede)', () => {
+    let blocked = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const tl = race({ seed, horses: ids(12), bought: { h0: ['speed', 'speed', 'speed'] } });
+      for (const e of tl.events) {
+        if (e.type !== 'blocked' || e.reason !== 'immune') continue;
+        const bubble = tl.events.some(
+          (p) => p.type === 'pickup' && p.horse === e.horse && p.item === 'defense:immune' && p.t <= e.t && e.t - p.t <= 6,
+        );
+        expect(bubble).toBe(true);
+        blocked++;
+      }
+    }
+    expect(blocked).toBeGreaterThan(0);
   });
 
   it('same-tick pickups do not favour any lane', () => {

@@ -58,6 +58,7 @@ function targetsOf(running: readonly Horse[], i: number): Record<AttackTarget, r
     front1: running.slice(Math.max(0, i - 1), i),
     front3: running.slice(Math.max(0, i - 3), i),
     leader: i > 0 ? running.slice(0, 1) : [],
+    top3: running.slice(0, 3).filter((_, k) => k !== i),
   };
 }
 
@@ -119,8 +120,8 @@ export function simulateRace(input: RaceInput): Timeline {
     const b = h.knots[i + 1]!;
     const noise = 1 + (a + (b - a) * f) * NOISE.amplitude;
     const kick = h.kickStart !== null && tick < h.kickStart + h.kickTicks ? 1 + KICK.boost : 1;
-    if (h.stampede) return BASE_SPEED * noise * kick * EFFECTS['speed:pass3'].mult;
-    let mult = 1;
+    // A Stampede is not immune: hits landed during the sprint still slow it.
+    let mult = h.stampede ? EFFECTS['speed:pass3'].mult : 1;
     for (const m of h.mods) if (m.from <= tick && tick < m.until) mult *= m.mult;
     return BASE_SPEED * noise * kick * mult;
   };
@@ -139,7 +140,7 @@ export function simulateRace(input: RaceInput): Timeline {
   ): void => {
     const t = round2(tick / TICK_HZ);
     const outcome = resolveHit(
-      { immuneUntil: target.immuneUntil, held: target.held, stampeding: target.stampede !== null },
+      { immuneUntil: target.immuneUntil, held: target.held },
       tick,
       allowReflect,
     );
@@ -171,14 +172,11 @@ export function simulateRace(input: RaceInput): Timeline {
   ): void => {
     switch (item) {
       case 'speed:self1':
+      case 'speed:star':
       case 'dud:stop':
       case 'dud:slow':
       case 'dud:trip':
         addMod(h, item, tick + 1);
-        return;
-      case 'speed:star':
-        addMod(h, item, tick + 1);
-        h.immuneUntil = Math.max(h.immuneUntil, tick + 1 + toTicks(EFFECTS[item].seconds));
         return;
       case 'speed:self3':
         for (let k = 0; k < 3; k++) addMod(h, item, tick + 1 + k * toTicks(SELF3_GAP_SECONDS));
@@ -261,6 +259,7 @@ export function simulateRace(input: RaceInput): Timeline {
             front1: targets.front1.length > 0,
             front3: targets.front3.length > 0,
             leader: targets.leader.length > 0,
+            top3: targets.top3.length > 0,
           },
         });
         events.push({

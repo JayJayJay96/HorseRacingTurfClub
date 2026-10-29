@@ -6,7 +6,7 @@ export type BoxKind = BoxType | 'mystery';
 /** A mystery box first rolls one of these types, then an item inside it. */
 export type MysteryType = BoxType | 'dud';
 export type Band = 'front' | 'middle' | 'back';
-export type AttackTarget = 'behind1' | 'behind3' | 'front1' | 'front3' | 'leader';
+export type AttackTarget = 'behind1' | 'behind3' | 'front1' | 'front3' | 'leader' | 'top3';
 
 export type ItemCode =
   | 'speed:self1'

@@ -1,0 +1,65 @@
+export type HorseId = string;
+export type RaceLength = 'short' | 'long';
+export type BoxType = 'speed' | 'attack' | 'defense';
+/** What a lane box was before it was opened. */
+export type BoxKind = BoxType | 'mystery';
+/** A mystery box first rolls one of these types, then an item inside it. */
+export type MysteryType = BoxType | 'dud';
+export type Band = 'front' | 'middle' | 'back';
+export type AttackTarget = 'behind1' | 'behind3' | 'front1' | 'front3' | 'leader' | 'top3';
+
+export type ItemCode =
+  | 'speed:self1'
+  | 'speed:self3'
+  | 'speed:star'
+  | 'speed:pass3'
+  | `attack:${AttackTarget}`
+  | 'attack:all'
+  | 'defense:block1'
+  | 'defense:immune'
+  | 'defense:reflect'
+  | 'dud:stop'
+  | 'dud:slow'
+  | 'dud:trip';
+
+export interface RaceInput {
+  /** Real races pass a crypto-random 32-bit integer. */
+  readonly seed: number;
+  /** Lane order = array order. */
+  readonly horses: readonly HorseId[];
+  /** Bought boxes per horse (max 3 each); horses without purchases may be omitted. */
+  readonly bought: Readonly<Record<HorseId, readonly BoxType[]>>;
+  readonly length: RaceLength;
+}
+
+export interface BoxSpot {
+  /** Metres from the start along the race distance. */
+  readonly at: number;
+  readonly kind: BoxKind;
+}
+
+/** `t` is seconds since the start. Events are listed in simulation order. */
+export type RaceEvent =
+  /** `item` is null when an attack had nobody to hit and fizzled. */
+  | { t: number; type: 'pickup'; horse: HorseId; kind: BoxKind; item: ItemCode | null }
+  | { t: number; type: 'hit'; horse: HorseId; by: HorseId; item: ItemCode }
+  | { t: number; type: 'blocked'; horse: HorseId; by: HorseId; item: ItemCode; reason: 'immune' | 'shield' }
+  /** `horse` held the Mirror Saddle and sent the attack back to `by`. */
+  | { t: number; type: 'reflected'; horse: HorseId; by: HorseId; item: ItemCode }
+  | { t: number; type: 'finish'; horse: HorseId; place: number };
+
+export interface Timeline {
+  readonly seed: number;
+  readonly length: RaceLength;
+  /** Metres. */
+  readonly distance: number;
+  readonly tickHz: number;
+  readonly horses: readonly HorseId[];
+  readonly boxes: Readonly<Record<HorseId, readonly BoxSpot[]>>;
+  /** Metres from the start, one sample per tick; index 0 is the start. Finished horses stay at `distance`. */
+  readonly progress: Readonly<Record<HorseId, readonly number[]>>;
+  readonly events: readonly RaceEvent[];
+  readonly finishOrder: readonly HorseId[];
+  /** Seconds, interpolated within the tick (millisecond precision). */
+  readonly finishTimes: Readonly<Record<HorseId, number>>;
+}

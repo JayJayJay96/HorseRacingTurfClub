@@ -18,7 +18,9 @@ describe('resolveHit', () => {
   });
 
   it('immunity wins over a held Shield, so the Shield is kept', () => {
-    expect(resolveHit({ ...open, immuneUntil: 60, held: 'defense:block1' }, 50, true)).toBe('immune');
+    expect(resolveHit({ ...open, immuneUntil: 60, held: 'defense:block1' }, 50, true)).toBe(
+      'immune',
+    );
   });
 
   it('a held Shield blocks', () => {

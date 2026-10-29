@@ -12,7 +12,11 @@ const ALL_TARGETS: Record<AttackTarget, boolean> = {
   front3: true,
   leader: true,
 };
-const ctx = (rank: number, count = 10, canTarget = ALL_TARGETS): RollContext => ({ rank, count, canTarget });
+const ctx = (rank: number, count = 10, canTarget = ALL_TARGETS): RollContext => ({
+  rank,
+  count,
+  canTarget,
+});
 const typeOf = (item: ItemCode): MysteryType => item.split(':')[0] as MysteryType;
 
 describe('bandOf', () => {
@@ -63,7 +67,8 @@ describe('rollBox', () => {
     const rng = createSeededRng(3);
     const types: MysteryType[] = ['speed', 'attack', 'defense', 'dud'];
     const counts = Array.from({ length: types.length }, () => 0);
-    for (let i = 0; i < 20_000; i++) counts[types.indexOf(typeOf(rollBox(rng, 'mystery', ctx(8))!))]!++;
+    for (let i = 0; i < 20_000; i++)
+      counts[types.indexOf(typeOf(rollBox(rng, 'mystery', ctx(8))!))]!++;
     const shares = types.map((t) => MYSTERY_TYPE_WEIGHTS.back[t] / 100);
     // Critical chi-square value for df = 3 at p = 0.001 is 16.27.
     expect(chiSquare(counts, shares)).toBeLessThan(16.27);
@@ -75,7 +80,9 @@ describe('rollBox', () => {
       const rank = i % 10;
       expect(rollBox(rng, 'speed', ctx(rank))).toMatch(/^speed:(self1|self3|star)$/);
       expect(rollBox(rng, 'defense', ctx(rank))).toMatch(/^defense:/);
-      expect(rollBox(rng, 'attack', ctx(rank))).toMatch(/^attack:(behind1|behind3|front1|front3|leader)$/);
+      expect(rollBox(rng, 'attack', ctx(rank))).toMatch(
+        /^attack:(behind1|behind3|front1|front3|leader)$/,
+      );
     }
   });
 

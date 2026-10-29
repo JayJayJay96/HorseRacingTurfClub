@@ -41,7 +41,9 @@ export function rollAttack(rng: Rng, ctx: RollContext): ItemCode | null {
 /** The item inside a box at the moment it is picked up. Null = an attack with nobody to hit. */
 export function rollBox(rng: Rng, kind: BoxKind, ctx: RollContext): ItemCode | null {
   const mystery = kind === 'mystery';
-  const type = mystery ? pickWeighted(rng, MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)]) : kind;
+  const type = mystery
+    ? pickWeighted(rng, MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)])
+    : kind;
   switch (type) {
     case 'speed':
       if (mystery && ctx.rank >= ctx.count / 2 && rng.nextInt(100) < PASS3_CHANCE_PERCENT) {

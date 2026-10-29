@@ -12,11 +12,12 @@ describe('placeBoxes', () => {
     expect(lanes.a).toHaveLength(MYSTERY_PER_LANE + 3);
     expect(lanes.b).toHaveLength(MYSTERY_PER_LANE + 1);
     expect(lanes.c).toHaveLength(MYSTERY_PER_LANE);
-    expect(lanes.a!.filter((s) => s.kind !== 'mystery').map((s) => s.kind).sort()).toEqual([
-      'attack',
-      'defense',
-      'speed',
-    ]);
+    expect(
+      lanes
+        .a!.filter((s) => s.kind !== 'mystery')
+        .map((s) => s.kind)
+        .sort(),
+    ).toEqual(['attack', 'defense', 'speed']);
     for (const lane of Object.values(lanes)) {
       const spots = lane.map((s) => s.at);
       expect(spots).toEqual([...spots].sort((x, y) => x - y));

@@ -287,8 +287,8 @@ function RunningBoard({ room, race, act, busy }: BoardProps) {
     const tryFinish = () =>
       act(() =>
         finishRace(room.id).catch((e: unknown) => {
-          if (e instanceof Error && e.message === 'race_not_finished') setTimeout(tryFinish, 2000);
-          throw e;
+          if (!(e instanceof Error && e.message === 'race_not_finished')) throw e;
+          setTimeout(tryFinish, 2000);
         }),
       );
     tryFinish();

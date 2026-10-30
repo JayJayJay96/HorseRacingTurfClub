@@ -23,6 +23,263 @@ export type Database = {
   };
   public: {
     Tables: {
+      bets: {
+        Row: {
+          created_at: string;
+          horse_id: string;
+          id: string;
+          kind: string;
+          odds: number;
+          payout: number | null;
+          player_id: string;
+          race_id: string;
+          room_id: string;
+          stake: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          horse_id: string;
+          id?: string;
+          kind: string;
+          odds: number;
+          payout?: number | null;
+          player_id: string;
+          race_id: string;
+          room_id: string;
+          stake: number;
+        };
+        Update: {
+          created_at?: string;
+          horse_id?: string;
+          id?: string;
+          kind?: string;
+          odds?: number;
+          payout?: number | null;
+          player_id?: string;
+          race_id?: string;
+          room_id?: string;
+          stake?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'bets_horse_id_fkey';
+            columns: ['horse_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bets_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bets_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: false;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'bets_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      coin_ledger: {
+        Row: {
+          amount: number;
+          created_at: string;
+          id: number;
+          player_id: string;
+          race_id: string;
+          room_id: string;
+          type: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          amount: number;
+          created_at?: string;
+          id?: never;
+          player_id: string;
+          race_id: string;
+          room_id: string;
+          type: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          id?: never;
+          player_id?: string;
+          race_id?: string;
+          room_id?: string;
+          type?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'coin_ledger_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'coin_ledger_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: false;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'coin_ledger_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      purchases: {
+        Row: {
+          box: string;
+          created_at: string;
+          id: string;
+          player_id: string;
+          price: number;
+          race_id: string;
+          room_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          box: string;
+          created_at?: string;
+          id?: string;
+          player_id: string;
+          price: number;
+          race_id: string;
+          room_id: string;
+        };
+        Update: {
+          box?: string;
+          created_at?: string;
+          id?: string;
+          player_id?: string;
+          price?: number;
+          race_id?: string;
+          room_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'purchases_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'purchases_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: false;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'purchases_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      race_timelines: {
+        Row: {
+          race_id: string;
+          room_id: string;
+          timeline: NonNullable<Json>;
+        };
+        ComputedFields: never;
+        Insert: {
+          race_id: string;
+          room_id: string;
+          timeline: NonNullable<Json>;
+        };
+        Update: {
+          race_id?: string;
+          room_id?: string;
+          timeline?: NonNullable<Json>;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'race_timelines_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: true;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'race_timelines_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      races: {
+        Row: {
+          created_at: string;
+          ends_at: string | null;
+          finish_order: string[] | null;
+          horses: string[];
+          id: string;
+          length: string;
+          odds: Json | null;
+          prize: string;
+          room_id: string;
+          started_at: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          ends_at?: string | null;
+          finish_order?: string[] | null;
+          horses?: string[];
+          id?: string;
+          length: string;
+          odds?: Json | null;
+          prize?: string;
+          room_id: string;
+          started_at?: string | null;
+        };
+        Update: {
+          created_at?: string;
+          ends_at?: string | null;
+          finish_order?: string[] | null;
+          horses?: string[];
+          id?: string;
+          length?: string;
+          odds?: Json | null;
+          prize?: string;
+          room_id?: string;
+          started_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'races_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       room_players: {
         Row: {
           id: string;
@@ -71,6 +328,7 @@ export type Database = {
           last_activity_at: string;
           phase: string;
           prize: string;
+          race_id: string | null;
           race_length: string;
         };
         ComputedFields: never;
@@ -82,6 +340,7 @@ export type Database = {
           last_activity_at?: string;
           phase?: string;
           prize?: string;
+          race_id?: string | null;
           race_length?: string;
         };
         Update: {
@@ -92,9 +351,18 @@ export type Database = {
           last_activity_at?: string;
           phase?: string;
           prize?: string;
+          race_id?: string | null;
           race_length?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'rooms_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: false;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: {
@@ -119,6 +387,25 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      buy_box: {
+        Args: { p_box: string; p_room: string };
+        Returns: {
+          box: string;
+          created_at: string;
+          id: string;
+          player_id: string;
+          price: number;
+          race_id: string;
+          room_id: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'purchases';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      cancel_bet: { Args: { p_bet: string }; Returns: undefined };
       cleanup_rooms: { Args: Record<PropertyKey, never>; Returns: number };
       create_room: {
         Args: { p_length?: string; p_prize?: string };
@@ -130,6 +417,27 @@ export type Database = {
           last_activity_at: string;
           phase: string;
           prize: string;
+          race_id: string | null;
+          race_length: string;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'rooms';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      finish_race: {
+        Args: { p_room: string };
+        Returns: {
+          code: string;
+          created_at: string;
+          host_uid: string;
+          id: string;
+          last_activity_at: string;
+          phase: string;
+          prize: string;
+          race_id: string | null;
           race_length: string;
         };
         SetofOptions: {
@@ -157,6 +465,29 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      lock_odds_begin: { Args: { p_room: string }; Returns: Json };
+      lock_odds_finish: { Args: { p_odds: Json; p_race: string }; Returns: undefined };
+      place_bet: {
+        Args: { p_horse: string; p_kind: string; p_room: string; p_stake: number };
+        Returns: {
+          created_at: string;
+          horse_id: string;
+          id: string;
+          kind: string;
+          odds: number;
+          payout: number | null;
+          player_id: string;
+          race_id: string;
+          room_id: string;
+          stake: number;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'bets';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       remove_player: { Args: { p_player: string }; Returns: undefined };
       set_phase: {
         Args: { p_phase: string; p_room: string };
@@ -168,6 +499,7 @@ export type Database = {
           last_activity_at: string;
           phase: string;
           prize: string;
+          race_id: string | null;
           race_length: string;
         };
         SetofOptions: {
@@ -179,6 +511,11 @@ export type Database = {
       };
       set_ready: { Args: { p_ready: boolean; p_room: string }; Returns: undefined };
       set_ticked: { Args: { p_player: string; p_ticked: boolean }; Returns: undefined };
+      start_race_begin: { Args: { p_room: string }; Returns: Json };
+      start_race_finish: {
+        Args: { p_finish: string[]; p_race: string; p_seconds: number; p_timeline: Json };
+        Returns: undefined;
+      };
       update_room_settings: {
         Args: { p_length?: string; p_prize?: string; p_room: string };
         Returns: {
@@ -189,6 +526,7 @@ export type Database = {
           last_activity_at: string;
           phase: string;
           prize: string;
+          race_id: string | null;
           race_length: string;
         };
         SetofOptions: {

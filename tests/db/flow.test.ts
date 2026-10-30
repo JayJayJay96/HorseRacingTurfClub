@@ -12,7 +12,7 @@ describe('lock_odds', () => {
     expect(input).toEqual({
       race_id: r.raceId,
       length: 'short',
-      horses: [r.ali.player.id, r.bea.player.id, r.siti.id],
+      horses: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
       bought: {},
     });
     expect(await phaseOf(r)).toBe('ODDS_LOCKED');
@@ -60,10 +60,10 @@ describe('start_race', () => {
       'not_host',
     );
     const input = await ok(r.host.rpc('start_race_begin', { p_room: r.room.id }));
-    expect(input.horses).toHaveLength(3);
+    expect(input.horses).toHaveLength(4);
 
     const admin = adminClient();
-    const finish = [r.bea.player.id, r.ali.player.id, r.siti.id];
+    const finish = [r.bea.player.id, r.ali.player.id, r.siti.id, r.dan.id];
     const args = {
       p_race: r.raceId,
       p_timeline: { finishOrder: finish },
@@ -104,7 +104,7 @@ describe('finish_race', () => {
   it('moves to PODIUM only after the race has run; Next race keeps the result', async () => {
     const r = await bettingRoom();
     const admin = adminClient();
-    const finish = [r.siti.id, r.ali.player.id, r.bea.player.id];
+    const finish = [r.siti.id, r.ali.player.id, r.bea.player.id, r.dan.id];
     await ok(
       admin.rpc('start_race_finish', {
         p_race: r.raceId,

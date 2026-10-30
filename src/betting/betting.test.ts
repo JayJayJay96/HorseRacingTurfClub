@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { balanceOf, boxesOf, formatOdds, nameOf, oddsOf, ordinal, potOf } from './betting.ts';
+import {
+  balanceOf,
+  boxesOf,
+  canPlace,
+  formatOdds,
+  nameOf,
+  oddsOf,
+  ordinal,
+  potOf,
+} from './betting.ts';
 
 describe('betting helpers', () => {
   it('sums one player’s ledger rows', () => {
@@ -30,6 +39,11 @@ describe('betting helpers', () => {
     expect(formatOdds(1.05)).toBe('1.05×');
     expect(formatOdds(1.6)).toBe('1.6×');
     expect(formatOdds(undefined)).toBe('–');
+  });
+
+  it('allows Place bets only with more than 3 horses', () => {
+    expect(canPlace(['a', 'b', 'c'])).toBe(false);
+    expect(canPlace(['a', 'b', 'c', 'd'])).toBe(true);
   });
 
   it.each([

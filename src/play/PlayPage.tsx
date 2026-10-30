@@ -5,6 +5,7 @@ import {
   BOX_TYPES,
   balanceOf,
   boxesOf,
+  canPlace,
   formatOdds,
   nameOf,
   oddsOf,
@@ -199,7 +200,8 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   const horses = race?.horses ?? [];
   const [pick, setPick] = useState('');
   const horse = horses.includes(pick) ? pick : (horses[0] ?? '');
-  const [kind, setKind] = useState<BetKind>('win');
+  const [choice, setChoice] = useState<BetKind>('win');
+  const kind = canPlace(horses) ? choice : 'win';
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
   const myBets = bets.filter((b) => b.player_id === mine.id);
@@ -218,8 +220,8 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
           <select value={horse} onChange={(e) => setPick(e.target.value)}>
             {horses.map((id) => (
               <option key={id} value={id}>
-                {nameOf(players, id)} — Win {formatOdds(odds[id]?.win)} · Place{' '}
-                {formatOdds(odds[id]?.place)}
+                {nameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
+                {canPlace(horses) && ` · Place ${formatOdds(odds[id]?.place)}`}
               </option>
             ))}
           </select>
@@ -231,19 +233,21 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
               type="radio"
               name="kind"
               checked={kind === 'win'}
-              onChange={() => setKind('win')}
+              onChange={() => setChoice('win')}
             />{' '}
             Win (1st)
           </label>{' '}
-          <label>
-            <input
-              type="radio"
-              name="kind"
-              checked={kind === 'place'}
-              onChange={() => setKind('place')}
-            />{' '}
-            Place (top 3)
-          </label>
+          {canPlace(horses) && (
+            <label>
+              <input
+                type="radio"
+                name="kind"
+                checked={kind === 'place'}
+                onChange={() => setChoice('place')}
+              />{' '}
+              Place (top 3)
+            </label>
+          )}
         </fieldset>
         <label>
           Stake{' '}

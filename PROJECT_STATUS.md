@@ -88,9 +88,10 @@
   - Seed is picked with crypto RNG at Start; payouts are written at Start and hidden in the UI until PODIUM.
   - Timeline stored packed at 2 Hz in integer decimetres (~1/3 the size, within ~2.3 m).
   - New tables aren't in the Realtime publication; every mutating RPC updates the `rooms` row instead (one event per action).
+  - Place bets are refused (`bad_bet`) and hidden when 3 or fewer horses race: every horse places, so they could not lose.
 - Review fixes: `lock_odds_finish` range-checks odds; `lock_odds_begin`/`finish_race` bump activity; the big screen retries `finish_race` while the browser clock runs ahead of the DB; phones have a busy guard against double taps; the bet slip's horse follows the horse list.
 - Smoke test (4 origins, Short race): all 8 checks pass; Cal's 40 Win + 60 Place on Siti → 63, matching the payout.
-- Checks: `npm test` 86 pass, `npm run test:db` 53 pass, typecheck, lint and build clean.
+- Checks: `npm test` 87 pass, `npm run test:db` 54 pass, typecheck, lint and build clean.
 - Deferred:
   - Big-screen buttons rely on `disabled={busy}` only; a fast double-click (e.g. Open shop) sends a second request that the server rejects with "That isn't possible right now."
   - Each Realtime event makes every client refetch the whole room (6 queries); one phone made ~340 requests in a two-race session. Fine locally; watch hosted free-tier limits.

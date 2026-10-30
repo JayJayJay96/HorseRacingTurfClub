@@ -4,6 +4,7 @@ import {
   BOX_NAME,
   BOX_TYPES,
   boxesOf,
+  canPlace,
   formatOdds,
   nameOf,
   oddsOf,
@@ -237,6 +238,7 @@ function OddsLockedBoard({ room, act, busy }: BoardProps) {
 
 function BettingBoard({ room, players, race, purchases, bets, act, busy }: BoardProps) {
   const odds = oddsOf(race);
+  const horses = race?.horses ?? [];
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
@@ -246,16 +248,16 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
             <th>Horse</th>
             <th>Boxes</th>
             <th>Win</th>
-            <th>Place</th>
+            {canPlace(horses) && <th>Place</th>}
           </tr>
         </thead>
         <tbody>
-          {(race?.horses ?? []).map((id) => (
+          {horses.map((id) => (
             <tr key={id}>
               <td>{nameOf(players, id)}</td>
               <td>{boxIcons(purchases, id)}</td>
               <td>{formatOdds(odds[id]?.win)}</td>
-              <td>{formatOdds(odds[id]?.place)}</td>
+              {canPlace(horses) && <td>{formatOdds(odds[id]?.place)}</td>}
             </tr>
           ))}
         </tbody>

@@ -13,12 +13,13 @@ describe('lock-odds and start-race', () => {
     const { sims } = await invoke<{ sims: number }>(r.host, 'lock-odds', { room: r.room.id });
     expect(sims).toBeGreaterThanOrEqual(ODDS.minSims);
     const [race] = await ok(r.host.from('races').select('*').eq('id', r.raceId));
-    expect(race.horses).toEqual([r.ali.player.id, r.bea.player.id, r.siti.id]);
+    expect(race.horses).toEqual([r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id]);
     for (const id of race.horses) {
       const line = race.odds[id];
       expect(line.win).toBeGreaterThanOrEqual(ODDS.win.min);
       expect(line.win).toBeLessThanOrEqual(ODDS.win.max);
-      expect(line.place).toBe(ODDS.place.min); // everyone places in a 3-horse race
+      expect(line.place).toBeGreaterThanOrEqual(ODDS.place.min);
+      expect(line.place).toBeLessThanOrEqual(ODDS.place.max);
     }
 
     const bet = (horse: string, kind: string, stake: number) =>

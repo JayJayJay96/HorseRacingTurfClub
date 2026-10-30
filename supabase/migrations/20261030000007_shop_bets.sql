@@ -80,7 +80,9 @@ declare
   v_bet public.bets;
 begin
   select r.* into v_race from public.races r join public.rooms m on m.race_id = r.id where m.id = p_room;
-  if p_kind is null or p_kind not in ('win', 'place') then
+  -- With 3 or fewer horses every horse places, so a Place bet could not lose.
+  if p_kind is null or p_kind not in ('win', 'place')
+     or (p_kind = 'place' and cardinality(v_race.horses) <= 3) then
     raise exception 'bad_bet';
   end if;
   if p_horse is null or not (p_horse = any (v_race.horses)) then

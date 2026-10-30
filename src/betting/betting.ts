@@ -28,6 +28,9 @@ export const oddsOf = (race: { odds: Json | null } | null) =>
 export const nameOf = (players: readonly { id: string; name: string }[], id: string | undefined) =>
   players.find((p) => p.id === id)?.name ?? '?';
 
+/** With 3 or fewer horses every horse places, so the server refuses Place bets. */
+export const canPlace = (horses: readonly string[]) => horses.length > 3;
+
 export const formatOdds = (odds: number | undefined) =>
   odds === undefined ? '–' : `${Number(odds.toFixed(2))}×`;
 

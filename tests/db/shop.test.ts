@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PRICES } from '../../src/sim/config.ts';
 import { adminClient, anonClient, fails, ok } from './helpers.ts';
-import { balance, bettingRoom, shopRoom } from './raceFixtures.ts';
+import { balance, bettingRoom, fixtureOdds, shopRoom } from './raceFixtures.ts';
 
 describe('buy_box', () => {
   it('charges PRICES and records the box', async () => {
@@ -69,7 +69,12 @@ describe('place_bet and cancel_bet', () => {
     const r = await bettingRoom();
     const c = r.cal.client;
     const bet = await ok(
-      c.rpc('place_bet', { p_room: r.room.id, p_horse: r.bea.player.id, p_kind: 'win', p_stake: 30 }),
+      c.rpc('place_bet', {
+        p_room: r.room.id,
+        p_horse: r.bea.player.id,
+        p_kind: 'win',
+        p_stake: 30,
+      }),
     );
     expect(bet).toMatchObject({ stake: 30, odds: 3, payout: null, player_id: r.cal.player.id });
     expect(await balance(c, r.raceId, r.cal.player.id)).toBe(70);
@@ -77,7 +82,12 @@ describe('place_bet and cancel_bet', () => {
     await ok(c.rpc('cancel_bet', { p_bet: bet.id }));
     expect(await balance(c, r.raceId, r.cal.player.id)).toBe(100);
     const types = await ok(
-      c.from('coin_ledger').select('type').eq('race_id', r.raceId).eq('player_id', r.cal.player.id).order('id'),
+      c
+        .from('coin_ledger')
+        .select('type')
+        .eq('race_id', r.raceId)
+        .eq('player_id', r.cal.player.id)
+        .order('id'),
     );
     expect(types.map((t: { type: string }) => t.type)).toEqual(['topup', 'bet', 'unbet']);
     expect(await ok(c.from('bets').select('id').eq('id', bet.id))).toEqual([]);
@@ -97,6 +107,25 @@ describe('place_bet and cancel_bet', () => {
     expect(await fails(r.ali.client.rpc('cancel_bet', { p_bet: mine.id }))).toBe('bet_not_found');
   });
 
+  it('refuses Place bets when 3 or fewer horses race', async () => {
+    const r = await shopRoom();
+    await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'LOBBY' }));
+    await ok(r.host.rpc('set_ticked', { p_player: r.dan.id, p_ticked: false }));
+    const room = await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }));
+    const { [r.dan.id]: _, ...odds } = fixtureOdds(r);
+    await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+    await ok(adminClient().rpc('lock_odds_finish', { p_race: room.race_id, p_odds: odds }));
+    const bet = (kind: string) =>
+      r.cal.client.rpc('place_bet', {
+        p_room: r.room.id,
+        p_horse: r.ali.player.id,
+        p_kind: kind,
+        p_stake: 10,
+      });
+    expect(await fails(bet('place'))).toBe('bad_bet');
+    await ok(bet('win'));
+  });
+
   it('needs the BETTING phase', async () => {
     const r = await shopRoom();
     expect(
@@ -114,13 +143,20 @@ describe('place_bet and cancel_bet', () => {
   it('pays winners at Start in the same transaction', async () => {
     const r = await bettingRoom();
     const bet = (who: typeof r.ali, horse: string, kind: string, stake: number) =>
-      ok(who.client.rpc('place_bet', { p_room: r.room.id, p_horse: horse, p_kind: kind, p_stake: stake }));
+      ok(
+        who.client.rpc('place_bet', {
+          p_room: r.room.id,
+          p_horse: horse,
+          p_kind: kind,
+          p_stake: stake,
+        }),
+      );
     const aliWin = await bet(r.ali, r.ali.player.id, 'win', 10); // Ali finishes 2nd: lost
     const aliPlace = await bet(r.ali, r.bea.player.id, 'place', 20); // Bea 1st: 20 × 1.2 = 24
     await bet(r.bea, r.siti.id, 'win', 30); // Siti 3rd: lost
     await bet(r.bea, r.siti.id, 'place', 10); // 10 × 1.6 = 16
 
-    const finish = [r.bea.player.id, r.ali.player.id, r.siti.id];
+    const finish = [r.bea.player.id, r.ali.player.id, r.siti.id, r.dan.id];
     await ok(
       adminClient().rpc('start_race_finish', {
         p_race: r.raceId,
@@ -133,7 +169,9 @@ describe('place_bet and cancel_bet', () => {
     expect(await balance(r.bea.client, r.raceId, r.bea.player.id)).toBe(100 - 30 - 10 + 16);
     expect(await balance(r.cal.client, r.raceId, r.cal.player.id)).toBe(100);
 
-    const payouts = await ok(r.ali.client.from('bets').select('id, payout').eq('player_id', r.ali.player.id));
+    const payouts = await ok(
+      r.ali.client.from('bets').select('id, payout').eq('player_id', r.ali.player.id),
+    );
     expect(payouts).toContainEqual({ id: aliWin.id, payout: 0 });
     expect(payouts).toContainEqual({ id: aliPlace.id, payout: 24 });
     expect(await fails(r.ali.client.rpc('cancel_bet', { p_bet: aliPlace.id }))).toBe('wrong_phase');

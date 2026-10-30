@@ -22,7 +22,14 @@ describe('lock-odds and start-race', () => {
     }
 
     const bet = (horse: string, kind: string, stake: number) =>
-      ok(r.cal.client.rpc('place_bet', { p_room: r.room.id, p_horse: horse, p_kind: kind, p_stake: stake }));
+      ok(
+        r.cal.client.rpc('place_bet', {
+          p_room: r.room.id,
+          p_horse: horse,
+          p_kind: kind,
+          p_stake: stake,
+        }),
+      );
     await bet(r.siti.id, 'win', 40);
     await bet(r.ali.player.id, 'place', 60);
 
@@ -47,7 +54,9 @@ describe('lock-odds and start-race', () => {
     const paid = bets.reduce((sum, b) => sum + b.payout, 0);
     expect(await balance(r.cal.client, r.raceId, r.cal.player.id)).toBe(100 - 40 - 60 + paid);
 
-    const [stored] = await ok(r.cal.client.from('race_timelines').select('timeline').eq('race_id', r.raceId));
+    const [stored] = await ok(
+      r.cal.client.from('race_timelines').select('timeline').eq('race_id', r.raceId),
+    );
     expect(stored.timeline.finishOrder).toEqual(done.finish_order);
     expect(stored.timeline.progressDm[r.ali.player.id].length).toBeGreaterThan(100);
   });
@@ -55,7 +64,9 @@ describe('lock-odds and start-race', () => {
   it('refuses non-hosts, signed-out callers and wrong phases', { timeout: 60_000 }, async () => {
     const r = await shopRoom();
     expect(await failsInvoke(r.ali.client, 'lock-odds', { room: r.room.id })).toBe('not_host');
-    expect(await failsInvoke(guestClient(), 'lock-odds', { room: r.room.id })).toMatch(/permission denied/);
+    expect(await failsInvoke(guestClient(), 'lock-odds', { room: r.room.id })).toMatch(
+      /permission denied/,
+    );
     expect(await failsInvoke(r.host, 'start-race', { room: r.room.id })).toBe('wrong_phase');
 
     const other = await anonClient();

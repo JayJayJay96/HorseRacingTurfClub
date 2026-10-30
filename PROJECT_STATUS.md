@@ -44,6 +44,21 @@
 - [x] Task 9: Phone panels
 - [x] Task 10: Smoke test and docs
 
+## Phase 4 — Playback + podium (branch `phase4-playback`)
+
+- [x] Task 0: Branch
+- [ ] Task 1: Playback maths (pure)
+- [ ] Task 2: Start covers countdown and finish hold
+- [ ] Task 3: Track geometry
+- [ ] Task 4: Camera
+- [ ] Task 5: Item labels and palette
+- [ ] Task 6: Pixel 2D renderer
+- [ ] Task 7: RaceView and sandbox
+- [ ] Task 8: Timeline loading
+- [ ] Task 9: Big screen running and podium
+- [ ] Task 10: Phone mini view
+- [ ] Task 11: Smoke test and docs
+
 ## Session log
 
 ### 2026-10-29

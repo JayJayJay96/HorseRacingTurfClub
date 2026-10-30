@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 /** Reads URL and keys of the running local stack (`npx supabase start`). */
 function localEnv(): Record<string, string> {
@@ -50,4 +50,24 @@ export async function fails(call: Res<unknown>): Promise<string> {
   const { error } = await call;
   if (!error) throw new Error('expected the call to fail');
   return error.message;
+}
+
+/** Calls an Edge Function; returns its JSON or throws its `{ error }` code (same contract as RPCs). */
+export async function invoke<T = unknown>(client: SupabaseClient, name: string, body: Record<string, unknown>): Promise<T> {
+  const { data, error } = await client.functions.invoke(name, { body });
+  if (!error) return data as T;
+  if (error instanceof FunctionsHttpError) {
+    const payload = (await error.context.json().catch(() => null)) as { error?: string } | null;
+    if (payload?.error) throw new Error(payload.error);
+  }
+  throw error;
+}
+
+export async function failsInvoke(client: SupabaseClient, name: string, body: Record<string, unknown>): Promise<string> {
+  try {
+    await invoke(client, name, body);
+  } catch (e) {
+    return e instanceof Error ? e.message : String(e);
+  }
+  throw new Error('expected the call to fail');
 }

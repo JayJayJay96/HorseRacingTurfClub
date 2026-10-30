@@ -276,20 +276,28 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   );
 }
 
-function RunningBoard({ room, race, act }: BoardProps) {
+function RunningBoard({ room, race, act, busy }: BoardProps) {
   const left = useSecondsLeft(race?.ends_at ?? null);
   const asked = useRef(false);
   useEffect(() => {
     if (left > 0 || asked.current) return;
     asked.current = true;
-    act(() => finishRace(room.id));
+    // The browser clock can run ahead of the DB: retry while the server says not yet.
+    const tryFinish = () =>
+      act(() =>
+        finishRace(room.id).catch((e: unknown) => {
+          if (e instanceof Error && e.message === 'race_not_finished') setTimeout(tryFinish, 2000);
+          throw e;
+        }),
+      );
+    tryFinish();
   }, [left, act, room.id]);
   return (
     <section>
       <h1>And they're off! 🏇</h1>
       <p>Race playback arrives in the next update. Results in {left} s.</p>
       {left === 0 && (
-        <button type="button" onClick={() => act(() => finishRace(room.id))}>
+        <button type="button" disabled={busy} onClick={() => act(() => finishRace(room.id))}>
           Show results
         </button>
       )}
@@ -310,7 +318,7 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
           <li key={id}>{nameOf(players, id)}</li>
         ))}
       </ol>
-      {race?.prize && (
+      {race?.prize && top3.length > 0 && (
         <p>
           🏆 {nameOf(players, top3[0])}: {race.prize}
         </p>

@@ -41,7 +41,7 @@ begin
                          where room_id = p_room and ticked order by joined_at, id)
       where id = v_room.race_id;
     update public.room_players set ready = false where room_id = p_room and ready;
-    update public.rooms set phase = 'ODDS_LOCKED' where id = p_room;
+    update public.rooms set phase = 'ODDS_LOCKED', last_activity_at = now() where id = p_room;
   end if;
   return private.race_input(v_room.race_id);
 end;
@@ -71,6 +71,8 @@ begin
     select 1 from unnest(v_race.horses) as h
     where coalesce(jsonb_typeof(p_odds -> h::text -> 'win'), '') <> 'number'
        or coalesce(jsonb_typeof(p_odds -> h::text -> 'place'), '') <> 'number'
+       or (p_odds -> h::text ->> 'win')::numeric not between 1.2 and 20
+       or (p_odds -> h::text ->> 'place')::numeric not between 1.05 and 6
   ) then
     raise exception 'bad_odds';
   end if;
@@ -163,7 +165,7 @@ begin
   if now() < (select ends_at from public.races where id = v_room.race_id) then
     raise exception 'race_not_finished';
   end if;
-  update public.rooms set phase = 'PODIUM' where id = p_room returning * into v_room;
+  update public.rooms set phase = 'PODIUM', last_activity_at = now() where id = p_room returning * into v_room;
   return v_room;
 end;
 $$;

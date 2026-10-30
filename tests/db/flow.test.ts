@@ -40,6 +40,12 @@ describe('lock_odds', () => {
     expect(await fails(admin.rpc('lock_odds_finish', { p_race: r.raceId, p_odds: partial }))).toBe(
       'bad_odds',
     );
+    const wild = Object.fromEntries(
+      Object.keys(fixtureOdds(r)).map((id) => [id, { win: 0, place: 1.2 }]),
+    );
+    expect(await fails(admin.rpc('lock_odds_finish', { p_race: r.raceId, p_odds: wild }))).toBe(
+      'bad_odds',
+    );
     await ok(admin.rpc('lock_odds_finish', { p_race: r.raceId, p_odds: fixtureOdds(r) }));
     expect(await phaseOf(r)).toBe('BETTING');
     const [race] = await ok(r.host.from('races').select('odds').eq('id', r.raceId));

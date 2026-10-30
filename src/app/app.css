@@ -52,3 +52,23 @@ button.primary {
     grid-template-columns: 1fr;
   }
 }
+
+.odds {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.odds th,
+.odds td {
+  padding: 4px 16px;
+  text-align: left;
+}
+.odds tbody tr:nth-child(odd) {
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+.shop {
+  display: grid;
+  gap: 8px;
+}
+.podium {
+  font-size: 2rem;
+}

@@ -1,8 +1,32 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  BOX_ICON,
+  BOX_NAME,
+  BOX_TYPES,
+  balanceOf,
+  boxesOf,
+  canPlace,
+  formatOdds,
+  nameOf,
+  oddsOf,
+  ordinal,
+} from '../betting/betting.ts';
+import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
 import { normalizeCode } from '../lobby/lobby.ts';
-import { errorText, joinRoom, setReady, type RoomPlayer } from '../net/rooms.ts';
+import {
+  buyBox,
+  cancelBet,
+  errorText,
+  joinRoom,
+  placeBet,
+  setReady,
+  type BetKind,
+  type RoomPlayer,
+  type RoomState,
+} from '../net/rooms.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
+import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
 
 /** Phone: join the room, then follow its phase. */
 export function PlayPage() {
@@ -62,9 +86,14 @@ export function PlayPage() {
   );
 }
 
+type Act = (fn: () => Promise<unknown>) => void;
+type PanelProps = RoomState & { mine: RoomPlayer; balance: number; act: Act; busy: boolean };
+
 function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   const { state, error, refresh } = useRoom(code, me.id);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inflight = useRef(false);
 
   if (error) {
     return (
@@ -86,9 +115,24 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
     );
   }
 
-  const toggleReady = () => {
+  const act: Act = (fn) => {
+    if (inflight.current) return;
+    inflight.current = true;
     setActionError(null);
-    setReady(room.id, !mine.ready).then(refresh, (e: unknown) => setActionError(errorText(e)));
+    setBusy(true);
+    fn()
+      .then(refresh, (e: unknown) => setActionError(errorText(e)))
+      .finally(() => {
+        inflight.current = false;
+        setBusy(false);
+      });
+  };
+  const props: PanelProps = {
+    ...state,
+    mine,
+    balance: balanceOf(state.ledger, mine.id),
+    act,
+    busy,
   };
 
   return (
@@ -101,16 +145,176 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       {room.phase === 'LOBBY' && (
         <p>{mine.ticked ? "You're racing today! 🐎" : 'Waiting for the host to tick you in.'}</p>
       )}
-      {room.phase === 'SHOP' && (
-        <>
-          <p>The shop is open. Buying boxes arrives in the next update.</p>
-          <button type="button" className="primary" onClick={toggleReady}>
+      {room.phase === 'SHOP' && <ShopPanel {...props} />}
+      {room.phase === 'ODDS_LOCKED' && <p>The shop is closed. Calculating odds…</p>}
+      {room.phase === 'BETTING' && <BetPanel {...props} />}
+      {room.phase === 'RUNNING' && <RunningPanel endsAt={state.race?.ends_at ?? null} />}
+      {room.phase === 'PODIUM' && <ResultPanel {...props} />}
+      {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
+        <p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => act(() => setReady(room.id, !mine.ready))}
+          >
             {mine.ready ? 'Ready ✅ (tap to undo)' : "I'm ready"}
           </button>
-        </>
+        </p>
       )}
-      {room.phase !== 'LOBBY' && room.phase !== 'SHOP' && <p>Phase: {room.phase}</p>}
       {actionError && <p role="alert">{actionError}</p>}
     </main>
+  );
+}
+
+function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
+  if (!mine.ticked) {
+    return <p>💰 {balance} coins. You're not racing, but you can bet once the odds lock.</p>;
+  }
+  const boxes = boxesOf(purchases, mine.id);
+  return (
+    <>
+      <p>
+        💰 {balance} coins · your boxes:{' '}
+        {boxes.length ? boxes.map((b) => BOX_ICON[b]).join(' ') : 'none'} ({boxes.length}/
+        {MAX_BOUGHT})
+      </p>
+      <div className="shop">
+        {BOX_TYPES.map((box) => (
+          <button
+            key={box}
+            type="button"
+            disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
+            onClick={() => act(() => buyBox(room.id, box))}
+          >
+            {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
+          </button>
+        ))}
+      </div>
+      <p>Boxes go in your own lane and open automatically. No refunds.</p>
+    </>
+  );
+}
+
+function BetPanel({ room, players, race, bets, mine, balance, act, busy }: PanelProps) {
+  const odds = oddsOf(race);
+  const horses = race?.horses ?? [];
+  const [pick, setPick] = useState('');
+  const horse = horses.includes(pick) ? pick : (horses[0] ?? '');
+  const [choice, setChoice] = useState<BetKind>('win');
+  const kind = canPlace(horses) ? choice : 'win';
+  const [stake, setStake] = useState('10');
+  const amount = Number(stake);
+  const myBets = bets.filter((b) => b.player_id === mine.id);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    act(() => placeBet(room.id, horse, kind, amount));
+  };
+
+  return (
+    <>
+      <p>💰 {balance} coins</p>
+      <form className="shop" onSubmit={submit}>
+        <label>
+          Horse{' '}
+          <select value={horse} onChange={(e) => setPick(e.target.value)}>
+            {horses.map((id) => (
+              <option key={id} value={id}>
+                {nameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
+                {canPlace(horses) && ` · Place ${formatOdds(odds[id]?.place)}`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <fieldset>
+          <legend>Bet</legend>
+          <label>
+            <input
+              type="radio"
+              name="kind"
+              checked={kind === 'win'}
+              onChange={() => setChoice('win')}
+            />{' '}
+            Win (1st)
+          </label>{' '}
+          {canPlace(horses) && (
+            <label>
+              <input
+                type="radio"
+                name="kind"
+                checked={kind === 'place'}
+                onChange={() => setChoice('place')}
+              />{' '}
+              Place (top 3)
+            </label>
+          )}
+        </fieldset>
+        <label>
+          Stake{' '}
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={balance}
+            step={1}
+            value={stake}
+            onChange={(e) => setStake(e.target.value)}
+          />
+        </label>
+        <button
+          type="submit"
+          className="primary"
+          disabled={busy || !horse || !Number.isInteger(amount) || amount < 1 || amount > balance}
+        >
+          Bet
+        </button>
+      </form>
+      <h2>Your bets</h2>
+      {myBets.length === 0 ? (
+        <p>None yet. You can cancel bets until the race starts.</p>
+      ) : (
+        <ul>
+          {myBets.map((b) => (
+            <li key={b.id}>
+              {b.stake} on {nameOf(players, b.horse_id)} to {b.kind} @ {formatOdds(b.odds)}{' '}
+              <button
+                type="button"
+                aria-label={`Cancel ${b.stake} bet on ${nameOf(players, b.horse_id)}`}
+                disabled={busy}
+                onClick={() => act(() => cancelBet(b.id))}
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
+function RunningPanel({ endsAt }: { endsAt: string | null }) {
+  const left = useSecondsLeft(endsAt);
+  return <p>🏇 The race is on! Results in {left} s.</p>;
+}
+
+function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
+  const place = (race?.finish_order ?? []).indexOf(mine.id);
+  const myBets = bets.filter((b) => b.player_id === mine.id);
+  return (
+    <>
+      {place >= 0 && <p>Your horse finished {ordinal(place + 1)}.</p>}
+      {myBets.length > 0 && (
+        <ul>
+          {myBets.map((b) => (
+            <li key={b.id}>
+              {b.stake} on {nameOf(players, b.horse_id)} to {b.kind}:{' '}
+              {b.payout ? `won ${b.payout}` : 'lost'}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>💰 Final balance: {balance} coins</p>
+    </>
   );
 }

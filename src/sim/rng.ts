@@ -24,7 +24,7 @@ export function boundedInt(nextUint32: () => number, maxExclusive: number): numb
   }
 }
 
-export function createCryptoRng(source: Pick<Crypto, 'getRandomValues'> = globalThis.crypto): Rng {
+export function createCryptoRng(source: Pick<typeof globalThis.crypto, 'getRandomValues'> = globalThis.crypto): Rng {
   const buffer = new Uint32Array(1);
   const next = () => {
     source.getRandomValues(buffer);

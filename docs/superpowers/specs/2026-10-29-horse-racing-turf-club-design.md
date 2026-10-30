@@ -45,6 +45,7 @@ Supabase (free tier)
 ```
 
 - Phase/roster/ready reach clients as Postgres Changes on `rooms`/`room_players` (RLS-filtered; clients refetch on any change); presence uses the same channel.
+- Phase 3: coin/bet tables are not published; every mutating RPC updates the `rooms` row instead, so each action costs one Realtime event.
 
 - **`sim/` package:** pure TypeScript with no DOM or React, shared by the Edge Functions (Deno) and the client. `simulateRace({ seed, horses, bought, length }) → Timeline` is deterministic (contract in `src/sim/types.ts`). The engine works in progress metres only; track geometry (laps, curves) belongs to the renderer.
 - **Timeline:** finish order and times, box spots per lane, per-horse progress samples (10 Hz, metres to 0.01), and an event list (pickup with the item it contained, hit, blocked, reflected, finish). Raw JSON is ~100–330 KB per race, so Phase 3 must shrink it before storing or broadcasting (e.g. send 2–5 Hz and interpolate, or integer decimetres + compression).
@@ -163,7 +164,7 @@ Own lane only, max **3 bought boxes** per lane, any mix.
 
 Computed once at **lock-odds**:
 
-- `p_sim`: Win and Top-3 probability per horse from ~500 simulations of this exact race (field, boxes, length, track).
+- `p_sim`: Win and Top-3 probability per horse from ~500 simulations of this exact race (field, boxes, length, track). Simulation count is time-budgeted (≤500, ≥50, ~800 ms) to fit the Edge Function CPU limit.
 - `p_hist` (Office only): `(wins + 5·(1/N)) / (races + 5)`. Place uses the top-3 rate with `3/N`.
 - `p = 0.7·p_sim + 0.3·p_hist` (Private: `p = p_sim`).
 - `odds = clamp(0.9 / p)` (10% house edge). Win clamped 1.2–20×, Place 1.05–6×. Rounded to 0.1.

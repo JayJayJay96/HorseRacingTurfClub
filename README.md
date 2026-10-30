@@ -36,6 +36,12 @@ Tests:
 - `npm run test:db` — database/RPC/RLS tests against the local stack. The realtime test can fail on the first run right after `db reset`; rerun once.
 - `npm run test:balance` — 10,000-race balance suite (minutes)
 
+Edge Functions:
+
+- `npx supabase start` also serves the Edge Functions in `supabase/functions` (`lock-odds`, `start-race`), with hot reload.
+- After editing `supabase/config.toml`, run `npx supabase stop && npx supabase start`.
+- Function logs: `docker logs -f supabase_edge_runtime_HorseRacingTurfClub`.
+
 After changing a migration: `npx supabase db reset`, then regenerate types (Git Bash):
 `npx supabase gen types typescript --local > src/net/database.types.ts`
 

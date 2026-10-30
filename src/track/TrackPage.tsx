@@ -1,23 +1,37 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type FormEvent } from 'react';
+import {
+  BOX_ICON,
+  BOX_NAME,
+  BOX_TYPES,
+  boxesOf,
+  formatOdds,
+  nameOf,
+  oddsOf,
+  potOf,
+} from '../betting/betting.ts';
+import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
 import { canOpenShop, joinUrl } from '../lobby/lobby.ts';
 import {
   addPlayer,
   errorText,
+  finishRace,
+  lockOdds,
   removePlayer,
   setPhase,
   setTicked,
   setPrize as savePrizeRpc,
   setRaceLength,
-  type Room,
+  startRace,
   type RoomPlayer,
+  type RoomState,
 } from '../net/rooms.ts';
 import { useRoom } from '../net/useRoom.ts';
-import { MAX_HORSES } from '../sim/config.ts';
+import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import type { RaceLength } from '../sim/types.ts';
 import { JoinQr } from './JoinQr.tsx';
 
 type Act = (fn: () => Promise<unknown>) => void;
-type BoardProps = { room: Room; players: RoomPlayer[]; online: ReadonlySet<string>; act: Act };
+type BoardProps = RoomState & { online: ReadonlySet<string>; act: Act; busy: boolean };
 
 const LENGTH_LABEL: Record<RaceLength, string> = { short: 'Short (~2 min)', long: 'Long (~3 min)' };
 
@@ -26,6 +40,7 @@ export function TrackPage() {
   const code = new URLSearchParams(window.location.search).get('code') ?? '';
   const { state, online, error, refresh } = useRoom(code);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (error) {
     return (
@@ -39,15 +54,18 @@ export function TrackPage() {
 
   const act: Act = (fn) => {
     setActionError(null);
-    fn().then(refresh, (e: unknown) => setActionError(errorText(e)));
+    setBusy(true);
+    fn()
+      .then(refresh, (e: unknown) => setActionError(errorText(e)))
+      .finally(() => setBusy(false));
   };
-  const props: BoardProps = { ...state, online, act };
+  const Board = BOARDS[state.room.phase];
 
   return (
     <main className="track">
-      {state.room.phase === 'LOBBY' && <LobbyBoard {...props} />}
-      {state.room.phase === 'SHOP' && <ShopBoard {...props} />}
-      {state.room.phase !== 'LOBBY' && state.room.phase !== 'SHOP' && (
+      {Board ? (
+        <Board {...state} online={online} act={act} busy={busy} />
+      ) : (
         <p>Phase: {state.room.phase}</p>
       )}
       {actionError && <p role="alert">{actionError}</p>}
@@ -154,27 +172,179 @@ function LobbyBoard({ room, players, online, act }: BoardProps) {
   );
 }
 
-function ShopBoard({ room, players, online, act }: BoardProps) {
+const boxIcons = (purchases: RoomState['purchases'], playerId: string) =>
+  boxesOf(purchases, playerId)
+    .map((b) => BOX_ICON[b])
+    .join(' ');
+
+function ReadyLine({ players }: { players: RoomPlayer[] }) {
   const phones = players.filter((p) => p.uid);
+  return (
+    <p>
+      Ready: {phones.filter((p) => p.ready).length}/{phones.length}
+    </p>
+  );
+}
+
+function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) {
   return (
     <section>
       <h1>Shop open · room {room.code}</h1>
-      <p>Buying boxes arrives in the next update.</p>
       <p>
-        Ready: {phones.filter((p) => p.ready).length}/{phones.length}
+        Phones: up to 3 boxes for your own lane —{' '}
+        {BOX_TYPES.map((b) => `${BOX_ICON[b]} ${BOX_NAME[b]} ${PRICES[b]}`).join(' · ')}
       </p>
+      <ReadyLine players={players} />
       <ul className="roster">
-        {players.map((p) => (
-          <li key={p.id}>
-            {p.uid ? (p.ready ? '✅' : '⏳') : '—'} {p.name}
-            {p.ticked && ' 🐎'}
-            {p.uid && !online.has(p.id) && ' (offline)'}
-          </li>
-        ))}
+        {players
+          .filter((p) => p.ticked)
+          .map((p) => (
+            <li key={p.id}>
+              🐎 {p.name} {boxIcons(purchases, p.id)}
+              {p.uid && !online.has(p.id) && ' (offline)'}
+            </li>
+          ))}
       </ul>
-      <button type="button" onClick={() => act(() => setPhase(room.id, 'LOBBY'))}>
-        Back to lobby
+      <p>
+        <button type="button" disabled={busy} onClick={() => act(() => setPhase(room.id, 'LOBBY'))}>
+          Back to lobby (cancels purchases)
+        </button>{' '}
+        <button
+          type="button"
+          className="primary"
+          disabled={busy}
+          onClick={() => act(() => lockOdds(room.id))}
+        >
+          Lock odds
+        </button>
+      </p>
+    </section>
+  );
+}
+
+function OddsLockedBoard({ room, act, busy }: BoardProps) {
+  return (
+    <section>
+      <h1>Calculating odds…</h1>
+      <p>The shop is closed.</p>
+      {/* Only needed if a calculation failed; lock-odds treats ODDS_LOCKED as a retry. */}
+      <button type="button" disabled={busy} onClick={() => act(() => lockOdds(room.id))}>
+        Retry
       </button>
     </section>
   );
 }
+
+function BettingBoard({ room, players, race, purchases, bets, act, busy }: BoardProps) {
+  const odds = oddsOf(race);
+  return (
+    <section>
+      <h1>Place your bets · room {room.code}</h1>
+      <table className="odds">
+        <thead>
+          <tr>
+            <th>Horse</th>
+            <th>Boxes</th>
+            <th>Win</th>
+            <th>Place</th>
+          </tr>
+        </thead>
+        <tbody>
+          {(race?.horses ?? []).map((id) => (
+            <tr key={id}>
+              <td>{nameOf(players, id)}</td>
+              <td>{boxIcons(purchases, id)}</td>
+              <td>{formatOdds(odds[id]?.win)}</td>
+              <td>{formatOdds(odds[id]?.place)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length} bets.
+      </p>
+      <ReadyLine players={players} />
+      <button
+        type="button"
+        className="primary"
+        disabled={busy}
+        onClick={() => act(() => startRace(room.id))}
+      >
+        Start race
+      </button>
+    </section>
+  );
+}
+
+function RunningBoard({ room, race, act }: BoardProps) {
+  const left = useSecondsLeft(race?.ends_at ?? null);
+  const asked = useRef(false);
+  useEffect(() => {
+    if (left > 0 || asked.current) return;
+    asked.current = true;
+    act(() => finishRace(room.id));
+  }, [left, act, room.id]);
+  return (
+    <section>
+      <h1>And they're off! 🏇</h1>
+      <p>Race playback arrives in the next update. Results in {left} s.</p>
+      {left === 0 && (
+        <button type="button" onClick={() => act(() => finishRace(room.id))}>
+          Show results
+        </button>
+      )}
+    </section>
+  );
+}
+
+function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
+  const top3 = (race?.finish_order ?? []).slice(0, 3);
+  const winners = bets
+    .filter((b) => (b.payout ?? 0) > 0)
+    .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0));
+  return (
+    <section>
+      <h1>Results</h1>
+      <ol className="podium">
+        {top3.map((id) => (
+          <li key={id}>{nameOf(players, id)}</li>
+        ))}
+      </ol>
+      {race?.prize && (
+        <p>
+          🏆 {nameOf(players, top3[0])}: {race.prize}
+        </p>
+      )}
+      <h2>Payouts</h2>
+      {winners.length === 0 ? (
+        <p>No winning bets.</p>
+      ) : (
+        <ul>
+          {winners.map((b) => (
+            <li key={b.id}>
+              {nameOf(players, b.player_id)} won {b.payout} on {nameOf(players, b.horse_id)} (
+              {b.kind})
+            </li>
+          ))}
+        </ul>
+      )}
+      <button
+        type="button"
+        className="primary"
+        disabled={busy}
+        onClick={() => act(() => setPhase(room.id, 'LOBBY'))}
+      >
+        Next race
+      </button>
+    </section>
+  );
+}
+
+const BOARDS: Record<string, ComponentType<BoardProps> | undefined> = {
+  LOBBY: LobbyBoard,
+  SHOP: ShopBoard,
+  ODDS_LOCKED: OddsLockedBoard,
+  BETTING: BettingBoard,
+  RUNNING: RunningBoard,
+  PODIUM: PodiumBoard,
+};

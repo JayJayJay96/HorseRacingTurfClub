@@ -261,7 +261,8 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
         </tbody>
       </table>
       <p>
-        Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length} bets.
+        Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length}{' '}
+        {bets.length === 1 ? 'bet' : 'bets'}.
       </p>
       <ReadyLine players={players} />
       <button

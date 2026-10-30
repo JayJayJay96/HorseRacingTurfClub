@@ -2177,6 +2177,14 @@ npx supabase db push
 
 Expected: the 4 migrations are applied. Confirm in the dashboard that the cron job exists: Integrations → Cron → `cleanup-rooms`. If `db push` errors on `create extension pg_cron`, enable pg_cron under Database → Extensions and push again.
 
+- [ ] **Step 3b: Deploy the Edge Functions (Phase 3)**
+
+```bash
+npx supabase functions deploy lock-odds start-race
+```
+
+Then smoke-test Lock odds on the hosted project. If the deploy can't bundle the `../../../src/sim` imports, apply the fallback from the Phase 3 plan's scope decisions: a `predeploy` script that copies `src/sim` into `supabase/functions/_shared/sim` (gitignored).
+
 - [ ] **Step 4 (owner): Deploy on Vercel**
 1. Import the repo into Vercel. This needs a Git remote; the repo currently has none.
 2. Set the environment variables:

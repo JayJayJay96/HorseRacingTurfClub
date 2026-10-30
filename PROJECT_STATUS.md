@@ -68,4 +68,4 @@
   - `set_ready` doesn't require `ticked` and doesn't bump `last_activity_at`; Phase 3 "all ready" logic must filter on ticked and its RPCs must bump activity.
   - `useRoom` receives every room's `room_players` DELETE events (primary key only).
 
-Next: Task 13 (owner: hosted Supabase + Vercel), then Phase 3 (shop, odds, betting, ledger).
+Next: Phase 3 (shop, odds, betting, ledger) per `docs/superpowers/plans/2026-10-30-phase3-shop-odds-betting.md`, branch `phase3-betting`. Task 13 (owner: hosted Supabase + Vercel) can happen any time.

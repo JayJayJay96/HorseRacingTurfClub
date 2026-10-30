@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   BOX_ICON,
   BOX_NAME,
@@ -86,11 +86,13 @@ export function PlayPage() {
 }
 
 type Act = (fn: () => Promise<unknown>) => void;
-type PanelProps = RoomState & { mine: RoomPlayer; balance: number; act: Act };
+type PanelProps = RoomState & { mine: RoomPlayer; balance: number; act: Act; busy: boolean };
 
 function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   const { state, error, refresh } = useRoom(code, me.id);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const inflight = useRef(false);
 
   if (error) {
     return (
@@ -113,10 +115,24 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   }
 
   const act: Act = (fn) => {
+    if (inflight.current) return;
+    inflight.current = true;
     setActionError(null);
-    fn().then(refresh, (e: unknown) => setActionError(errorText(e)));
+    setBusy(true);
+    fn()
+      .then(refresh, (e: unknown) => setActionError(errorText(e)))
+      .finally(() => {
+        inflight.current = false;
+        setBusy(false);
+      });
   };
-  const props: PanelProps = { ...state, mine, balance: balanceOf(state.ledger, mine.id), act };
+  const props: PanelProps = {
+    ...state,
+    mine,
+    balance: balanceOf(state.ledger, mine.id),
+    act,
+    busy,
+  };
 
   return (
     <main className="play">
@@ -135,7 +151,11 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       {room.phase === 'PODIUM' && <ResultPanel {...props} />}
       {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
         <p>
-          <button type="button" onClick={() => act(() => setReady(room.id, !mine.ready))}>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => act(() => setReady(room.id, !mine.ready))}
+          >
             {mine.ready ? 'Ready ✅ (tap to undo)' : "I'm ready"}
           </button>
         </p>
@@ -145,7 +165,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   );
 }
 
-function ShopPanel({ room, mine, purchases, balance, act }: PanelProps) {
+function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
   if (!mine.ticked) {
     return <p>💰 {balance} coins. You're not racing, but you can bet once the odds lock.</p>;
   }
@@ -162,7 +182,7 @@ function ShopPanel({ room, mine, purchases, balance, act }: PanelProps) {
           <button
             key={box}
             type="button"
-            disabled={boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
+            disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
             onClick={() => act(() => buyBox(room.id, box))}
           >
             {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
@@ -174,10 +194,11 @@ function ShopPanel({ room, mine, purchases, balance, act }: PanelProps) {
   );
 }
 
-function BetPanel({ room, players, race, bets, mine, balance, act }: PanelProps) {
+function BetPanel({ room, players, race, bets, mine, balance, act, busy }: PanelProps) {
   const odds = oddsOf(race);
   const horses = race?.horses ?? [];
-  const [horse, setHorse] = useState(horses[0] ?? '');
+  const [pick, setPick] = useState('');
+  const horse = horses.includes(pick) ? pick : (horses[0] ?? '');
   const [kind, setKind] = useState<BetKind>('win');
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
@@ -194,7 +215,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act }: PanelProps)
       <form className="shop" onSubmit={submit}>
         <label>
           Horse{' '}
-          <select value={horse} onChange={(e) => setHorse(e.target.value)}>
+          <select value={horse} onChange={(e) => setPick(e.target.value)}>
             {horses.map((id) => (
               <option key={id} value={id}>
                 {nameOf(players, id)} — Win {formatOdds(odds[id]?.win)} · Place{' '}
@@ -239,7 +260,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act }: PanelProps)
         <button
           type="submit"
           className="primary"
-          disabled={!horse || !Number.isInteger(amount) || amount < 1 || amount > balance}
+          disabled={busy || !horse || !Number.isInteger(amount) || amount < 1 || amount > balance}
         >
           Bet
         </button>
@@ -254,7 +275,8 @@ function BetPanel({ room, players, race, bets, mine, balance, act }: PanelProps)
               {b.stake} on {nameOf(players, b.horse_id)} to {b.kind} @ {formatOdds(b.odds)}{' '}
               <button
                 type="button"
-                aria-label="Cancel bet"
+                aria-label={`Cancel ${b.stake} bet on ${nameOf(players, b.horse_id)}`}
+                disabled={busy}
                 onClick={() => act(() => cancelBet(b.id))}
               >
                 ✕

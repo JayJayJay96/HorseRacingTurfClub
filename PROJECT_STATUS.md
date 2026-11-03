@@ -268,4 +268,26 @@
 - Checks: `npm test` 143 pass, typecheck, lint and build clean, `npm run test:db` 100 pass. Seen in `/sandbox`: rear views on the bend. Not heard by ear.
 - Deploy: redeploy `lock-odds` and `start-race` (they import `src/sim`), then push master.
 
-Next: Phase 8 (HD-2D renderer) or Phase 9 (hardening & maps).
+## Phase 9 — Hardening, maps & looks shop (branch `phase9-hardening`)
+
+- [x] Task 1: Performance
+- [x] Task 2: Track shapes
+- [x] Task 3: Track choice per race
+- [x] Task 4: Cosmetic shop — database
+- [x] Task 5: Cosmetic shop — phone UI and rendering
+- [x] Task 6: Accessibility
+- [x] Task 7: E2E tests
+- [x] Task 8: Smoke test and docs (deploy after merge)
+
+### 2026-11-04 — Phase 9
+
+- Built per `docs/superpowers/plans/2026-11-04-phase9-hardening.md`. Owner picked all four parts; tracks: 2 new shapes.
+- Performance: per-race render caches (sorted boxes, pickup times, world-space track path) cut `draw()` from ~0.23 to ~0.16 ms/frame (long race, dev build); `colorsByPlayer` uses a Map; `useRoom` coalesces bursts of changes into one refetch (150 ms, one in flight).
+- Tracks (looks only; every horse still runs the same distance): `oval` (unchanged), `speedway` (420 m straights) and `kidney` (bean, dent radius ~90 m > the 55 m outer lane). Host picks Oval / Speedway / Kidney / Random in the lobby; `races.track` stores the concrete shape (migration 0014); big screen, phone mini map and replays use it.
+- Looks shop (office only, lobby, migration 0015): hoops 150, sash 150, stars 200 (silk patterns), dust 250, sparkle 400 (trails). Bought once per member (`player_cosmetics`), new raceless ledger type `cosmetic`, no buying while RUNNING, wear/remove any time.
+- Accessibility: phone and big-screen live regions, canvas labels, labelled radios, focus ring, dark-mode error red 8.2:1, reduced motion snaps the camera.
+- E2E (`npm run test:e2e`, local stack only): private race with 3 phones and a mid-race reload; office looks shop and Kidney track; axe on 6 pages with no serious/critical issues. 6/6, twice, ~160 s.
+- Checks: `npm test` 170 pass, `npm run test:db` 116 pass, typecheck, lint and build clean. Kidney + hoops + sparkle seen in `/sandbox`.
+- Not verified: a real screen reader; the shop on a real phone; prices are a first guess.
+
+Next: Phase 8 (HD-2D renderer).

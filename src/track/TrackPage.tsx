@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type FormEvent } from 'react';
 import {
   BOX_ICON,
   BOX_NAME,
@@ -27,7 +27,10 @@ import {
   type RoomState,
 } from '../net/rooms.ts';
 import { useRoom } from '../net/useRoom.ts';
+import { useTimeline } from '../net/useTimeline.ts';
+import { RaceView, Silk } from '../render/RaceView.tsx';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
+import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
 import { JoinQr } from './JoinQr.tsx';
 
@@ -279,8 +282,10 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   );
 }
 
-function RunningBoard({ room, race, act, busy }: BoardProps) {
+function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   const left = useSecondsLeft(race?.ends_at ?? null);
+  const { timeline, error } = useTimeline(race?.id ?? null);
+  const names = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p.name])), [players]);
   const asked = useRef(false);
   useEffect(() => {
     if (left > 0 || asked.current) return;
@@ -297,8 +302,11 @@ function RunningBoard({ room, race, act, busy }: BoardProps) {
   }, [left, act, room.id]);
   return (
     <section>
-      <h1>And they're off! 🏇</h1>
-      <p>Race playback arrives in the next update. Results in {left} s.</p>
+      {timeline && race?.started_at ? (
+        <RaceView timeline={timeline} startAtMs={gunMs(race.started_at)} names={names} />
+      ) : (
+        <p>{error ?? 'Loading the race…'}</p>
+      )}
       {left === 0 && (
         <button type="button" disabled={busy} onClick={() => act(() => finishRace(room.id))}>
           Show results
@@ -309,16 +317,21 @@ function RunningBoard({ room, race, act, busy }: BoardProps) {
 }
 
 function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
+  const { timeline } = useTimeline(race?.id ?? null);
   const top3 = (race?.finish_order ?? []).slice(0, 3);
   const winners = bets
     .filter((b) => (b.payout ?? 0) > 0)
     .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0));
+  const best = winners[0];
   return (
     <section>
       <h1>Results</h1>
       <ol className="podium">
         {top3.map((id) => (
-          <li key={id}>{nameOf(players, id)}</li>
+          <li key={id}>
+            <Silk lane={(race?.horses ?? []).indexOf(id)} /> {nameOf(players, id)}
+            {timeline && ` · ${timeline.finishTimes[id]?.toFixed(2)} s`}
+          </li>
         ))}
       </ol>
       {race?.prize && top3.length > 0 && (
@@ -327,6 +340,12 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
         </p>
       )}
       <h2>Payouts</h2>
+      {best && (
+        <p>
+          🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
+          {nameOf(players, best.horse_id)}
+        </p>
+      )}
       {winners.length === 0 ? (
         <p>No winning bets.</p>
       ) : (

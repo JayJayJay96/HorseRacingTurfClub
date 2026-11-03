@@ -53,6 +53,7 @@ export class Pixel2DRenderer implements RaceRenderer {
   private pickups: number[][] = [];
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
+  private halfWidth = 1;
 
   constructor(canvas: HTMLCanvasElement, colors: ColorsOf = defaultColors) {
     this.canvas = canvas;
@@ -74,6 +75,7 @@ export class Pixel2DRenderer implements RaceRenderer {
         .sort((a, b) => a - b),
     );
     const outer = timeline.horses.length * track.laneWidth;
+    this.halfWidth = trackBounds(track, timeline.horses.length).halfWidth;
     this.ribbon = new Path2D();
     for (const offset of [outer + 2, -2]) {
       for (let s = 0; s <= track.lap; s += 4) {
@@ -102,9 +104,8 @@ export class Pixel2DRenderer implements RaceRenderer {
       y: c.y + (target.y - c.y) * EASE,
       zoom: c.zoom + (target.zoom - c.zoom) * EASE,
     };
-    const lanes = timeline.horses.length;
-    const outer = lanes * track.laneWidth;
-    const scale = (VIEW.width / (2 * trackBounds(track, lanes).halfWidth + 20)) * this.camera.zoom;
+    const outer = timeline.horses.length * track.laneWidth;
+    const scale = (VIEW.width / (2 * this.halfWidth + 20)) * this.camera.zoom;
     const screen = (p: Point): Point => ({
       x: (p.x - this.camera.x) * scale + VIEW.width / 2,
       y: (p.y - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2,
@@ -135,8 +136,9 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.stroke(ribbon);
 
     // Stands below the home straight, then the finish line.
-    const s0 = screen({ x: -track.straight / 2, y: track.radius + outer + 8 });
-    const s1 = screen({ x: track.straight / 2, y: track.radius + outer + 40 });
+    const { stands } = track;
+    const s0 = screen({ x: stands.x0, y: stands.y0 + outer });
+    const s1 = screen({ x: stands.x1, y: stands.y1 + outer });
     ctx.fillStyle = STANDS;
     ctx.fillRect(s0.x, s0.y, s1.x - s0.x, s1.y - s0.y);
     const f0 = screen(trackPoint(track, finishS(track), -2));

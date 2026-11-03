@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
-import { TRACK } from './track.ts';
+import { TRACK, type Track } from './track.ts';
 import { useRaceTime } from './useRaceTime.ts';
 
 /** A horse's silk colour as a small square. */
@@ -17,10 +17,11 @@ type Props = {
   names: Readonly<Record<HorseId, string>>;
   /** Per-horse colours (Office); lane colours by default. */
   colors?: ColorsOf;
+  track?: Track;
 };
 
 /** Big-screen race: the pixel track plus live standings. */
-export function RaceView({ timeline, startAtMs, names, colors }: Props) {
+export function RaceView({ timeline, startAtMs, names, colors, track = TRACK }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
   // A ref, so a room refetch (new colours function) doesn't restart the race.
   const colorsRef = useRef(colors ?? defaultColors);
@@ -31,9 +32,9 @@ export function RaceView({ timeline, startAtMs, names, colors }: Props) {
     const el = canvas.current;
     if (!el) return;
     const renderer = new Pixel2DRenderer(el, (h, lane) => colorsRef.current(h, lane));
-    renderer.play(timeline, TRACK, startAtMs);
+    renderer.play(timeline, track, startAtMs);
     return () => renderer.stop();
-  }, [timeline, startAtMs]);
+  }, [timeline, startAtMs, track]);
 
   const t = useRaceTime(startAtMs);
   return (

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adminClient, anonClient, fails, ok } from './helpers.ts';
-import { officeRow } from './officeFixtures.ts';
+import { member, officeRoom, officeRow } from './officeFixtures.ts';
 import { balance, shopRoom } from './raceFixtures.ts';
 
 describe('office room', () => {
@@ -59,5 +59,91 @@ describe('office room', () => {
     expect(await balance(r.ali.client, r.raceId, r.ali.player.id)).toBe(100);
     const stranger = await anonClient();
     expect(await ok(stranger.rpc('room_balances', { p_room: r.room.id }))).toEqual([]);
+  });
+});
+
+describe('office login', () => {
+  it('first login sets the PIN; later logins check it', async () => {
+    const m = await member('P', '4321');
+    const roster = (await ok(m.client.rpc('office_roster'))) as { id: string; has_pin: boolean }[];
+    expect(roster).toContainEqual({ id: m.player.id, name: m.name, has_pin: true });
+    const other = await anonClient();
+    expect(
+      await ok(other.rpc('office_login', { p_player: m.player.id, p_pin: '0000' })),
+    ).toBeNull();
+    const again = await ok(other.rpc('office_login', { p_player: m.player.id, p_pin: '4321' }));
+    expect(again.id).toBe(m.player.id);
+  });
+
+  it('moves the member to the new phone; the old phone loses the room', async () => {
+    const m = await member('D');
+    const room = await officeRow();
+    const phone2 = await anonClient();
+    await ok(phone2.rpc('office_login', { p_player: m.player.id, p_pin: '1234' }));
+    expect(await ok(m.client.from('rooms').select('id').eq('id', room.id))).toEqual([]);
+    expect(await ok(phone2.from('rooms').select('id').eq('id', room.id))).toHaveLength(1);
+  });
+
+  it('locks a name for 5 minutes after 5 wrong PINs', async () => {
+    const m = await member('K');
+    const phone = await anonClient();
+    for (let i = 0; i < 5; i++) {
+      expect(
+        await ok(phone.rpc('office_login', { p_player: m.player.id, p_pin: '9999' })),
+      ).toBeNull();
+    }
+    expect(await fails(phone.rpc('office_login', { p_player: m.player.id, p_pin: '1234' }))).toBe(
+      'pin_locked',
+    );
+  });
+
+  it('rejects malformed PINs and Private-style joins', async () => {
+    const m = await member('B');
+    const phone = await anonClient();
+    expect(await fails(phone.rpc('office_login', { p_player: m.player.id, p_pin: '12a4' }))).toBe(
+      'bad_pin',
+    );
+    expect(await fails(phone.rpc('join_room', { p_code: 'TURF', p_name: 'Someone' }))).toBe(
+      'office_room',
+    );
+    // A signed-in member's rejoin probe still returns their entry.
+    expect((await ok(m.client.rpc('join_room', { p_code: 'TURF', p_name: '' }))).id).toBe(
+      m.player.id,
+    );
+  });
+
+  it('logout unlinks the phone', async () => {
+    const m = await member('O');
+    const room = await officeRow();
+    await ok(m.client.rpc('office_logout', { p_room: room.id }));
+    expect(await ok(m.client.from('rooms').select('id').eq('id', room.id))).toEqual([]);
+  });
+
+  it('members set their own horse in the LOBBY', async () => {
+    const { room } = await officeRoom();
+    const m = await member('H');
+    const horse = await ok(
+      m.client.rpc('set_my_horse', {
+        p_room: room.id,
+        p_coat: 2,
+        p_silk: 9,
+        p_horse_name: ' Thunder ',
+      }),
+    );
+    expect(horse).toMatchObject({ coat: 2, silk: 9, horse_name: 'Thunder' });
+    const cleared = await ok(
+      m.client.rpc('set_my_horse', {
+        p_room: room.id,
+        p_coat: null,
+        p_silk: null,
+        p_horse_name: '',
+      }),
+    );
+    expect(cleared).toMatchObject({ coat: null, silk: null, horse_name: null });
+    expect(
+      await fails(
+        m.client.rpc('set_my_horse', { p_room: room.id, p_coat: 6, p_silk: 0, p_horse_name: '' }),
+      ),
+    ).toBe('bad_horse');
   });
 });

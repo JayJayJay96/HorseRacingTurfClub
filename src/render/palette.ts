@@ -43,13 +43,12 @@ export function colorsFor(
 }
 
 /** Colour lookup for the renderer: horse id + lane -> colours, from the room's players. */
-export const colorsByPlayer =
-  (players: readonly { id: string; coat: number | null; silk: number | null }[]) =>
-  (horse: string, lane: number) =>
-    colorsFor(
-      lane,
-      players.find((p) => p.id === horse),
-    );
+export function colorsByPlayer(
+  players: readonly { id: string; coat: number | null; silk: number | null }[],
+) {
+  const byId = new Map(players.map((p) => [p.id, p]));
+  return (horse: string, lane: number) => colorsFor(lane, byId.get(horse));
+}
 
 export const BOX_COLOR: Readonly<Record<BoxKind, string>> = {
   mystery: '#ffd54f',

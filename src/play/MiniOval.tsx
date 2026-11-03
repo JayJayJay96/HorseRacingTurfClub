@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { colorsOf } from '../render/palette.ts';
+import { defaultColors, type ColorsOf } from '../render/Pixel2DRenderer.ts';
 import { TRACK, finishS, horsePoint, trackBounds, trackPoint } from '../render/track.ts';
 import { progressAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
@@ -7,7 +7,17 @@ import type { HorseId, Timeline } from '../sim/types.ts';
 const PAD = 10;
 
 /** Top-down dots on the oval; `mine` is drawn last, bigger and outlined. */
-export function MiniOval({ timeline, t, mine }: { timeline: Timeline; t: number; mine: HorseId }) {
+export function MiniOval({
+  timeline,
+  t,
+  mine,
+  colors,
+}: {
+  timeline: Timeline;
+  t: number;
+  mine: HorseId;
+  colors?: ColorsOf;
+}) {
   const lanes = timeline.horses.length;
   const width = lanes * TRACK.laneWidth;
   const { halfWidth, halfHeight } = trackBounds(TRACK, lanes);
@@ -48,7 +58,7 @@ export function MiniOval({ timeline, t, mine }: { timeline: Timeline; t: number;
           cx={p.x}
           cy={p.y}
           r={id === mine ? 14 : 8}
-          fill={colorsOf(lane).silk}
+          fill={(colors ?? defaultColors)(id, lane).silk}
           stroke={id === mine ? 'currentColor' : 'none'}
           strokeWidth={4}
         />

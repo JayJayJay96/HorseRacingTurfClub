@@ -2,7 +2,7 @@ import { eventsBetween, progressAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
 import { popupOf } from './items.ts';
-import { BOX_COLOR, colorsOf } from './palette.ts';
+import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse } from './sprites.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
 
@@ -12,6 +12,10 @@ export interface RaceRenderer {
   play(timeline: Timeline, track: Track, startAtMs: number): void;
   stop(): void;
 }
+
+export type ColorsOf = (horse: HorseId, lane: number) => HorseColors;
+/** Private rooms and the sandbox: colours by lane. */
+export const defaultColors: ColorsOf = (_horse, lane) => colorsOf(lane);
 
 /** Internal resolution; CSS scales it up with `image-rendering: pixelated`. */
 export const VIEW = { width: 640, height: 360, tilt: 0.55 } as const;
@@ -28,10 +32,12 @@ const COAST_SPEED = 10;
 export class Pixel2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
   private raf = 0;
+  private readonly colors: ColorsOf;
   private camera: Camera = WIDE;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, colors: ColorsOf = defaultColors) {
     this.canvas = canvas;
+    this.colors = colors;
   }
 
   play(timeline: Timeline, track: Track, startAtMs: number) {
@@ -136,7 +142,15 @@ export class Pixel2DRenderer implements RaceRenderer {
     // No name tags: a tight pack makes them unreadable; silks match the standings list.
     const size = this.camera.zoom > 3 ? 2 : 1;
     for (const h of drawn) {
-      drawHorse(ctx, h.p.x, h.p.y, colorsOf(h.lane), Math.floor(h.m / 1.5), h.facing, size);
+      drawHorse(
+        ctx,
+        h.p.x,
+        h.p.y,
+        this.colors(h.horse, h.lane),
+        Math.floor(h.m / 1.5),
+        h.facing,
+        size,
+      );
     }
 
     // Item popups float up for POPUP_SECONDS.

@@ -28,6 +28,7 @@ import {
 } from '../net/rooms.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
+import { colorsByPlayer } from '../render/palette.ts';
 import { RaceView, Silk } from '../render/RaceView.tsx';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
@@ -331,7 +332,8 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
       <ol className="podium">
         {top3.map((id) => (
           <li key={id}>
-            <Silk lane={(race?.horses ?? []).indexOf(id)} /> {nameOf(players, id)}
+            <Silk color={colorsByPlayer(players)(id, (race?.horses ?? []).indexOf(id)).silk} />{' '}
+            {nameOf(players, id)}
             {timeline && ` · ${timeline.finishTimes[id]?.toFixed(2)} s`}
           </li>
         ))}

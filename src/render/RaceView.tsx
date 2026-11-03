@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { raceAnnouncement } from '../app/announce.ts';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
@@ -44,8 +45,11 @@ export function RaceView({ timeline, startAtMs, names, colors, track = TRACK }: 
         width={VIEW.width}
         height={VIEW.height}
         role="img"
-        aria-label="Race track (standings listed alongside)"
+        aria-label={`${track.name} race, ${timeline.horses.length} horses (standings listed alongside)`}
       />
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {raceAnnouncement(timeline, t, names)}
+      </p>
       <ol className="standings">
         {standingsAt(timeline, t).map((h) => {
           const time = timeline.finishTimes[h]!;

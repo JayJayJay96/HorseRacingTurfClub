@@ -121,6 +121,7 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
 
   return (
     <div className="lobby">
+      <h1 className="visually-hidden">Lobby · room {room.code}</h1>
       <section>
         <JoinQr url={joinUrl(window.location.origin, room.code)} />
         <p className="code">{room.code}</p>
@@ -130,10 +131,12 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
         <fieldset>
           <legend>Race length</legend>
           {(['short', 'long'] as const).map((l) => (
-            <label key={l}>
+            <label key={l} htmlFor={`length-${l}`}>
               <input
+                id={`length-${l}`}
                 type="radio"
                 name="length"
+                value={l}
                 checked={length === l}
                 onChange={() => act(() => setRaceLength(room.id, l))}
               />{' '}
@@ -144,10 +147,12 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
         <fieldset>
           <legend>Track</legend>
           {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
-            <label key={id}>
+            <label key={id} htmlFor={`track-${id}`}>
               <input
+                id={`track-${id}`}
                 type="radio"
                 name="track"
+                value={id}
                 checked={room.track === id}
                 onChange={() => act(() => setTrack(room.id, id))}
               />{' '}
@@ -182,8 +187,9 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
         <ul className="roster">
           {players.map((p) => (
             <li key={p.id}>
-              <label>
+              <label htmlFor={`tick-${p.id}`}>
                 <input
+                  id={`tick-${p.id}`}
                   type="checkbox"
                   checked={p.ticked}
                   onChange={(e) => act(() => setTicked(p.id, e.target.checked))}
@@ -412,6 +418,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   }, [left, act, room.id]);
   return (
     <section>
+      <h1 className="visually-hidden">Race · room {room.code}</h1>
       {timeline && race?.started_at ? (
         <div className="race-wrap">
           <RaceView

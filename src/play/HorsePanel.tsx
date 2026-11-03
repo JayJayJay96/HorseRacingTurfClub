@@ -16,8 +16,15 @@ function Swatches(props: {
   return (
     <fieldset className="swatches">
       <legend>{label}</legend>
-      <label>
-        <input type="radio" name={label} checked={value === null} onChange={() => onChange(null)} />{' '}
+      <label htmlFor={`${label}-lane`}>
+        <input
+          id={`${label}-lane`}
+          type="radio"
+          name={label}
+          value="lane"
+          checked={value === null}
+          onChange={() => onChange(null)}
+        />{' '}
         Lane colour
       </label>
       {colors.map((c, i) => (

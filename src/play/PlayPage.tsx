@@ -10,6 +10,7 @@ import {
   oddsOf,
   ordinal,
 } from '../betting/betting.ts';
+import { phoneAnnouncement } from '../app/announce.ts';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -209,9 +210,18 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
     act,
     busy,
   };
+  // Derived text: a refetch renders the same string, so React leaves the DOM (and the reader) alone.
+  const announcement = phoneAnnouncement(
+    room.phase,
+    room.phase === 'PODIUM' ? (state.race?.finish_order ?? []).indexOf(mine.id) : -1,
+    state.bets.filter((b) => b.player_id === mine.id).reduce((sum, b) => sum + (b.payout ?? 0), 0),
+  );
 
   return (
     <main className="play">
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {announcement}
+      </p>
       <SoundToggle settings={settings} update={update} />
       <h1>{mine.name}</h1>
       <p>
@@ -345,20 +355,24 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
         </label>
         <fieldset>
           <legend>Bet</legend>
-          <label>
+          <label htmlFor="kind-win">
             <input
+              id="kind-win"
               type="radio"
               name="kind"
+              value="win"
               checked={kind === 'win'}
               onChange={() => setChoice('win')}
             />{' '}
             Win (1st)
           </label>{' '}
           {canPlace(horses) && (
-            <label>
+            <label htmlFor="kind-place">
               <input
+                id="kind-place"
                 type="radio"
                 name="kind"
+                value="place"
                 checked={kind === 'place'}
                 onChange={() => setChoice('place')}
               />{' '}

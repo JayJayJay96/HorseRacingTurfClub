@@ -52,6 +52,8 @@ export class Pixel2DRenderer implements RaceRenderer {
   private raf = 0;
   private readonly colors: ColorsOf;
   private camera: Camera = WIDE;
+  /** EASE, or 1 (snap) when the viewer prefers reduced motion; read once per play(). */
+  private ease = EASE;
   // Per-timeline caches, built in play() so draw() does no per-frame sorting or filtering.
   private boxes: (readonly BoxSpot[])[] = [];
   private pickups: number[][] = [];
@@ -73,6 +75,10 @@ export class Pixel2DRenderer implements RaceRenderer {
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     this.camera = WIDE;
+    this.ease =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 1
+        : EASE;
     this.boxes = timeline.horses.map((h) =>
       [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
     );
@@ -131,9 +137,9 @@ export class Pixel2DRenderer implements RaceRenderer {
     const target = cameraAt(track, timeline, t);
     const c = this.camera;
     this.camera = {
-      x: c.x + (target.x - c.x) * EASE,
-      y: c.y + (target.y - c.y) * EASE,
-      zoom: c.zoom + (target.zoom - c.zoom) * EASE,
+      x: c.x + (target.x - c.x) * this.ease,
+      y: c.y + (target.y - c.y) * this.ease,
+      zoom: c.zoom + (target.zoom - c.zoom) * this.ease,
     };
     const outer = timeline.horses.length * track.laneWidth;
     const scale = (VIEW.width / (2 * this.halfWidth + 20)) * this.camera.zoom;
@@ -243,18 +249,27 @@ export class Pixel2DRenderer implements RaceRenderer {
     // Item popups float up for POPUP_SECONDS.
     ctx.textAlign = 'center';
     ctx.font = '10px sans-serif';
+    // White text crosses grass and dirt (3.1:1 on dirt), so it gets a dark outline.
+    ctx.strokeStyle = '#000';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
     for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
       const p = where.get(e.horse);
       if (!p) continue;
+      const y = p.y - 14 * size - 6 - (t - e.t) * 8;
       ctx.fillStyle = '#fff';
-      ctx.fillText(popupOf(e), p.x, p.y - 14 * size - 6 - (t - e.t) * 8);
+      ctx.strokeText(popupOf(e), p.x, y);
+      ctx.fillText(popupOf(e), p.x, y);
     }
 
     // Countdown, then GO!
     if (t < 1) {
       ctx.font = 'bold 64px sans-serif';
       ctx.fillStyle = '#fff';
-      ctx.fillText(t < 0 ? String(Math.ceil(-t)) : 'GO!', VIEW.width / 2, VIEW.height / 2 + 20);
+      ctx.lineWidth = 6;
+      const label = t < 0 ? String(Math.ceil(-t)) : 'GO!';
+      ctx.strokeText(label, VIEW.width / 2, VIEW.height / 2 + 20);
+      ctx.fillText(label, VIEW.width / 2, VIEW.height / 2 + 20);
     }
   }
 }

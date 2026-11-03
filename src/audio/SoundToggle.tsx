@@ -45,8 +45,9 @@ export function SoundToggle({ settings, update, full = false }: Props) {
               {slider('Music', 'music')}
               {slider('Effects', 'sfx')}
               {slider('Commentator', 'voice')}
-              <label>
+              <label htmlFor="commentator-on">
                 <input
+                  id="commentator-on"
                   type="checkbox"
                   checked={settings.commentator}
                   onChange={(e) => update({ commentator: e.target.checked })}

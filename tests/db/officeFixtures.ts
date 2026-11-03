@@ -57,3 +57,61 @@ export async function balanceOf(client: SupabaseClient, roomId: string, playerId
   }[];
   return rows.find((r) => r.player_id === playerId)?.balance;
 }
+
+type Room = Awaited<ReturnType<typeof officeRoom>>;
+type Horse = { player: { id: string } };
+
+/**
+ * Runs one office race with a fixed finish order: SHOP -> odds -> BETTING -> Start -> PODIUM -> LOBBY.
+ * `shop` / `betting` hooks run in those phases (buy boxes, bet). `stopAt: 'RUNNING'` stops after Start.
+ * Unticks the horses afterwards. Returns the race id.
+ */
+export async function officeRace(
+  r: Room,
+  horses: Horse[],
+  finish: string[],
+  opts: {
+    odds?: Record<string, { win: number; place: number }>;
+    shop?: () => Promise<unknown>;
+    betting?: () => Promise<unknown>;
+    awards?: Record<string, string[]>;
+    stopAt?: 'RUNNING';
+  } = {},
+): Promise<string> {
+  for (const h of horses)
+    await ok(r.host.rpc('set_ticked', { p_player: h.player.id, p_ticked: true }));
+  const shop = await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }));
+  await opts.shop?.();
+  await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+  const odds =
+    opts.odds ?? Object.fromEntries(horses.map((h) => [h.player.id, { win: 2, place: 1.1 }]));
+  await ok(r.admin.rpc('lock_odds_finish', { p_race: shop.race_id, p_odds: odds }));
+  await opts.betting?.();
+  await ok(r.host.rpc('start_race_begin', { p_room: r.room.id }));
+  await ok(
+    r.admin.rpc('start_race_finish', {
+      p_race: shop.race_id,
+      p_timeline: {},
+      p_finish: finish,
+      p_seconds: 0.01,
+      p_awards: opts.awards ?? {},
+    }),
+  );
+  if (opts.stopAt === 'RUNNING') return shop.race_id as string;
+  await new Promise((res) => setTimeout(res, 50));
+  await ok(r.host.rpc('finish_race', { p_room: r.room.id }));
+  await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'LOBBY' }));
+  for (const h of horses)
+    await ok(r.host.rpc('set_ticked', { p_player: h.player.id, p_ticked: false }));
+  return shop.race_id as string;
+}
+
+/** Badge codes a member holds (service role), sorted. */
+export async function badgesOf(playerId: string): Promise<string[]> {
+  const rows = (await ok(
+    adminClient().from('badges').select('badge').eq('player_id', playerId),
+  )) as {
+    badge: string;
+  }[];
+  return rows.map((b) => b.badge).sort();
+}

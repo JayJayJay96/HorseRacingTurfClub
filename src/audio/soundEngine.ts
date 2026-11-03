@@ -268,6 +268,10 @@ export function createSoundEngine(): SoundEngine {
       if (!ctx) {
         ctx = new Ctor();
         ensureGraph(ctx);
+        // If the browser suspends audio later (device sleep, iOS interruption), the next gesture resumes it.
+        ctx.onstatechange = () => {
+          if (ctx && ctx.state !== 'running') addGesture();
+        };
       }
       const c = ctx;
       if (c.state === 'running') {
@@ -301,13 +305,22 @@ export function createSoundEngine(): SoundEngine {
     if (!hasDocument) return;
     for (const g of GESTURES) document.removeEventListener(g, onGesture);
   }
-  if (hasDocument) for (const g of GESTURES) document.addEventListener(g, onGesture);
+  function addGesture() {
+    if (!hasDocument) return;
+    for (const g of GESTURES) document.addEventListener(g, onGesture);
+  }
+  addGesture();
 
   return {
     webAudio: !!Ctor,
     unlock,
     apply(next) {
       settings = next;
+      // Muting (or switching the commentator off) also silences lines already queued or speaking.
+      if (next.muted || !next.commentator || next.voice <= 0) {
+        live.clear();
+        globalThis.speechSynthesis?.cancel();
+      }
       applyLevels();
       syncMusic();
     },

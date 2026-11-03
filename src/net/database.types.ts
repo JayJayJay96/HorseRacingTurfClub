@@ -198,6 +198,33 @@ export type Database = {
           },
         ];
       };
+      player_cosmetics: {
+        Row: {
+          bought_at: string;
+          code: string;
+          player_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          bought_at?: string;
+          code: string;
+          player_id: string;
+        };
+        Update: {
+          bought_at?: string;
+          code?: string;
+          player_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'player_cosmetics_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       purchases: {
         Row: {
           box: string;
@@ -344,10 +371,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         ComputedFields: never;
@@ -358,10 +387,12 @@ export type Database = {
           id?: string;
           joined_at?: string;
           name: string;
+          pattern?: string | null;
           ready?: boolean;
           room_id: string;
           silk?: number | null;
           ticked?: boolean;
+          trail?: string | null;
           uid?: string | null;
         };
         Update: {
@@ -371,10 +402,12 @@ export type Database = {
           id?: string;
           joined_at?: string;
           name?: string;
+          pattern?: string | null;
           ready?: boolean;
           room_id?: string;
           silk?: number | null;
           ticked?: boolean;
+          trail?: string | null;
           uid?: string | null;
         };
         Relationships: [
@@ -452,10 +485,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         SetofOptions: {
@@ -474,10 +509,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         SetofOptions: {
@@ -506,10 +543,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         SetofOptions: {
@@ -538,6 +577,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      buy_cosmetic: { Args: { p_code: string; p_room: string }; Returns: number };
       cancel_bet: { Args: { p_bet: string }; Returns: undefined };
       cleanup_rooms: { Args: Record<PropertyKey, never>; Returns: number };
       create_room: {
@@ -558,6 +598,30 @@ export type Database = {
         SetofOptions: {
           from: '*';
           to: 'rooms';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      equip_cosmetic: {
+        Args: { p_code: string; p_room: string; p_slot: string };
+        Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
+          id: string;
+          joined_at: string;
+          name: string;
+          pattern: string | null;
+          ready: boolean;
+          room_id: string;
+          silk: number | null;
+          ticked: boolean;
+          trail: string | null;
+          uid: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'room_players';
           isOneToOne: true;
           isSetofReturn: false;
         };
@@ -593,10 +657,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         SetofOptions: {
@@ -665,10 +731,12 @@ export type Database = {
           id: string;
           joined_at: string;
           name: string;
+          pattern: string | null;
           ready: boolean;
           room_id: string;
           silk: number | null;
           ticked: boolean;
+          trail: string | null;
           uid: string | null;
         };
         SetofOptions: {

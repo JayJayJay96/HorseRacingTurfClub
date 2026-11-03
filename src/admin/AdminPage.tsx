@@ -1,0 +1,230 @@
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { adminAction, errorText } from '../net/rooms.ts';
+
+type Member = {
+  id: string;
+  name: string;
+  horse_name: string | null;
+  balance: number;
+  has_pin: boolean;
+  phone: boolean;
+  archived: boolean;
+};
+type RaceRow = {
+  id: string;
+  created_at: string;
+  length: string;
+  prize: string;
+  horses: number;
+  finished: boolean;
+  current: boolean;
+};
+type Overview = { room: { phase: string }; members: Member[]; races: RaceRow[] };
+
+const KEY = 'hrtc-admin';
+const loadPassword = () => {
+  try {
+    return sessionStorage.getItem(KEY) ?? '';
+  } catch {
+    return '';
+  }
+};
+const storePassword = (v: string) => {
+  try {
+    if (v) sessionStorage.setItem(KEY, v);
+    else sessionStorage.removeItem(KEY);
+  } catch {
+    // Storage blocked (private mode): the password is just asked again next time.
+  }
+};
+
+/** /admin (spec §10): people, PINs, coins and races. The password stays in this tab only. */
+export function AdminPage() {
+  const [password, setPassword] = useState(loadPassword);
+  const [typed, setTyped] = useState('');
+  const [data, setData] = useState<Overview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [newName, setNewName] = useState('');
+
+  const lock = () => {
+    storePassword('');
+    setPassword('');
+    setData(null);
+  };
+  const refresh = useCallback(
+    (pw: string) =>
+      adminAction<Overview>(pw, 'overview').then(setData, (e: unknown) => {
+        setError(errorText(e));
+        if (e instanceof Error && e.message === 'bad_password') {
+          storePassword('');
+          setPassword('');
+        }
+      }),
+    [],
+  );
+
+  useEffect(() => {
+    if (password) void refresh(password);
+  }, [password, refresh]);
+
+  const run = (action: string, args: Record<string, unknown>) => {
+    setBusy(true);
+    setError(null);
+    adminAction(password, action, args)
+      .then(
+        () => refresh(password),
+        (e: unknown) => setError(errorText(e)),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  if (!password) {
+    const open = (e: FormEvent) => {
+      e.preventDefault();
+      storePassword(typed);
+      setPassword(typed);
+    };
+    return (
+      <main>
+        <h1>Admin</h1>
+        <form onSubmit={open}>
+          <label>
+            Admin password{' '}
+            <input
+              type="password"
+              value={typed}
+              autoComplete="current-password"
+              onChange={(e) => setTyped(e.target.value)}
+            />
+          </label>{' '}
+          <button type="submit" disabled={!typed}>
+            Open
+          </button>
+        </form>
+        {error && <p role="alert">{error}</p>}
+      </main>
+    );
+  }
+
+  const add = (e: FormEvent) => {
+    e.preventDefault();
+    run('add', { name: newName });
+    setNewName('');
+  };
+  const rename = (m: Member) => {
+    const name = window.prompt(`New name for ${m.name}`, m.name);
+    if (name && name !== m.name) run('rename', { player: m.id, name });
+  };
+  const adjust = (m: Member) => {
+    const amount = Number(window.prompt(`Coins to add to ${m.name} (negative to take away)`, '0'));
+    if (!Number.isInteger(amount) || amount === 0) return;
+    const reason = window.prompt('Reason (required)');
+    if (reason) run('adjust', { player: m.id, amount, reason });
+  };
+
+  return (
+    <main>
+      <h1>Admin</h1>
+      <p>
+        Office phase: {data?.room.phase ?? '…'}{' '}
+        <button type="button" onClick={lock}>
+          Lock
+        </button>
+      </p>
+      <h2>People</h2>
+      <form onSubmit={add}>
+        <input
+          aria-label="New member name"
+          placeholder="Name"
+          maxLength={24}
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+        />{' '}
+        <button type="submit" disabled={busy || !newName.trim()}>
+          Add person
+        </button>
+      </form>
+      <table className="odds">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Coins</th>
+            <th>PIN</th>
+            <th>Phone</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data?.members.map((m) => (
+            <tr key={m.id}>
+              <td>
+                {m.name}
+                {m.horse_name && ` (🐎 ${m.horse_name})`}
+                {m.archived && ' — removed'}
+              </td>
+              <td>{m.balance}</td>
+              <td>{m.has_pin ? 'set' : '—'}</td>
+              <td>{m.phone ? '📱' : ''}</td>
+              <td>
+                <button type="button" disabled={busy} onClick={() => rename(m)}>
+                  Rename
+                </button>{' '}
+                <button type="button" disabled={busy} onClick={() => adjust(m)}>
+                  Coins
+                </button>{' '}
+                {!m.archived && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={busy || !m.has_pin}
+                      onClick={() =>
+                        window.confirm(`Reset ${m.name}'s PIN?`) &&
+                        run('reset_pin', { player: m.id })
+                      }
+                    >
+                      Reset PIN
+                    </button>{' '}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        window.confirm(`Remove ${m.name}? Their history stays.`) &&
+                        run('archive', { player: m.id })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h2>Recent races</h2>
+      <ul>
+        {data?.races.map((r) => (
+          <li key={r.id}>
+            {new Date(r.created_at).toLocaleString()} · {r.length} · {r.horses} horses
+            {r.prize && ` · ${r.prize}`} ·{' '}
+            {r.current ? 'in progress' : r.finished ? 'finished' : 'not run'}{' '}
+            {!r.current && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() =>
+                  window.confirm('Delete this race? Its bets, payouts and coins are reversed.') &&
+                  run('delete_race', { race: r.id })
+                }
+              >
+                Delete
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      {error && <p role="alert">{error}</p>}
+    </main>
+  );
+}

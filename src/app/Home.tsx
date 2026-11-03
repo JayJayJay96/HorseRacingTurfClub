@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { normalizeCode } from '../lobby/lobby.ts';
+import { normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import { createRoom, errorText } from '../net/rooms.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 
@@ -53,7 +53,17 @@ export function Home() {
       </section>
       <section>
         <h2>Office</h2>
-        <p>Coming soon.</p>
+        <p>
+          <a className="button primary" href={`/track?code=${OFFICE_CODE}`}>
+            Office big screen
+          </a>{' '}
+          <a className="button" href={`/play?code=${OFFICE_CODE}`}>
+            Join the office race (phone)
+          </a>
+        </p>
+        <p>
+          <a href="/admin">Admin</a>
+        </p>
       </section>
       {error && <p role="alert">{error}</p>}
     </main>

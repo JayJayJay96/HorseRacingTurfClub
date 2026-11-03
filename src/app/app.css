@@ -114,3 +114,15 @@ button.primary {
   width: 1.4em;
   height: 1.4em;
 }
+a.button {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  text-decoration: none;
+  color: inherit;
+}
+a.button.primary {
+  font-size: 1.25rem;
+  padding: 12px 24px;
+}

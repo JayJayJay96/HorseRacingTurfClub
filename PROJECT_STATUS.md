@@ -182,7 +182,39 @@
 - Pick: `private_roster(code)` lists a Private room's unclaimed host-typed names; the phone join screen shows "I'm <name>" buttons above the typed form.
 - Late claim: `join_room` v4 claims a pre-entered name in LOBBY, SHOP, ODDS_LOCKED and BETTING (not RUNNING); a claimer after the shop opened gets that race's 100 coins. New names still join only in the LOBBY. It now locks the room row first (same lock order as the other RPCs).
 - Cancel race: `set_phase` v4 also allows ODDS_LOCKED→LOBBY and BETTING→LOBBY (host only). Deleting the race cascades its topups, floors, purchases and bets: a full refund in both modes. A `lock-odds`/`start-race` call still running then fails in its `*_finish` (`race_not_found`/`wrong_phase`). The big screen has "Cancel race (refund everything)" on the odds and betting boards, behind a confirm.
-- Checks: `npm test` 108 pass, `npm run test:db` 89 pass, typecheck, lint and build clean. Not smoke-tested in a browser.
+- Checks: `npm test` 108 pass, `npm run test:db` 89 pass, typecheck, lint and build clean. Browser smoke test passed (pick list, late claim with 100 coins, cancel from Betting).
 - Deployed 2026-11-04: hosted DB migrated (012), `master` pushed; Vercel production branch set to `master`, so pushes go live on their own (deploy the DB first when a push needs a migration).
 
-Next: Phase 6 (History & fun).
+## Phase 6 — History & fun (branch `phase6-history`)
+
+- [x] Task 0: Branch
+- [x] Task 1: Event badges (pure)
+- [x] Task 2: Badges table and awarding at Start
+- [x] Task 3: office_stats and 90-day timelines
+- [x] Task 4: start-race passes awards
+- [x] Task 5: Client stats library and badge labels
+- [x] Task 6: /stats page with replays
+- [x] Task 7: Game-screen touches
+- [x] Task 8: Smoke test and docs (deploy after merge)
+
+### 2026-11-04 — Phase 6
+
+- Built Phase 6 per `docs/superpowers/plans/2026-11-04-phase6-history.md` (Tasks 0-8), Office only.
+- Decisions (owner: all 10 badges; `/stats` page plus small touches on the game screens):
+  - `badges` table, one row per member per badge, awarded in `start_race_finish` (same transaction as payouts). Five event badges come from the timeline (`src/sim/awards.ts`, passed as `p_awards` by `start-race`); five come from SQL (first win, hat-trick, long shot, big spender, broke). Deleting a race removes the badges earned in it.
+  - `office_stats()` returns everything for `/stats` in one call, null for non-members, and leaves out the race being run (results, badges and its payouts in Richest) until its podium.
+  - Replays play the stored timeline; timelines are kept 90 days (`cleanup_rooms` v3), results forever.
+  - Comeback = last at half the winner's finish time (time-based halfway).
+- Review fixes: a malformed `p_awards` can't block Start (text match before the uuid cast); deterministic hat-trick order; visible badge descriptions (not only `title`); stale stats responses ignored; the replay countdown starts after the timeline loads.
+- Smoke test (local, office): race 1 → Cal won 🥇 First Win; Ali got 🍌 Banana King and 🪢 Sniper from real race events; phones show "Your record" and badge chips; the lobby shows the richest 3; race 2's odds board showed Form (1/2/3/4) and the winner's shorter odds; Cancel from Betting worked; `/stats` showed the boards, horse table, badges and recent races; Replay played race 1 with the right names and colours and Back returned; a signed-out device gets the sign-in hint; no failed requests.
+- Checks: `npm test` 115 pass, `npm run test:db` 100 pass, typecheck, lint and build clean.
+- Deferred:
+  - Best betting profit counts bets only; biggest loss counts boxes too (different bases, by design).
+  - Archived members show as "?" in old podiums and replays.
+  - `/stats` doesn't refresh while open (reload the page).
+  - The db test for `office_stats` wipes office history in the local test database.
+  - No backfill: badges start empty at deploy, so long-time winners earn First Win on their next win.
+  - Members can query `badges` directly during a race (like results; the UI and `office_stats` hide them until PODIUM).
+- Deploy order: `db push` (013), then `functions deploy start-race`, then push `master`. Races started between the first two steps get no event badges (SQL badges still work).
+
+Next: Phase 7 (Sound & commentator; cheers could join it).

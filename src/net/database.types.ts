@@ -23,6 +23,56 @@ export type Database = {
   };
   public: {
     Tables: {
+      badges: {
+        Row: {
+          badge: string;
+          created_at: string;
+          id: number;
+          player_id: string;
+          race_id: string | null;
+          room_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          badge: string;
+          created_at?: string;
+          id?: never;
+          player_id: string;
+          race_id?: string | null;
+          room_id: string;
+        };
+        Update: {
+          badge?: string;
+          created_at?: string;
+          id?: never;
+          player_id?: string;
+          race_id?: string | null;
+          room_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'badges_player_id_fkey';
+            columns: ['player_id'];
+            isOneToOne: false;
+            referencedRelation: 'room_players';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'badges_race_id_fkey';
+            columns: ['race_id'];
+            isOneToOne: false;
+            referencedRelation: 'races';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'badges_room_id_fkey';
+            columns: ['room_id'];
+            isOneToOne: false;
+            referencedRelation: 'rooms';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       bets: {
         Row: {
           created_at: string;
@@ -560,6 +610,7 @@ export type Database = {
           name: string;
         }[];
       };
+      office_stats: { Args: Record<PropertyKey, never>; Returns: Json };
       place_bet: {
         Args: { p_horse: string; p_kind: string; p_room: string; p_stake: number };
         Returns: {
@@ -644,7 +695,13 @@ export type Database = {
       set_ticked: { Args: { p_player: string; p_ticked: boolean }; Returns: undefined };
       start_race_begin: { Args: { p_room: string }; Returns: Json };
       start_race_finish: {
-        Args: { p_finish: string[]; p_race: string; p_seconds: number; p_timeline: Json };
+        Args: {
+          p_awards?: Json;
+          p_finish: string[];
+          p_race: string;
+          p_seconds: number;
+          p_timeline: Json;
+        };
         Returns: undefined;
       };
       update_room_settings: {

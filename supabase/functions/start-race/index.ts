@@ -1,3 +1,4 @@
+import { raceAwards } from '../../../src/sim/awards.ts';
 import { packTimeline } from '../../../src/sim/pack.ts';
 import { playbackSeconds } from '../../../src/sim/playback.ts';
 import { createCryptoRng } from '../../../src/sim/rng.ts';
@@ -15,6 +16,7 @@ serve(async ({ room }, user, admin) => {
     p_finish: timeline.finishOrder,
     // ends_at covers the countdown, the race and the finish hold, so PODIUM comes after the replay.
     p_seconds: playbackSeconds(timeline),
+    p_awards: raceAwards(timeline),
   });
   return { race: input.race_id };
 });

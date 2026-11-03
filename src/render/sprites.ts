@@ -9,7 +9,7 @@ const LEGS = [
 ] as const;
 
 /**
- * Side-view horse and jockey, ~16×14 px, hooves at (x, y). Facing +1 runs right, −1 left.
+ * Side-view horse and jockey, ~16×14 px × `size`, hooves at (x, y). Facing +1 runs right, −1 left.
  * `frame` picks the gallop pose; pass a value that only changes while the horse moves.
  */
 export function drawHorse(
@@ -19,6 +19,7 @@ export function drawHorse(
   colors: HorseColors,
   frame: number,
   facing: 1 | -1,
+  size = 1,
 ) {
   const px = (dx: number, dy: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color;
@@ -26,7 +27,7 @@ export function drawHorse(
   };
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y));
-  ctx.scale(facing, 1);
+  ctx.scale(facing * size, size);
   const [a, b] = LEGS[frame % LEGS.length]!;
   for (const [lx, swing] of [
     [-4, a],

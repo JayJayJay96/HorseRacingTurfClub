@@ -10,10 +10,10 @@ export interface Camera {
 }
 
 export const WIDE: Camera = { x: 0, y: 0, zoom: 1 };
-export const FOLLOW_ZOOM = 2.5;
-export const FINISH_ZOOM = 1.8;
+export const FOLLOW_ZOOM = 6;
+export const FINISH_ZOOM = 3.5;
 /** The camera moves to the finish line once the leader is this close. */
-export const FINISH_SHOT_METRES = 150;
+export const FINISH_SHOT_METRES = 60;
 const WIDE_SECONDS = 2;
 
 /** Where the camera wants to be at race time `t`; the renderer eases toward it. */

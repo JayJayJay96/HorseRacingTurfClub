@@ -22,17 +22,16 @@ const RAIL = '#f5f5f5';
 const STANDS = '#5d5d6e';
 const EASE = 0.06;
 const POPUP_SECONDS = 2;
+/** Finished horses ease past the line (m/s) instead of piling up on it. Display only. */
+const COAST_SPEED = 10;
 
 export class Pixel2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
-  /** Read every frame, so renamed or late-loaded names show up without restarting. */
-  private readonly names: () => Readonly<Record<HorseId, string>>;
   private raf = 0;
   private camera: Camera = WIDE;
 
-  constructor(canvas: HTMLCanvasElement, names: () => Readonly<Record<HorseId, string>>) {
+  constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
-    this.names = names;
   }
 
   play(timeline: Timeline, track: Track, startAtMs: number) {
@@ -125,7 +124,8 @@ export class Pixel2DRenderer implements RaceRenderer {
     const where = new Map<HorseId, Point>();
     const drawn = timeline.horses
       .map((horse, lane) => {
-        const m = progressAt(timeline, horse, t);
+        const finished = timeline.finishTimes[horse] ?? Infinity;
+        const m = progressAt(timeline, horse, t) + Math.max(0, t - finished) * COAST_SPEED;
         const here = horsePoint(track, timeline.distance, m, lane);
         const ahead = horsePoint(track, timeline.distance, m + 1, lane);
         const p = screen(here);
@@ -133,24 +133,20 @@ export class Pixel2DRenderer implements RaceRenderer {
         return { horse, lane, m, p, facing: (ahead.x >= here.x ? 1 : -1) as 1 | -1 };
       })
       .sort((a, b) => a.p.y - b.p.y);
-    const names = this.names();
-    ctx.textAlign = 'center';
+    // No name tags: a tight pack makes them unreadable; silks match the standings list.
+    const size = this.camera.zoom > 3 ? 2 : 1;
     for (const h of drawn) {
-      drawHorse(ctx, h.p.x, h.p.y, colorsOf(h.lane), Math.floor(h.m / 1.5), h.facing);
-      if (this.camera.zoom > 1.5) {
-        ctx.font = '8px sans-serif';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(names[h.horse] ?? '?', h.p.x, h.p.y - 17);
-      }
+      drawHorse(ctx, h.p.x, h.p.y, colorsOf(h.lane), Math.floor(h.m / 1.5), h.facing, size);
     }
 
     // Item popups float up for POPUP_SECONDS.
+    ctx.textAlign = 'center';
     ctx.font = '10px sans-serif';
     for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
       const p = where.get(e.horse);
       if (!p) continue;
       ctx.fillStyle = '#fff';
-      ctx.fillText(popupOf(e), p.x, p.y - 26 - (t - e.t) * 8);
+      ctx.fillText(popupOf(e), p.x, p.y - 14 * size - 6 - (t - e.t) * 8);
     }
 
     // Countdown, then GO!

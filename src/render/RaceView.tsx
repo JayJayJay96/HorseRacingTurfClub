@@ -21,14 +21,10 @@ type Props = {
 /** Big-screen race: the pixel track plus live standings. */
 export function RaceView({ timeline, startAtMs, names }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const namesRef = useRef(names);
-  useEffect(() => {
-    namesRef.current = names;
-  });
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const renderer = new Pixel2DRenderer(el, () => namesRef.current);
+    const renderer = new Pixel2DRenderer(el);
     renderer.play(timeline, TRACK, startAtMs);
     return () => renderer.stop();
   }, [timeline, startAtMs]);

@@ -126,54 +126,56 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
   return (
     <div className="lobby">
       <h1 className="visually-hidden">Lobby · room {room.code}</h1>
-      <section>
+      <section className="panel join">
+        <p className="code glow">{room.code}</p>
         <JoinQr url={joinUrl(window.location.origin, room.code)} />
-        <p className="code">{room.code}</p>
         <p>Scan, or open {window.location.host}/play and enter the code.</p>
       </section>
       <section>
-        <fieldset>
-          <legend>Race length</legend>
-          {(['short', 'long'] as const).map((l) => (
-            <label key={l} htmlFor={`length-${l}`}>
-              <input
-                id={`length-${l}`}
-                type="radio"
-                name="length"
-                value={l}
-                checked={length === l}
-                onChange={() => act(() => setRaceLength(room.id, l))}
-              />{' '}
-              {LENGTH_LABEL[l]}{' '}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset>
-          <legend>Track</legend>
-          {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
-            <label key={id} htmlFor={`track-${id}`}>
-              <input
-                id={`track-${id}`}
-                type="radio"
-                name="track"
-                value={id}
-                checked={room.track === id}
-                onChange={() => act(() => setTrack(room.id, id))}
-              />{' '}
-              {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
-            </label>
-          ))}
-        </fieldset>
-        <label>
-          Prize{' '}
-          <input
-            value={prize}
-            maxLength={60}
-            placeholder="e.g. Winner picks lunch"
-            onChange={(e) => setPrize(e.target.value)}
-            onBlur={savePrize}
-          />
-        </label>
+        <div className="panel settings">
+          <fieldset>
+            <legend>Race length</legend>
+            {(['short', 'long'] as const).map((l) => (
+              <label key={l} htmlFor={`length-${l}`}>
+                <input
+                  id={`length-${l}`}
+                  type="radio"
+                  name="length"
+                  value={l}
+                  checked={length === l}
+                  onChange={() => act(() => setRaceLength(room.id, l))}
+                />{' '}
+                {LENGTH_LABEL[l]}{' '}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset>
+            <legend>Track</legend>
+            {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
+              <label key={id} htmlFor={`track-${id}`}>
+                <input
+                  id={`track-${id}`}
+                  type="radio"
+                  name="track"
+                  value={id}
+                  checked={room.track === id}
+                  onChange={() => act(() => setTrack(room.id, id))}
+                />{' '}
+                {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
+              </label>
+            ))}
+          </fieldset>
+          <label>
+            Prize{' '}
+            <input
+              value={prize}
+              maxLength={60}
+              placeholder="e.g. Winner picks lunch"
+              onChange={(e) => setPrize(e.target.value)}
+              onBlur={savePrize}
+            />
+          </label>
+        </div>
 
         {office && players.length > 0 && (
           <p>
@@ -190,7 +192,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
         </h2>
         <ul className="roster">
           {players.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="card">
               <label htmlFor={`tick-${p.id}`}>
                 <input
                   id={`tick-${p.id}`}
@@ -200,11 +202,16 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
                 />{' '}
                 {p.name}
               </label>
-              {office && <span>💰 {balances[p.id] ?? 0}</span>}
-              {p.uid && <span>{online.has(p.id) ? '📱 online' : '📴 offline'}</span>}
+              {office && <span className="chip">💰 {balances[p.id] ?? 0}</span>}
+              {p.uid && (
+                <span className={online.has(p.id) ? 'chip on' : 'chip'}>
+                  {online.has(p.id) ? '📱 online' : '📴 offline'}
+                </span>
+              )}
               {!office && (
                 <button
                   type="button"
+                  className="remove"
                   aria-label={`Remove ${p.name}`}
                   onClick={() => act(() => removePlayer(p.id))}
                 >
@@ -233,7 +240,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
             </button>
           </form>
         )}
-        <p>
+        <p className="open-shop">
           <button
             type="button"
             className="primary"

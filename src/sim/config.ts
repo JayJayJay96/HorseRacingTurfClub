@@ -13,8 +13,10 @@ export const MIN_HORSES = 2;
 export const MAX_HORSES = 22;
 export const MYSTERY_PER_LANE = 5;
 export const MAX_BOUGHT = 3;
-/** Boxes sit between these fractions of the race distance. */
-export const BOX_ZONE = { start: 0.1, end: 0.85 } as const;
+/** Boxes sit between these fractions of the race distance (owner 2026-11-04: 10-90%, fully random). */
+export const BOX_ZONE = { start: 0.1, end: 0.9 } as const;
+/** Minimum spacing between two boxes in one lane, as a share of the distance. */
+export const BOX_MIN_GAP = 0.03;
 export const PRICES: Readonly<Record<BoxType, number>> = { speed: 60, defense: 35, attack: 20 };
 
 /** Smooth per-horse pace wobble: random knots every `knotSeconds`, linearly interpolated. */
@@ -61,13 +63,21 @@ export const PASS3_PLACES = 3;
 export const PASS3_MARGIN = 5;
 
 /** Items a Speed / Defense box or a Dud can contain (mystery-only extras excluded). */
-export const SPEED_ITEMS = ['speed:self1', 'speed:self3', 'speed:star'] as const satisfies readonly ItemCode[];
+export const SPEED_ITEMS = [
+  'speed:self1',
+  'speed:self3',
+  'speed:star',
+] as const satisfies readonly ItemCode[];
 export const DEFENSE_ITEMS = [
   'defense:block1',
   'defense:immune',
   'defense:reflect',
 ] as const satisfies readonly ItemCode[];
-export const DUD_ITEMS = ['dud:stop', 'dud:slow', 'dud:trip'] as const satisfies readonly ItemCode[];
+export const DUD_ITEMS = [
+  'dud:stop',
+  'dud:slow',
+  'dud:trip',
+] as const satisfies readonly ItemCode[];
 
 /** Mystery box type by position band (percent). */
 export const MYSTERY_TYPE_WEIGHTS: Readonly<Record<Band, Readonly<Record<MysteryType, number>>>> = {

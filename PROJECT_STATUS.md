@@ -213,5 +213,8 @@
   - Archived members show as "?" in old podiums and replays.
   - `/stats` doesn't refresh while open (reload the page).
   - The db test for `office_stats` wipes office history in the local test database.
+  - No backfill: badges start empty at deploy, so long-time winners earn First Win on their next win.
+  - Members can query `badges` directly during a race (like results; the UI and `office_stats` hide them until PODIUM).
+- Deploy order: `db push` (013), then `functions deploy start-race`, then push `master`. Races started between the first two steps get no event badges (SQL badges still work).
 
 Next: Phase 7 (Sound & commentator; cheers could join it).

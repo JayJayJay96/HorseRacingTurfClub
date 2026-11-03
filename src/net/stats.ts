@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { BadgeCode } from '../history/badges.ts';
+import { BADGES, type BadgeCode } from '../history/badges.ts';
 import { errorText } from './rooms.ts';
 import { supabase } from './supabase.ts';
 
@@ -40,7 +40,9 @@ export type OfficeStats = {
 export async function fetchOfficeStats(): Promise<OfficeStats | null> {
   const { data, error } = await supabase.rpc('office_stats');
   if (error) throw new Error(error.message);
-  return (data ?? null) as unknown as OfficeStats | null; // jsonb built in SQL (office_stats)
+  const stats = (data ?? null) as unknown as OfficeStats | null; // jsonb built in SQL (office_stats)
+  // A badge added by a newer migration than this client knows is skipped, not crashed on.
+  return stats && { ...stats, badges: stats.badges.filter((b) => b.badge in BADGES) };
 }
 
 /** Loads stats when `enabled`, again whenever `key` changes (e.g. the room phase). */

@@ -139,7 +139,11 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   const [busy, setBusy] = useState(false);
   const inflight = useRef(false);
   // Before the early returns: hooks run every render; it only fetches in the office.
-  const { stats } = useOfficeStats(state?.room.phase, state?.room.kind === 'office');
+  // Only the office LOBBY shows the record, so phones don't all fetch stats on every phase change.
+  const { stats } = useOfficeStats(
+    state?.room.phase,
+    state?.room.kind === 'office' && state.room.phase === 'LOBBY',
+  );
 
   if (error) {
     return (

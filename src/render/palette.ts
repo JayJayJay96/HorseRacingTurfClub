@@ -20,7 +20,17 @@ export interface HorseColors {
   readonly coat: string;
   readonly mane: string;
   readonly silk: string;
+  /** Bought looks, as `player_cosmetics` codes (`pattern:hoops`, `trail:dust`, ...). */
+  readonly pattern?: string | null;
+  readonly trail?: string | null;
 }
+
+type Choice = {
+  coat: number | null;
+  silk: number | null;
+  pattern?: string | null;
+  trail?: string | null;
+};
 
 /** 6 coats × 11 silks (coprime), so the first 66 lanes all differ. */
 export function colorsOf(lane: number): HorseColors {
@@ -28,26 +38,30 @@ export function colorsOf(lane: number): HorseColors {
   return { coat: COAT_COLORS[c]!, mane: MANES[c]!, silk: SILK_COLORS[lane % SILK_COLORS.length]! };
 }
 
-/** A member's chosen coat/silk (null = lane default). */
-export function colorsFor(
-  lane: number,
-  choice?: { coat: number | null; silk: number | null },
-): HorseColors {
+/** A member's chosen coat/silk (null = lane default) and worn pattern/trail. */
+export function colorsFor(lane: number, choice?: Choice): HorseColors {
   const base = colorsOf(lane);
   if (!choice) return base;
   return {
     coat: choice.coat === null ? base.coat : COAT_COLORS[choice.coat]!,
     mane: choice.coat === null ? base.mane : MANES[choice.coat]!,
     silk: choice.silk === null ? base.silk : SILK_COLORS[choice.silk]!,
+    pattern: choice.pattern,
+    trail: choice.trail,
   };
 }
 
 /** Colour lookup for the renderer: horse id + lane -> colours, from the room's players. */
-export function colorsByPlayer(
-  players: readonly { id: string; coat: number | null; silk: number | null }[],
-) {
+export function colorsByPlayer(players: readonly ({ id: string } & Choice)[]) {
   const byId = new Map(players.map((p) => [p.id, p]));
   return (horse: string, lane: number) => colorsFor(lane, byId.get(horse));
+}
+
+/** Black or white, whichever stands out on `hex` (#rrggbb). */
+export function contrastOf(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const luma = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return luma > 150 ? '#1a1a1a' : '#ffffff';
 }
 
 export const BOX_COLOR: Readonly<Record<BoxKind, string>> = {

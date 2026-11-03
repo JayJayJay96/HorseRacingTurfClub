@@ -5,6 +5,8 @@ import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
 import type { RaceLength, Timeline } from '../sim/types.ts';
 import { TRACKS, type TrackId } from '../render/track.ts';
+import { colorsOf } from '../render/palette.ts';
+import { COSMETICS, type CosmeticSlot } from '../shop/cosmetics.ts';
 
 const SAMPLE_HORSES = [
   'Nasi Lemak Express',
@@ -19,6 +21,13 @@ const SAMPLE_HORSES = [
 export function Sandbox() {
   const [run, setRun] = useState<{ timeline: Timeline; gun: number } | null>(null);
   const [trackId, setTrackId] = useState<TrackId>('oval');
+  const [looks, setLooks] = useState<Record<CosmeticSlot, string>>({ pattern: '', trail: '' });
+  // Lane 0 wears the picked looks, so each pattern and trail can be checked by eye.
+  const colors = useMemo(
+    () => (_horse: string, lane: number) =>
+      lane === 0 ? { ...colorsOf(0), ...looks } : colorsOf(lane),
+    [looks],
+  );
   const names = useMemo(() => Object.fromEntries(SAMPLE_HORSES.map((h) => [h, h])), []);
   const start = (length: RaceLength) =>
     setRun({
@@ -52,6 +61,23 @@ export function Sandbox() {
             ))}
           </select>
         </label>
+        {(['pattern', 'trail'] as const).map((slot) => (
+          <label key={slot}>
+            {' '}
+            Lane 1 {slot}{' '}
+            <select
+              value={looks[slot]}
+              onChange={(e) => setLooks({ ...looks, [slot]: e.target.value })}
+            >
+              <option value="">None</option>
+              {COSMETICS.filter((c) => c.slot === slot).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
         {run && ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events`}
       </p>
       {run && (
@@ -61,6 +87,7 @@ export function Sandbox() {
           startAtMs={run.gun}
           names={names}
           track={TRACKS[trackId]}
+          colors={colors}
         />
       )}
     </main>

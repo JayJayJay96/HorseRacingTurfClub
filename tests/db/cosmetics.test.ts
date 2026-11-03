@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COSMETICS } from '../../src/shop/cosmetics.ts';
 import { adminClient, anonClient, fails, ok } from './helpers.ts';
 import { balanceOf, member, officeRace, officeRoom } from './officeFixtures.ts';
 
@@ -191,5 +192,20 @@ describe('equip_cosmetic', () => {
     );
     await m.client.from('player_cosmetics').delete().eq('player_id', m.player.id);
     expect(await owned(m.player.id)).toEqual(['pattern:hoops']);
+  });
+});
+
+describe('catalog parity', () => {
+  it('every TS catalog price is what buy_cosmetic debits', async () => {
+    const { room } = await officeRoom();
+    const total = COSMETICS.reduce((sum, c) => sum + c.price, 0);
+    const m = await richMember(total);
+    let balance = 100 + total;
+    for (const c of COSMETICS) {
+      const next = await ok(m.client.rpc('buy_cosmetic', { p_room: room.id, p_code: c.code }));
+      expect(balance - (next as number), c.code).toBe(c.price);
+      balance = next as number;
+    }
+    expect(await owned(m.player.id)).toEqual(COSMETICS.map((c) => c.code).sort());
   });
 });

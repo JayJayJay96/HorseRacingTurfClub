@@ -3,7 +3,7 @@ import type { HorseId, Timeline } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
 import { popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
-import { drawHorse } from './sprites.ts';
+import { drawHorse, poseOf } from './sprites.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
 
 /** Spec §4: every renderer plays the same Timeline on the same track. */
@@ -133,10 +133,10 @@ export class Pixel2DRenderer implements RaceRenderer {
         const finished = timeline.finishTimes[horse] ?? Infinity;
         const m = progressAt(timeline, horse, t) + Math.max(0, t - finished) * COAST_SPEED;
         const here = horsePoint(track, timeline.distance, m, lane);
-        const ahead = horsePoint(track, timeline.distance, m + 1, lane);
         const p = screen(here);
+        const a = screen(horsePoint(track, timeline.distance, m + 1, lane));
         where.set(horse, p);
-        return { horse, lane, m, p, facing: (ahead.x >= here.x ? 1 : -1) as 1 | -1 };
+        return { horse, lane, m, p, pose: poseOf(a.x - p.x, a.y - p.y) };
       })
       .sort((a, b) => a.p.y - b.p.y);
     // No name tags: a tight pack makes them unreadable; silks match the standings list.
@@ -148,7 +148,7 @@ export class Pixel2DRenderer implements RaceRenderer {
         h.p.y,
         this.colors(h.horse, h.lane),
         Math.floor(h.m / 1.5),
-        h.facing,
+        h.pose,
         size,
       );
     }

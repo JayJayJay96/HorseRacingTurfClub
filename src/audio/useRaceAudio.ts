@@ -19,6 +19,10 @@ export function useRaceAudio(
     names?: Readonly<Record<HorseId, string>>;
     commentary?: boolean;
     cues?: (c: SfxName) => boolean;
+    odds?: Readonly<Record<HorseId, { win: number } | undefined>>;
+    prize?: string;
+    /** Cheers on screen right now, for crowd lines. */
+    cheers?: () => number;
   },
 ) {
   const { commentary = false } = opts;
@@ -32,7 +36,10 @@ export function useRaceAudio(
     let last = clock();
     const lastFinish = Math.max(...Object.values(timeline.finishTimes));
     const com = commentary
-      ? createCommentator(timeline, (h) => optsRef.current.names?.[h] ?? '?', last)
+      ? createCommentator(timeline, (h) => optsRef.current.names?.[h] ?? '?', last, {
+          odds: optsRef.current.odds,
+          prize: optsRef.current.prize,
+        })
       : null;
     const timer = setInterval(() => {
       const t = clock();
@@ -40,7 +47,7 @@ export function useRaceAudio(
       const keep = optsRef.current.cues;
       const cues = raceCues(timeline, last, t).filter((x) => !keep || keep(x));
       for (const c of prioritise(cues, MAX_CUES)) engine.sfx(c);
-      for (const line of com?.linesUpTo(t) ?? []) engine.say(line);
+      for (const line of com?.linesUpTo(t, optsRef.current.cheers?.() ?? 0) ?? []) engine.say(line);
       last = t;
       // Nothing left to play once the race is well over.
       if (t > lastFinish + 5) clearInterval(timer);

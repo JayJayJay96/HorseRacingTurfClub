@@ -306,4 +306,14 @@
 - Known limits: fresh anonymous devices each get 10 admin guesses (plus the 1 s delay); members added before 0016 without a PIN need /admin → Set PIN.
 - Deploy: `db push` (0016), then `functions deploy admin`, then push `master`. Until the function is redeployed, adding members fails.
 
+## UI theme (branch `ui-theme`, 2026-11-04)
+
+- Built per `docs/superpowers/plans/2026-11-04-ui-theme.md` (spec `docs/superpowers/specs/2026-11-04-ui-theme-design.md`). No logic, data or sim changes.
+- Look: always dark, HD-2D-style see-through navy panels with double gold trim and corner marks, Pixelify Sans (OFL, self-hosted TTF) for headings/buttons/numbers, system font for body text, gold gradient primary buttons, soft glow behind the room code, countdown and winner.
+- New `src/app/theme.css` (tokens, element styles, `.panel/.card/.chip/.glow/.topbar`) and `src/app/TopBar.tsx` (brand, room/coins chips, sound). The brand links home only outside a room.
+- Layouts: big-screen lobby columns with roster cards, odds-board tables, framed race with standings side panel, podium steps; phone box-shop cards, bet slip horse radio cards + Win/Place toggle, large place lines, results card, centred sign-in panels; Home cards; Stats panels; Admin theme only.
+- Decisions made during the build: TTF not woff2 (no converter without a new dependency); silk and `#n` only from Betting on (lanes exist once odds lock); page gradient's turf end mixed to 30 % for contrast; coins live in the top bar (dropped from the phone shop/bet lines).
+- Checks: typecheck, lint, `npm test` 171 pass, `npm run test:e2e` 6/6 (axe included). Headless screenshots at 1920×1080, 1280×800 and 375×812 in `docs/ui-theme-screens/` (not committed).
+- Not verified: a real phone, a real TV, `/stats` signed in, fullscreen.
+
 Next: Phase 8 (HD-2D renderer).

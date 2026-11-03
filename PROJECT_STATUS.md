@@ -185,4 +185,16 @@
 - Checks: `npm test` 108 pass, `npm run test:db` 89 pass, typecheck, lint and build clean. Not smoke-tested in a browser.
 - Deployed 2026-11-04: hosted DB migrated (012), `master` pushed; Vercel production branch set to `master`, so pushes go live on their own (deploy the DB first when a push needs a migration).
 
+## Phase 6 — History & fun (branch `phase6-history`)
+
+- [x] Task 0: Branch
+- [ ] Task 1: Event badges (pure)
+- [ ] Task 2: Badges table and awarding at Start
+- [ ] Task 3: office_stats and 90-day timelines
+- [ ] Task 4: start-race passes awards
+- [ ] Task 5: Client stats library and badge labels
+- [ ] Task 6: /stats page with replays
+- [ ] Task 7: Game-screen touches
+- [ ] Task 8: Smoke test, docs, deploy
+
 Next: Phase 6 (History & fun).

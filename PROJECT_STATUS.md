@@ -59,6 +59,22 @@
 - [x] Task 10: Phone mini view
 - [x] Task 11: Smoke test and docs
 
+## Phase 5 — Office mode (branch `phase5-office`)
+
+- [x] Task 0: Branch
+- [ ] Task 1: Odds blend with history (pure)
+- [ ] Task 2: Office schema, wallets, host fix
+- [ ] Task 3: PIN login and horse settings
+- [ ] Task 4: Office race flow and history input
+- [ ] Task 5: Admin RPCs
+- [ ] Task 6: Edge Functions: admin, lock-odds history
+- [ ] Task 7: Client library
+- [ ] Task 8: Per-horse colours in the renderer
+- [ ] Task 9: Phone: PIN login and horse panel
+- [ ] Task 10: Big screen: office unlock and lobby
+- [ ] Task 11: Home and /admin
+- [ ] Task 12: Smoke test, docs, hosted deploy
+
 ## Session log
 
 ### 2026-10-29

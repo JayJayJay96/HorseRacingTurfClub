@@ -135,7 +135,7 @@ type Stats = {
   best_profit: { id: string; value: number }[];
   horses: { id: string; races: number; wins: number; places: number; last5: number[] }[];
   badges: { id: string; badge: string }[];
-  recent: { race: string; podium: string[]; replay: boolean }[];
+  recent: { race: string; podium: string[]; replay: boolean; track: string }[];
 };
 
 describe('office_stats', () => {
@@ -189,7 +189,11 @@ describe('office_stats', () => {
     expect(s.badges).toContainEqual(
       expect.objectContaining({ id: a.player.id, badge: 'first_win' }),
     );
-    expect(s.recent[0]).toMatchObject({ podium: [b.player.id, a.player.id], replay: true });
+    expect(s.recent[0]).toMatchObject({
+      podium: [b.player.id, a.player.id],
+      replay: true,
+      track: 'oval',
+    });
   });
 
   it('hides the race being run until its podium', async () => {

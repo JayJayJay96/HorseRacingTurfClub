@@ -33,6 +33,7 @@ export type OfficeStats = {
     length: string;
     podium: string[];
     replay: boolean;
+    track: string;
   }[];
 };
 

@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { unpackTimeline, type PackedTimeline } from '../sim/pack.ts';
 import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
+import type { TrackId } from '../render/track.ts';
 import type { Database } from './database.types.ts';
 import { supabase } from './supabase.ts';
 
@@ -44,6 +45,8 @@ export const setRaceLength = (roomId: string, length: RaceLength) =>
   call(supabase.rpc('update_room_settings', { p_room: roomId, p_length: length }));
 export const setPrize = (roomId: string, prize: string) =>
   call(supabase.rpc('update_room_settings', { p_room: roomId, p_prize: prize }));
+export const setTrack = (roomId: string, track: TrackId | 'random') =>
+  call(supabase.rpc('update_room_settings', { p_room: roomId, p_track: track }));
 export const setPhase = (roomId: string, phase: 'LOBBY' | 'SHOP') =>
   call(supabase.rpc('set_phase', { p_room: roomId, p_phase: phase }));
 export const setReady = (roomId: string, ready: boolean) =>

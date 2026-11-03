@@ -34,6 +34,7 @@ import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { colorsByPlayer } from '../render/palette.ts';
+import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
 import { gunMs, standingsAt } from '../sim/playback.ts';
@@ -435,7 +436,13 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
             ? 'All home! Results in a moment…'
             : "🏇 And they're off!"}
       </p>
-      <MiniOval timeline={timeline} t={t} mine={mine.id} colors={colorsByPlayer(players)} />
+      <MiniOval
+        timeline={timeline}
+        t={t}
+        mine={mine.id}
+        colors={colorsByPlayer(players)}
+        track={trackById(race.track)}
+      />
       {t >= 0 && t <= last && (
         <p className="cheer-row">
           Cheer!{' '}

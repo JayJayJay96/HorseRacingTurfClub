@@ -297,6 +297,7 @@ export type Database = {
           prize: string;
           room_id: string;
           started_at: string | null;
+          track: string;
         };
         ComputedFields: never;
         Insert: {
@@ -310,6 +311,7 @@ export type Database = {
           prize?: string;
           room_id: string;
           started_at?: string | null;
+          track?: string;
         };
         Update: {
           created_at?: string;
@@ -322,6 +324,7 @@ export type Database = {
           prize?: string;
           room_id?: string;
           started_at?: string | null;
+          track?: string;
         };
         Relationships: [
           {
@@ -396,6 +399,7 @@ export type Database = {
           prize: string;
           race_id: string | null;
           race_length: string;
+          track: string;
         };
         ComputedFields: never;
         Insert: {
@@ -409,6 +413,7 @@ export type Database = {
           prize?: string;
           race_id?: string | null;
           race_length?: string;
+          track?: string;
         };
         Update: {
           code?: string;
@@ -421,6 +426,7 @@ export type Database = {
           prize?: string;
           race_id?: string | null;
           race_length?: string;
+          track?: string;
         };
         Relationships: [
           {
@@ -547,6 +553,7 @@ export type Database = {
           prize: string;
           race_id: string | null;
           race_length: string;
+          track: string;
         };
         SetofOptions: {
           from: '*';
@@ -568,6 +575,7 @@ export type Database = {
           prize: string;
           race_id: string | null;
           race_length: string;
+          track: string;
         };
         SetofOptions: {
           from: '*';
@@ -683,6 +691,7 @@ export type Database = {
           prize: string;
           race_id: string | null;
           race_length: string;
+          track: string;
         };
         SetofOptions: {
           from: '*';
@@ -705,7 +714,7 @@ export type Database = {
         Returns: undefined;
       };
       update_room_settings: {
-        Args: { p_length?: string; p_prize?: string; p_room: string };
+        Args: { p_length?: string; p_prize?: string; p_room: string; p_track?: string };
         Returns: {
           code: string;
           created_at: string;
@@ -717,6 +726,7 @@ export type Database = {
           prize: string;
           race_id: string | null;
           race_length: string;
+          track: string;
         };
         SetofOptions: {
           from: '*';

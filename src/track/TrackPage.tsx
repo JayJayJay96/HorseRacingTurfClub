@@ -25,6 +25,7 @@ import {
   setTicked,
   setPrize as savePrizeRpc,
   setRaceLength,
+  setTrack,
   startRace,
   type RoomPlayer,
   type RoomState,
@@ -35,6 +36,7 @@ import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { colorsByPlayer } from '../render/palette.ts';
 import { RaceView, Silk } from '../render/RaceView.tsx';
+import { TRACKS, trackById } from '../render/track.ts';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
@@ -91,6 +93,7 @@ export function TrackPage() {
   return (
     <main className="track">
       <SoundToggle settings={settings} update={update} full />
+      {state.race && <p>Track: {trackById(state.race.track).name}</p>}
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />
       ) : (
@@ -135,6 +138,20 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
                 onChange={() => act(() => setRaceLength(room.id, l))}
               />{' '}
               {LENGTH_LABEL[l]}{' '}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset>
+          <legend>Track</legend>
+          {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
+            <label key={id}>
+              <input
+                type="radio"
+                name="track"
+                checked={room.track === id}
+                onChange={() => act(() => setTrack(room.id, id))}
+              />{' '}
+              {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
             </label>
           ))}
         </fieldset>
@@ -402,6 +419,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
             startAtMs={gunMs(race.started_at)}
             names={names}
             colors={colors}
+            track={trackById(race.track)}
           />
           <ul className="cheers" aria-hidden="true">
             {shown.map((c) => (

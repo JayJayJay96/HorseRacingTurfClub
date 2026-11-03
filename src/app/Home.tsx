@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import { createRoom, errorText } from '../net/rooms.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
+import { TopBar } from './TopBar.tsx';
 
 export function Home() {
   const [code, setCode] = useState('');
@@ -31,6 +32,7 @@ export function Home() {
 
   return (
     <main className="home">
+      <TopBar />
       <h1>Horse Racing Turf Club</h1>
       <section>
         <h2>Private race</h2>

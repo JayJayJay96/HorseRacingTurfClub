@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { TopBar } from '../app/TopBar.tsx';
 import { useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
@@ -50,6 +51,7 @@ export function StatsPage() {
   }
   return (
     <main className="stats">
+      <TopBar />
       <h1>Office stats</h1>
       {replay ? (
         <Replay key={replay.n} stats={stats} race={replay.race} onClose={() => setReplay(null)} />

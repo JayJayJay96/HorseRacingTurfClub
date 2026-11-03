@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adminAction, errorText } from '../net/rooms.ts';
+import { TopBar } from '../app/TopBar.tsx';
 
 type Member = {
   id: string;
@@ -95,6 +96,7 @@ export function AdminPage() {
     };
     return (
       <main>
+        <TopBar />
         <h1>Admin</h1>
         <form onSubmit={open}>
           <label>
@@ -140,6 +142,7 @@ export function AdminPage() {
 
   return (
     <main>
+      <TopBar />
       <h1>Admin</h1>
       <p>
         Office phase: {data?.room.phase ?? '…'}{' '}

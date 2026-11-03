@@ -13,6 +13,7 @@ import {
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
+import { TopBar } from '../app/TopBar.tsx';
 import { formatForm } from '../history/badges.ts';
 import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
@@ -93,7 +94,9 @@ export function TrackPage() {
 
   return (
     <main className="track">
-      <SoundToggle settings={settings} update={update} full />
+      <TopBar code={state.room.code}>
+        <SoundToggle settings={settings} update={update} full />
+      </TopBar>
       {state.race && <p>Track: {trackById(state.race.track).name}</p>}
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />

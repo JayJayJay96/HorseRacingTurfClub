@@ -172,22 +172,19 @@ a.button.primary {
   box-shadow: inset 0 0 0 1px var(--gold-dim);
 }
 
+/* The toggle sits in the top bar; the volume panel drops down over the page. */
 .sound {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-}
-/* Phones: keep the toggle in the page flow so it doesn't cover the heading. */
-.play .sound {
-  position: static;
-  text-align: right;
+  position: relative;
 }
 .sound-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
   display: grid;
   gap: 4px;
-  margin-top: 4px;
-  padding: 8px;
+  width: max-content;
+  padding: 12px;
   background: var(--bg);
   box-shadow: var(--trim);
 }

@@ -11,6 +11,7 @@ import {
   ordinal,
 } from '../betting/betting.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
+import { TopBar } from '../app/TopBar.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -222,7 +223,9 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       <p className="visually-hidden" role="status" aria-live="polite">
         {announcement}
       </p>
-      <SoundToggle settings={settings} update={update} />
+      <TopBar code={room.code} coins={props.balance}>
+        <SoundToggle settings={settings} update={update} />
+      </TopBar>
       <h1>{mine.name}</h1>
       <p>
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}

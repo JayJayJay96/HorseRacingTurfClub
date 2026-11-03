@@ -517,25 +517,27 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
           🏆 {horseNameOf(players, top3[0])}: {race.prize}
         </p>
       )}
-      <h2>Payouts</h2>
-      {best && (
-        <p>
-          🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
-          {horseNameOf(players, best.horse_id)}
-        </p>
-      )}
-      {winners.length === 0 ? (
-        <p>No winning bets.</p>
-      ) : (
-        <ul>
-          {winners.map((b) => (
-            <li key={b.id}>
-              {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)} (
-              {b.kind})
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="panel">
+        <h2>Payouts</h2>
+        {best && (
+          <p>
+            🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
+            {horseNameOf(players, best.horse_id)}
+          </p>
+        )}
+        {winners.length === 0 ? (
+          <p>No winning bets.</p>
+        ) : (
+          <ul>
+            {winners.map((b) => (
+              <li key={b.id}>
+                {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)}{' '}
+                ({b.kind})
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <button
         type="button"
         className="primary"

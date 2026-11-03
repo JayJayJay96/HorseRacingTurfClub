@@ -110,8 +110,61 @@ button.primary {
   display: grid;
   gap: 8px;
 }
+/* DOM order stays 1st, 2nd, 3rd; `order` shows the steps as 2nd, 1st, 3rd. */
 .podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 0;
+  list-style: none;
   font-size: 2rem;
+}
+.podium li {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  color: var(--bg);
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 2px var(--edge),
+    var(--shadow);
+}
+.podium li::before {
+  font-family: var(--font-pixel);
+  font-size: 2.5rem;
+}
+.podium li:nth-child(1) {
+  order: 2;
+  min-height: 260px;
+  background: var(--gold);
+  /* The glow behind the winner. */
+  box-shadow:
+    inset 0 0 0 2px var(--edge),
+    0 0 48px rgba(255, 204, 51, 0.45);
+}
+.podium li:nth-child(1)::before {
+  content: '1st';
+}
+.podium li:nth-child(2) {
+  order: 1;
+  min-height: 200px;
+  background: var(--silver);
+}
+.podium li:nth-child(2)::before {
+  content: '2nd';
+}
+.podium li:nth-child(3) {
+  order: 3;
+  min-height: 160px;
+  background: var(--bronze);
+}
+.podium li:nth-child(3)::before {
+  content: '3rd';
 }
 .race {
   position: relative;

@@ -250,7 +250,8 @@ function OddsLockedBoard({ room, act, busy }: BoardProps) {
       {/* Only needed if a calculation failed; lock-odds treats ODDS_LOCKED as a retry. */}
       <button type="button" disabled={busy} onClick={() => act(() => lockOdds(room.id))}>
         Retry
-      </button>
+      </button>{' '}
+      <CancelRace room={room} act={act} busy={busy} />
     </section>
   );
 }
@@ -293,8 +294,25 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
         onClick={() => act(() => startRace(room.id))}
       >
         Start race
-      </button>
+      </button>{' '}
+      <CancelRace room={room} act={act} busy={busy} />
     </section>
+  );
+}
+
+/** Way out of a stuck "Calculating odds…" or an unwanted race; deleting the race refunds everything. */
+function CancelRace({ room, act, busy }: Pick<BoardProps, 'room' | 'act' | 'busy'>) {
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() =>
+        window.confirm('Cancel this race? All boxes and bets are refunded.') &&
+        act(() => setPhase(room.id, 'LOBBY'))
+      }
+    >
+      Cancel race (refund everything)
+    </button>
   );
 }
 

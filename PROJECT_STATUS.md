@@ -176,4 +176,13 @@
   - A reset PIN or a removal doesn't push an update to the affected phone; it notices on its next reload.
   - Hosted deploy of Phase 5 needs the owner to set the `ADMIN_PASSWORD` secret first.
 
+### 2026-11-04 — join-by-pick, late claim, cancel race
+
+- Built per `docs/superpowers/plans/2026-11-04-join-and-cancel.md`; migration `20261104000012_join_and_cancel.sql`.
+- Pick: `private_roster(code)` lists a Private room's unclaimed host-typed names; the phone join screen shows "I'm <name>" buttons above the typed form.
+- Late claim: `join_room` v4 claims a pre-entered name in LOBBY, SHOP, ODDS_LOCKED and BETTING (not RUNNING); a claimer after the shop opened gets that race's 100 coins. New names still join only in the LOBBY. It now locks the room row first (same lock order as the other RPCs).
+- Cancel race: `set_phase` v4 also allows ODDS_LOCKED→LOBBY and BETTING→LOBBY (host only). Deleting the race cascades its topups, floors, purchases and bets: a full refund in both modes. A `lock-odds`/`start-race` call still running then fails in its `*_finish` (`race_not_found`/`wrong_phase`). The big screen has "Cancel race (refund everything)" on the odds and betting boards, behind a confirm.
+- Checks: `npm test` 108 pass, `npm run test:db` 89 pass, typecheck, lint and build clean. Not smoke-tested in a browser.
+- Not yet deployed: the hosted DB needs `npx supabase db push --linked`.
+
 Next: Phase 6 (History & fun).

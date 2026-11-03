@@ -80,6 +80,9 @@ export const adminAction = <T = unknown>(
 ) => callFunction<T>('admin', { ...args, password, action });
 
 export const officeRoster = () => call(supabase.rpc('office_roster'));
+/** Names the host pre-entered that no phone has claimed yet (Private rooms). */
+export const privateRoster = (code: string) =>
+  call(supabase.rpc('private_roster', { p_code: code }));
 /** Null from the server means a wrong PIN (the fail count must commit, so it doesn't raise). */
 export async function officeLogin(playerId: string, pin: string): Promise<RoomPlayer> {
   const player = await call(supabase.rpc('office_login', { p_player: playerId, p_pin: pin }));

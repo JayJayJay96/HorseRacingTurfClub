@@ -18,6 +18,7 @@ import {
   joinRoom,
   officeLogout,
   placeBet,
+  privateRoster,
   setReady,
   type BetKind,
   type RoomPlayer,
@@ -42,15 +43,21 @@ export function PlayPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [office, setOffice] = useState(false);
+  const [roster, setRoster] = useState<{ name: string; ticked: boolean }[]>([]);
 
   useEffect(() => {
     if (!code) return;
     // join_room returns this device's existing entry before validating the name, so '' probes for a rejoin.
     ensureSignedIn()
       .then(() => joinRoom(code, ''))
-      .then(setMe, (e: unknown) => {
-        if (e instanceof Error && e.message === 'office_room') setOffice(true);
-        else if (!(e instanceof Error && e.message === 'bad_name')) setError(errorText(e));
+      .then(setMe, async (e: unknown) => {
+        const reason = e instanceof Error ? e.message : '';
+        if (reason === 'office_room') return setOffice(true);
+        // Not joined yet: offer the names the host pre-entered (claimable until Start).
+        const names = (await privateRoster(code).catch(() => null)) ?? [];
+        setRoster(names);
+        // After the lobby only a pre-entered name can join, so say so when there is none.
+        if (reason !== 'bad_name' && !names.length) setError(errorText(e));
       })
       .finally(() => setChecking(false));
   }, [code]);
@@ -67,15 +74,41 @@ export function PlayPage() {
   if (me) return <PlayRoom code={code} me={me} />;
   if (office) return <OfficeLogin onLogin={setMe} />;
 
+  const claim = (n: string) => {
+    setError(null);
+    joinRoom(code, n).then(setMe, (err: unknown) => {
+      setError(errorText(err));
+      // Another phone may have just taken that name: refresh the list.
+      void privateRoster(code).then(
+        (names) => setRoster(names ?? []),
+        () => {},
+      );
+    });
+  };
   const join = (e: FormEvent) => {
     e.preventDefault();
-    setError(null);
-    joinRoom(code, name).then(setMe, (err: unknown) => setError(errorText(err)));
+    claim(name);
   };
 
   return (
     <main className="play">
       <h1>Room {code}</h1>
+      {roster.length > 0 && (
+        <>
+          <h2>Pre-entered by the host</h2>
+          <ul className="pick">
+            {roster.map((p) => (
+              <li key={p.name}>
+                <button type="button" className="primary" onClick={() => claim(p.name)}>
+                  I'm {p.name}
+                  {p.ticked && ' 🐎 racing'}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <h2>Or join with a new name</h2>
+        </>
+      )}
       <form onSubmit={join}>
         <label>
           Your name{' '}

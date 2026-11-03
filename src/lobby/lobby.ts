@@ -1,5 +1,8 @@
 import { MIN_HORSES } from '../sim/config.ts';
 
+/** The built-in Office room (supabase/migrations/20261103000008_office.sql). */
+export const OFFICE_CODE = 'TURF';
+
 /** Same alphabet as create_room in SQL: no I, L, O, 0, 1. */
 const CODE_RE = /^[A-HJKMNP-Z2-9]{4}$/;
 

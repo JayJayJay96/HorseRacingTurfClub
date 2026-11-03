@@ -3,7 +3,6 @@ import {
   BOX_ICON,
   BOX_NAME,
   BOX_TYPES,
-  balanceOf,
   boxesOf,
   canPlace,
   formatOdds,
@@ -133,7 +132,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   const props: PanelProps = {
     ...state,
     mine,
-    balance: balanceOf(state.ledger, mine.id),
+    balance: state.balances[mine.id] ?? 0,
     act,
     busy,
   };

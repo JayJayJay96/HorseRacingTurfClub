@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  balanceOf,
   boxesOf,
   canPlace,
   formatOdds,
+  horseNameOf,
   nameOf,
   oddsOf,
   ordinal,
@@ -11,14 +11,14 @@ import {
 } from './betting.ts';
 
 describe('betting helpers', () => {
-  it('sums one player’s ledger rows', () => {
-    const ledger = [
-      { player_id: 'a', amount: 100 },
-      { player_id: 'b', amount: 100 },
-      { player_id: 'a', amount: -60 },
+  it('names horses by horse name when set, else by person', () => {
+    const players = [
+      { id: 'a', name: 'Ali', horse_name: 'Thunder' },
+      { id: 'b', name: 'Bea', horse_name: null },
     ];
-    expect(balanceOf(ledger, 'a')).toBe(40);
-    expect(balanceOf(ledger, 'z')).toBe(0);
+    expect(horseNameOf(players, 'a')).toBe('Thunder');
+    expect(horseNameOf(players, 'b')).toBe('Bea');
+    expect(horseNameOf(players, 'zz')).toBe('?');
   });
 
   it('lists a player’s boxes and the pot', () => {

@@ -12,9 +12,6 @@ export const BOX_NAME: Record<BoxType, string> = {
 
 type Owned = { player_id: string };
 
-export const balanceOf = (ledger: readonly (Owned & { amount: number })[], playerId: string) =>
-  ledger.reduce((sum, row) => (row.player_id === playerId ? sum + row.amount : sum), 0);
-
 export const boxesOf = (purchases: readonly (Owned & { box: string })[], playerId: string) =>
   purchases.filter((p) => p.player_id === playerId).map((p) => p.box as BoxType);
 
@@ -27,6 +24,16 @@ export const oddsOf = (race: { odds: Json | null } | null) =>
 
 export const nameOf = (players: readonly { id: string; name: string }[], id: string | undefined) =>
   players.find((p) => p.id === id)?.name ?? '?';
+
+type Named = { id: string; name: string; horse_name?: string | null };
+
+/** Office horses may have their own name; Private horses are named after their person. */
+export const horseName = (p: Pick<Named, 'name' | 'horse_name'>) => p.horse_name || p.name;
+
+export const horseNameOf = (players: readonly Named[], id: string | undefined) => {
+  const p = players.find((x) => x.id === id);
+  return p ? horseName(p) : '?';
+};
 
 /** With 3 or fewer horses every horse places, so the server refuses Place bets. */
 export const canPlace = (horses: readonly string[]) => horses.length > 3;

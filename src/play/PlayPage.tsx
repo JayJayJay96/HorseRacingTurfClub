@@ -11,6 +11,9 @@ import {
   ordinal,
 } from '../betting/betting.ts';
 import { BADGES, formatForm } from '../history/badges.ts';
+import { soundEngine, useAudioSettings } from '../audio/sound.ts';
+import { SoundToggle } from '../audio/SoundToggle.tsx';
+import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { normalizeCode } from '../lobby/lobby.ts';
 import {
   buyBox,
@@ -145,6 +148,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
     state?.room.phase,
     state?.room.kind === 'office' && state.room.phase === 'LOBBY',
   );
+  const { settings, update } = useAudioSettings('phone');
 
   if (error) {
     return (
@@ -198,6 +202,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
 
   return (
     <main className="play">
+      <SoundToggle settings={settings} update={update} />
       <h1>{mine.name}</h1>
       <p>
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
@@ -286,7 +291,7 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
             key={box}
             type="button"
             disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
-            onClick={() => act(() => buyBox(room.id, box))}
+            onClick={() => act(() => buyBox(room.id, box).then(() => soundEngine().sfx('coin')))}
           >
             {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
           </button>
@@ -310,7 +315,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    act(() => placeBet(room.id, horse, kind, amount));
+    act(() => placeBet(room.id, horse, kind, amount).then(() => soundEngine().sfx('coin')));
   };
 
   return (
@@ -397,7 +402,9 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
 function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
   const { timeline, error } = useTimeline(race?.id ?? null);
-  const t = useRaceTime(race?.started_at ? gunMs(race.started_at) : 0);
+  const gun = race?.started_at ? gunMs(race.started_at) : 0;
+  const t = useRaceTime(gun);
+  useRaceAudio(timeline, gun, { cues: (c) => c === 'count' || c === 'go' || c === 'bell' });
   const [cooling, setCooling] = useState(false);
   const coolTimer = useRef(0);
   useEffect(() => () => clearTimeout(coolTimer.current), []);

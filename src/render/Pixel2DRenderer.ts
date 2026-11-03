@@ -28,6 +28,8 @@ const EASE = 0.06;
 const POPUP_SECONDS = 2;
 /** Finished horses ease past the line (m/s) instead of piling up on it. Display only. */
 const COAST_SPEED = 10;
+/** A box appears once its horse is within this share of the race before it (owner 2026-11-04). */
+export const BOX_REVEAL = 0.1;
 
 export class Pixel2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -113,13 +115,16 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.lineTo(f1.x, f1.y);
     ctx.stroke();
 
-    // Unopened boxes: a horse passes its lane's boxes in order, one pickup each.
+    // Unopened boxes: a horse passes its lane's boxes in order, one pickup each. A box only shows
+    // when its own horse is close, so nobody runs over a box that does nothing for them.
     timeline.horses.forEach((horse, lane) => {
       const opened = timeline.events.filter(
         (e) => e.type === 'pickup' && e.horse === horse && e.t <= t,
       ).length;
+      const reach = progressAt(timeline, horse, t) + timeline.distance * BOX_REVEAL;
       const boxes = [...(timeline.boxes[horse] ?? [])].sort((a, b) => a.at - b.at);
       for (const box of boxes.slice(opened)) {
+        if (box.at > reach) break;
         const p = screen(horsePoint(track, timeline.distance, box.at, lane));
         ctx.fillStyle = BOX_COLOR[box.kind];
         ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 3);

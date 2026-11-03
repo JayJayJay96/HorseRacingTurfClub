@@ -438,6 +438,8 @@ export type Database = {
       admin_archive: { Args: { p_player: string }; Returns: undefined };
       admin_claim_host: { Args: { p_uid: string }; Returns: undefined };
       admin_delete_race: { Args: { p_race: string }; Returns: undefined };
+      admin_gate: { Args: { p_ok: boolean }; Returns: string };
+      admin_gate_reset: { Args: Record<PropertyKey, never>; Returns: undefined };
       admin_overview: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_rename: {
         Args: { p_name: string; p_player: string };
@@ -578,6 +580,14 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      private_roster: {
+        Args: { p_code: string };
+        Returns: {
+          id: string;
+          name: string;
+          ticked: boolean;
+        }[];
       };
       remove_player: { Args: { p_player: string }; Returns: undefined };
       room_balances: {

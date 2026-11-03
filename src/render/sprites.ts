@@ -1,5 +1,13 @@
 import type { HorseColors } from './palette.ts';
 
+export type Pose = 'side-right' | 'side-left' | 'away' | 'toward';
+
+/** Pose from the on-screen running direction (y grows downward). */
+export function poseOf(dx: number, dy: number): Pose {
+  if (Math.abs(dy) > Math.abs(dx)) return dy < 0 ? 'away' : 'toward';
+  return dx >= 0 ? 'side-right' : 'side-left';
+}
+
 /** Leg swing (px) for the front/back pairs in each of the 4 gallop frames. */
 const LEGS = [
   [0, 2],
@@ -9,7 +17,8 @@ const LEGS = [
 ] as const;
 
 /**
- * Side-view horse and jockey, ~16×14 px × `size`, hooves at (x, y). Facing +1 runs right, −1 left.
+ * Horse and jockey, ~8–16 px wide × 14–17 px tall × `size`, hooves at (x, y). Side views at the
+ * straights, 3/4 rear (`away`) and front (`toward`) views when running up or down the screen.
  * `frame` picks the gallop pose; pass a value that only changes while the horse moves.
  */
 export function drawHorse(
@@ -18,31 +27,56 @@ export function drawHorse(
   y: number,
   colors: HorseColors,
   frame: number,
-  facing: 1 | -1,
+  pose: Pose,
   size = 1,
 ) {
+  const { coat, mane, silk } = colors;
   const px = (dx: number, dy: number, w: number, h: number, color: string) => {
     ctx.fillStyle = color;
     ctx.fillRect(dx, dy, w, h);
   };
+  const lift = frame % 2; // also the gallop bob
   ctx.save();
-  ctx.translate(Math.round(x), Math.round(y));
-  ctx.scale(facing * size, size);
-  const [a, b] = LEGS[frame % LEGS.length]!;
-  for (const [lx, swing] of [
-    [-4, a],
-    [-2, b],
-    [2, a],
-    [4, b],
-  ] as const) {
-    px(lx + swing - 1, -4, 1, 4, colors.coat);
+  ctx.translate(Math.round(x), Math.round(y) - lift * size);
+  ctx.scale(pose === 'side-left' ? -size : size, size);
+  if (pose === 'away') {
+    px(-3, -4 + lift, 1, 4 - lift, coat); // hind legs, alternating
+    px(2, -3 - lift, 1, 3 + lift, coat);
+    px(-4, -9, 8, 5, coat); // rump and back
+    px(-1, -8, 2, 5, mane); // tail
+    px(2, -12, 2, 3, coat); // neck ahead, off to one side
+    px(2, -13, 2, 1, mane); // ears
+    px(-2, -13, 4, 3, silk); // jockey's back
+    px(-3, -10, 1, 2, silk); // jockey's legs either side
+    px(2, -10, 1, 2, silk);
+    px(-1, -15, 2, 2, silk); // cap
+  } else if (pose === 'toward') {
+    px(-2, -4 + lift, 1, 4 - lift, coat); // forelegs, alternating
+    px(1, -3 - lift, 1, 3 + lift, coat);
+    px(-3, -9, 7, 5, coat); // chest and shoulders
+    px(-4, -13, 3, 4, silk); // jockey, off to one side of the head
+    px(-4, -15, 2, 2, silk); // cap
+    px(0, -12, 3, 4, coat); // head facing us
+    px(0, -13, 1, 1, coat); // ears
+    px(2, -13, 1, 1, coat);
+    px(1, -12, 1, 1, mane); // forelock
+  } else {
+    const [a, b] = LEGS[frame % LEGS.length]!;
+    for (const [lx, swing] of [
+      [-4, a],
+      [-2, b],
+      [2, a],
+      [4, b],
+    ] as const) {
+      px(lx + swing - 1, -4, 1, 4, coat);
+    }
+    px(-5, -8, 10, 4, coat); // body
+    px(-7, -8, 2, 3, mane); // tail
+    px(4, -11, 3, 4, coat); // neck
+    px(6, -12, 3, 2, coat); // head
+    px(4, -12, 2, 1, mane); // mane
+    px(-1, -12, 3, 4, silk); // jockey
+    px(0, -14, 2, 2, silk); // cap
   }
-  px(-5, -8, 10, 4, colors.coat); // body
-  px(-7, -8, 2, 3, colors.mane); // tail
-  px(4, -11, 3, 4, colors.coat); // neck
-  px(6, -12, 3, 2, colors.coat); // head
-  px(4, -12, 2, 1, colors.mane); // mane
-  px(-1, -12, 3, 4, colors.silk); // jockey
-  px(0, -14, 2, 2, colors.silk); // cap
   ctx.restore();
 }

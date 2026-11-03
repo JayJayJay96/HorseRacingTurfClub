@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ODDS } from '../../src/sim/odds.ts';
-import type { PackedTimeline } from '../../src/sim/pack.ts';
+import { raceAwards } from '../../src/sim/awards.ts';
+import { unpackTimeline, type PackedTimeline } from '../../src/sim/pack.ts';
 import { playbackSeconds } from '../../src/sim/playback.ts';
-import { anonClient, failsInvoke, guestClient, invoke, ok } from './helpers.ts';
+import { adminClient, anonClient, failsInvoke, guestClient, invoke, ok } from './helpers.ts';
 import { adminPassword, member, officeRoom } from './officeFixtures.ts';
 import { balance, shopRoom } from './raceFixtures.ts';
 
@@ -118,5 +119,40 @@ describe('admin function', () => {
     await invoke(host, 'lock-odds', { room: room.id });
     const [race] = await ok(host.from('races').select('odds').eq('id', shop.race_id));
     expect(Object.keys(race.odds)).toEqual(expect.arrayContaining([a.player.id, b.player.id]));
+  });
+
+  it('start-race awards badges in an office race', { timeout: 60_000 }, async () => {
+    const { host, room } = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    for (const p of [a, b])
+      await ok(host.rpc('set_ticked', { p_player: p.player.id, p_ticked: true }));
+    const shop = await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
+    await invoke(host, 'lock-odds', { room: room.id });
+    await invoke(host, 'start-race', { room: room.id });
+    const [race] = await ok(
+      adminClient().from('races').select('finish_order').eq('id', shop.race_id),
+    );
+    const badges = (await ok(
+      adminClient()
+        .from('badges')
+        .select('player_id, badge')
+        .in('player_id', [a.player.id, b.player.id]),
+    )) as { player_id: string; badge: string }[];
+    expect(badges).toContainEqual({ player_id: race.finish_order[0], badge: 'first_win' });
+    // Event badges are random, so check they match the stored timeline (comeback is left out:
+    // the stored timeline is resampled, which can shift who was last at halfway).
+    const [stored] = await ok(
+      adminClient().from('race_timelines').select('timeline').eq('race_id', shop.race_id),
+    );
+    const awards = raceAwards(unpackTimeline(stored.timeline as PackedTimeline));
+    for (const badge of ['photo_finish', 'banana_king', 'untouchable', 'sniper'] as const) {
+      expect(
+        badges
+          .filter((x) => x.badge === badge)
+          .map((x) => x.player_id)
+          .sort(),
+      ).toEqual([...awards[badge]].sort());
+    }
   });
 });

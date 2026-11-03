@@ -54,6 +54,11 @@ Office mode:
 - Local admin password: put `ADMIN_PASSWORD=<anything>` in `supabase/functions/.env` (gitignored), then `npx supabase stop && npx supabase start`; the edge runtime loads that file automatically.
 - Hosted: the owner sets it once with `npx supabase secrets set ADMIN_PASSWORD=<long random password>` (never commit or share it). Deploy with `npx supabase db push --linked` and `npx supabase functions deploy admin lock-odds start-race`. 10 wrong passwords lock `/admin` for 10 minutes; to clear a lock, run `select public.admin_gate_reset();` in the SQL editor.
 
+Running it:
+
+- Supabase pauses free projects after about a week of inactivity. If the site says it can't connect, open the Supabase dashboard and press **Restore**.
+- Watch Supabase → Usage after the first busy weeks: every update makes each phone refetch the room.
+
 Testing with several devices:
 
 - Real phones on the LAN: set `VITE_SUPABASE_URL=http://<pc-lan-ip>:54321` in `.env.local`, run `npm run dev -- --host`, and open the host page via `http://<pc-lan-ip>:5173`. `127.0.0.1` on a phone is the phone itself, and the QR code uses the host page's origin.

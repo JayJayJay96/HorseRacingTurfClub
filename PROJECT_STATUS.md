@@ -28,7 +28,7 @@
 - [x] Task 10
 - [x] Task 11
 - [x] Task 12
-- [ ] Task 13: hosted Supabase + Vercel (pending owner)
+- [x] Task 13: hosted Supabase + Vercel (2026-11-03; real-phone test pending)
 
 ## Phase 3 — Shop, odds, betting, ledger (branch `phase3-betting`)
 
@@ -130,4 +130,10 @@
   - Results are readable in the DB during RUNNING; the spoiler guard is UI-only (from Phase 3).
   - The box-hiding loop and popups scan all events each frame; fine at 22 horses, revisit if profiling says so.
 
-Next: Phase 5 (Office mode). Task 13 (owner: hosted Supabase + Vercel + `supabase functions deploy`) can happen any time.
+### 2026-11-03 — hosted
+
+- Supabase project `HorseRacingTurfClub` (Singapore, ref `esytitjhdnefgiqcjemg`): linked, 7 migrations pushed, `lock-odds` and `start-race` deployed (the `../../../src/sim` imports bundle fine, no copy step needed). Created with "Automatically expose new tables" off; the migrations' explicit grants are enough. Anonymous sign-ins on.
+- GitHub `JayJayJay96/HorseRacingTurfClub` (`origin`, `master`); Vercel project `hanailab/horseracingturfclub` builds from it → https://horseracingturfclub.vercel.app with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` set.
+- Hosted check: anonymous sign-in, `create_room`, and a full big-screen race (2 host-added horses: odds, Start, playback, podium) worked; no console errors. Not yet tested: real phones joining over the internet.
+
+Next: Phase 5 (Office mode).

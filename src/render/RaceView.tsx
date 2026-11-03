@@ -52,21 +52,23 @@ export function RaceView({ timeline, startAtMs, names, colors, track = TRACK, ch
   return (
     <div className="race" ref={box}>
       {document.fullscreenEnabled && (
-        <button type="button" className="fullscreen" aria-pressed={full} onClick={toggleFull}>
+        <button type="button" className="fullscreen chip" aria-pressed={full} onClick={toggleFull}>
           {full ? 'Exit fullscreen' : '⛶ Fullscreen'}
         </button>
       )}
-      <canvas
-        ref={canvas}
-        width={VIEW.width}
-        height={VIEW.height}
-        role="img"
-        aria-label={`${track.name} race, ${timeline.horses.length} horses (standings listed alongside)`}
-      />
+      <div className="panel race-frame">
+        <canvas
+          ref={canvas}
+          width={VIEW.width}
+          height={VIEW.height}
+          role="img"
+          aria-label={`${track.name} race, ${timeline.horses.length} horses (standings listed alongside)`}
+        />
+      </div>
       <p className="visually-hidden" role="status" aria-live="polite">
         {raceAnnouncement(timeline, t, names)}
       </p>
-      <ol className="standings">
+      <ol className="standings panel">
         {standingsAt(timeline, t).map((h) => {
           const time = timeline.finishTimes[h]!;
           const lane = timeline.horses.indexOf(h);

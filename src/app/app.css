@@ -122,9 +122,14 @@ button.primary {
 }
 .race .fullscreen {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 12px;
+  left: 12px;
   z-index: 1;
+}
+/* The frame hugs the canvas: no padding, so fullscreen sizing below stays exact. */
+.race-frame {
+  margin: 0;
+  padding: 0;
 }
 .race:fullscreen {
   padding: 16px;
@@ -139,14 +144,19 @@ button.primary {
   font-size: 1.5rem;
 }
 .race canvas {
+  display: block;
   width: 100%;
   image-rendering: pixelated;
   background: var(--turf);
 }
 .standings {
   margin: 0;
-  padding-left: 1.5em;
+  padding: 12px 12px 12px 2.5em;
   font-size: 1rem;
+}
+.standings li::marker {
+  font-family: var(--font-pixel);
+  color: var(--gold);
 }
 .silk {
   display: inline-block;
@@ -234,15 +244,19 @@ a.button.primary {
 
 .cheers {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  left: 12px;
+  bottom: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
   pointer-events: none;
-  font-size: 1.5rem;
-  color: #fff;
-  text-shadow: 0 1px 3px #000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.cheers .chip {
+  font-size: 1.25rem;
 }
 .cheers li {
   animation: cheer-float 3s ease-out forwards;

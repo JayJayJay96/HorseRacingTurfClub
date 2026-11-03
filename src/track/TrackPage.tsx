@@ -40,6 +40,7 @@ import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
+import { podiumLine } from '../audio/commentator.ts';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
@@ -47,6 +48,8 @@ import { OfficeHostLogin } from './OfficeHostLogin.tsx';
 type Act = (fn: () => Promise<unknown>) => void;
 type BoardProps = RoomState & { online: ReadonlySet<string>; act: Act; busy: boolean };
 
+/** Podium banter waits this long after the results show, so it doesn't talk over the winner line. */
+const PODIUM_BANTER_MS = 3000;
 const LENGTH_LABEL: Record<RaceLength, string> = { short: 'Short (~2 min)', long: 'Long (~3 min)' };
 
 /** Big screen for the host device. */
@@ -354,10 +357,6 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
     [players],
   );
   const colors = useMemo(() => colorsByPlayer(players), [players]);
-  useRaceAudio(timeline, race?.started_at ? gunMs(race.started_at) : 0, {
-    names,
-    commentary: true,
-  });
   const ids = useMemo(() => new Set(players.map((p) => p.id)), [players]);
   const lastCheerSfx = useRef(0);
   const shown = useCheers(room.id, ids, () => {
@@ -366,6 +365,17 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
       lastCheerSfx.current = n;
       soundEngine().sfx('cheer');
     }
+  });
+  const shownRef = useRef(shown);
+  useEffect(() => {
+    shownRef.current = shown;
+  });
+  useRaceAudio(timeline, race?.started_at ? gunMs(race.started_at) : 0, {
+    names,
+    commentary: true,
+    odds: oddsOf(race),
+    prize: race?.prize ?? '',
+    cheers: () => shownRef.current.length,
   });
   const asked = useRef(false);
   const retry = useRef(0);
@@ -420,6 +430,19 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
     .filter((b) => (b.payout ?? 0) > 0)
     .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0));
   const best = winners[0];
+  const raceId = race?.id;
+  const banter = useRef('');
+  useEffect(() => {
+    banter.current = podiumLine(
+      winners.map((b) => ({ name: nameOf(players, b.player_id), payout: b.payout ?? 0 })),
+      bets.length,
+    );
+  });
+  useEffect(() => {
+    if (!raceId) return;
+    const timer = setTimeout(() => soundEngine().say(banter.current), PODIUM_BANTER_MS);
+    return () => clearTimeout(timer);
+  }, [raceId]);
   return (
     <section>
       <h1>Results</h1>

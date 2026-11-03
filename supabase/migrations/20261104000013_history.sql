@@ -118,3 +118,119 @@ $$;
 revoke execute on function public.start_race_finish(uuid, jsonb, uuid[], numeric, jsonb)
   from public, anon, authenticated;
 grant execute on function public.start_race_finish(uuid, jsonb, uuid[], numeric, jsonb) to service_role;
+
+-- v3: Private rooms expire after 24 h; office race timelines (replays) after 90 days. Results stay.
+create or replace function public.cleanup_rooms()
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_count integer;
+begin
+  delete from public.rooms where kind = 'private' and last_activity_at < now() - interval '24 hours';
+  get diagnostics v_count = row_count;
+  delete from public.race_timelines t using public.races r
+    where r.id = t.race_id and r.started_at < now() - interval '90 days';
+  return v_count;
+end;
+$$;
+
+-- Everything /stats shows, in one call. Null unless the caller is in the office (member or host).
+-- The race being run is left out until its podium, so nothing here spoils it.
+create function public.office_stats()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
+declare
+  v_room public.rooms;
+begin
+  select * into v_room from public.rooms where kind = 'office';
+  if not found or not private.is_room_member(v_room.id) then
+    return null;
+  end if;
+  return (
+    with
+    fin as (
+      select r.* from public.races r
+      where r.room_id = v_room.id and r.finish_order is not null
+        and (r.id is distinct from v_room.race_id or v_room.phase = 'PODIUM')
+    ),
+    runs as (
+      select f.id as race_id, f.started_at, h.horse, h.pos::int as pos
+      from fin f cross join lateral unnest(f.finish_order) with ordinality as h(horse, pos)
+    ),
+    members as (
+      select p.id, p.name, p.horse_name, p.coat, p.silk
+      from public.room_players p where p.room_id = v_room.id and p.archived_at is null
+    ),
+    race_net as (
+      select l.player_id, l.race_id, sum(l.amount)::int as net
+      from public.coin_ledger l join fin f on f.id = l.race_id
+      where l.type in ('purchase', 'bet', 'unbet', 'payout')
+      group by l.player_id, l.race_id
+    )
+    select jsonb_build_object(
+      'members', coalesce((select jsonb_agg(to_jsonb(m) order by lower(m.name)) from members m), '[]'::jsonb),
+      'richest', coalesce((
+        select jsonb_agg(jsonb_build_object('id', x.id, 'value', x.balance) order by x.balance desc)
+        -- Balances without the payouts of a race still hidden from `fin`.
+        from (select m.id, (private.balance(null, m.id) - coalesce((
+                select sum(l.amount) from public.coin_ledger l
+                where l.player_id = m.id and l.type = 'payout' and l.race_id = v_room.race_id
+                  and v_room.phase <> 'PODIUM'), 0))::int as balance
+              from members m order by 2 desc limit 10) x), '[]'::jsonb),
+      'biggest_payout', coalesce((
+        select jsonb_agg(jsonb_build_object('id', x.player_id, 'value', x.payout, 'at', x.started_at)
+                         order by x.payout desc)
+        from (select b.player_id, b.payout, f.started_at
+              from public.bets b join fin f on f.id = b.race_id join members m on m.id = b.player_id
+              where b.payout > 0 order by b.payout desc limit 5) x), '[]'::jsonb),
+      'biggest_loss', coalesce((
+        select jsonb_agg(jsonb_build_object('id', x.player_id, 'value', -x.net, 'at', x.started_at)
+                         order by x.net)
+        from (select n.player_id, n.net, f.started_at
+              from race_net n join fin f on f.id = n.race_id join members m on m.id = n.player_id
+              where n.net < 0 order by n.net limit 5) x), '[]'::jsonb),
+      'best_profit', coalesce((
+        select jsonb_agg(jsonb_build_object('id', x.player_id, 'value', x.profit) order by x.profit desc)
+        from (select b.player_id, sum(b.payout - b.stake)::int as profit
+              from public.bets b join fin f on f.id = b.race_id join members m on m.id = b.player_id
+              group by b.player_id having sum(b.payout - b.stake) > 0
+              order by 2 desc limit 5) x), '[]'::jsonb),
+      'horses', coalesce((
+        select jsonb_agg(jsonb_build_object(
+                 'id', m.id, 'races', s.races, 'wins', s.wins, 'places', s.places, 'last5', s.last5)
+               order by s.wins desc, s.races desc)
+        from members m
+        cross join lateral (
+          select count(*)::int as races,
+                 count(*) filter (where r.pos = 1)::int as wins,
+                 count(*) filter (where r.pos <= 3)::int as places,
+                 coalesce((select jsonb_agg(l.pos order by l.started_at desc)
+                           from (select pos, started_at from runs r2 where r2.horse = m.id
+                                 order by started_at desc limit 5) l), '[]'::jsonb) as last5
+          from runs r where r.horse = m.id) s
+        where s.races > 0), '[]'::jsonb),
+      'badges', coalesce((
+        select jsonb_agg(jsonb_build_object('id', b.player_id, 'badge', b.badge, 'at', b.created_at)
+                         order by b.created_at desc)
+        from public.badges b join members m on m.id = b.player_id
+        where b.race_id is null or b.race_id in (select id from fin)), '[]'::jsonb),
+      'recent', coalesce((
+        select jsonb_agg(jsonb_build_object(
+                 'race', x.id, 'at', x.started_at, 'prize', x.prize, 'length', x.length,
+                 'podium', to_jsonb(x.finish_order[1:3]), 'replay', x.replay)
+               order by x.started_at desc)
+        from (select f.*, exists (select 1 from public.race_timelines t where t.race_id = f.id) as replay
+              from fin f order by f.started_at desc limit 15) x), '[]'::jsonb)
+    )
+  );
+end;
+$$;
+revoke execute on function public.office_stats() from public, anon;
+grant execute on function public.office_stats() to authenticated;

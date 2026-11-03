@@ -110,3 +110,101 @@ describe('badges at Start', () => {
     );
   });
 });
+
+type Stats = {
+  members: { id: string; name: string }[];
+  richest: { id: string; value: number }[];
+  biggest_payout: { id: string; value: number }[];
+  biggest_loss: { id: string; value: number }[];
+  best_profit: { id: string; value: number }[];
+  horses: { id: string; races: number; wins: number; places: number; last5: number[] }[];
+  badges: { id: string; badge: string }[];
+  recent: { race: string; podium: string[]; replay: boolean }[];
+};
+
+describe('office_stats', () => {
+  it('is null for non-members and the full picture for members', async () => {
+    const r = await officeRoom();
+    // Leaderboards are office-wide top 5s: clear earlier races (and their bets and coins) so reruns pass.
+    await ok(r.admin.from('races').delete().eq('room_id', r.room.id));
+    const a = await member('A');
+    const b = await member('B');
+    const fan = await member('F');
+    const box = (kind: string) => ok(b.client.rpc('buy_box', { p_room: r.room.id, p_box: kind }));
+    await officeRace(r, [a, b], [a.player.id, b.player.id], {
+      // B spends 60 + 35 + 20 = 115 and wins nothing: the biggest loss in one race.
+      shop: async () => {
+        await box('speed');
+        await box('defense');
+        await box('attack');
+      },
+      betting: () =>
+        ok(
+          fan.client.rpc('place_bet', {
+            p_room: r.room.id,
+            p_horse: a.player.id,
+            p_kind: 'win',
+            p_stake: 30,
+          }),
+        ),
+    });
+    await officeRace(r, [a, b], [b.player.id, a.player.id]);
+
+    const stranger = await anonClient();
+    expect(await ok(stranger.rpc('office_stats'))).toBeNull();
+
+    const s = (await ok(fan.client.rpc('office_stats'))) as Stats;
+    expect(s.members.map((m) => m.id)).toEqual(
+      expect.arrayContaining([a.player.id, b.player.id, fan.player.id]),
+    );
+    expect(s.horses.find((h) => h.id === a.player.id)).toEqual({
+      id: a.player.id,
+      races: 2,
+      wins: 1,
+      places: 2,
+      last5: [2, 1],
+    });
+    expect(s.biggest_payout).toContainEqual(
+      expect.objectContaining({ id: fan.player.id, value: 60 }),
+    );
+    expect(s.best_profit).toContainEqual(expect.objectContaining({ id: fan.player.id, value: 30 }));
+    expect(s.biggest_loss).toContainEqual(expect.objectContaining({ id: b.player.id, value: 115 }));
+    expect(s.badges).toContainEqual(
+      expect.objectContaining({ id: a.player.id, badge: 'first_win' }),
+    );
+    expect(s.recent[0]).toMatchObject({ podium: [b.player.id, a.player.id], replay: true });
+  });
+
+  it('hides the race being run until its podium', async () => {
+    const r = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    await officeRace(r, [a, b], [a.player.id, b.player.id], { stopAt: 'RUNNING' });
+    const running = (await ok(a.client.rpc('office_stats'))) as Stats;
+    expect(running.horses.find((h) => h.id === a.player.id)).toBeUndefined();
+    expect(running.badges.filter((x) => x.id === a.player.id)).toEqual([]);
+    await new Promise((res) => setTimeout(res, 50));
+    await ok(r.host.rpc('finish_race', { p_room: r.room.id }));
+    const podium = (await ok(a.client.rpc('office_stats'))) as Stats;
+    expect(podium.horses.find((h) => h.id === a.player.id)?.wins).toBe(1);
+  });
+
+  it('cleanup keeps results forever but timelines only 90 days', async () => {
+    const r = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    const race = await officeRace(r, [a, b], [a.player.id, b.player.id]);
+    const admin = adminClient();
+    await ok(
+      admin
+        .from('races')
+        .update({ started_at: new Date(Date.now() - 91 * 864e5).toISOString() })
+        .eq('id', race),
+    );
+    await ok(admin.rpc('cleanup_rooms'));
+    expect(await ok(admin.from('race_timelines').select('race_id').eq('race_id', race))).toEqual(
+      [],
+    );
+    expect(await ok(admin.from('races').select('id').eq('id', race))).toHaveLength(1);
+  });
+});

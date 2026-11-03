@@ -1,0 +1,36 @@
+import type { BoxKind } from '../sim/types.ts';
+
+const COATS = ['#8b4a2b', '#b5651d', '#2b2b2b', '#9e9e9e', '#d8b26e', '#efe8dc'];
+const MANES = ['#2b1a10', '#6e3510', '#111111', '#e0e0e0', '#f3e2b0', '#b9b0a0'];
+const SILKS = [
+  '#e53935',
+  '#1e88e5',
+  '#fdd835',
+  '#43a047',
+  '#8e24aa',
+  '#fb8c00',
+  '#00acc1',
+  '#d81b60',
+  '#ffffff',
+  '#3949ab',
+  '#7cb342',
+];
+
+export interface HorseColors {
+  readonly coat: string;
+  readonly mane: string;
+  readonly silk: string;
+}
+
+/** 6 coats × 11 silks (coprime), so the first 66 lanes all differ. */
+export function colorsOf(lane: number): HorseColors {
+  const c = lane % COATS.length;
+  return { coat: COATS[c]!, mane: MANES[c]!, silk: SILKS[lane % SILKS.length]! };
+}
+
+export const BOX_COLOR: Readonly<Record<BoxKind, string>> = {
+  mystery: '#ffd54f',
+  speed: '#29b6f6',
+  defense: '#66bb6a',
+  attack: '#ef5350',
+};

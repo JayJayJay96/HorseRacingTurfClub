@@ -2,7 +2,7 @@ import { execSync } from 'node:child_process';
 import { createClient, FunctionsHttpError, type SupabaseClient } from '@supabase/supabase-js';
 
 /** Reads URL and keys of the running local stack (`npx supabase start`). */
-function localEnv(): Record<string, string> {
+export function localEnv(): Record<string, string> {
   const out = execSync('npx supabase status -o env', { encoding: 'utf8' });
   const env: Record<string, string> = {};
   for (const line of out.split(/\r?\n/)) {
@@ -17,7 +17,9 @@ const URL = env.API_URL;
 const ANON_KEY = env.ANON_KEY;
 const SERVICE_KEY = env.SERVICE_ROLE_KEY;
 if (!URL || !ANON_KEY || !SERVICE_KEY) {
-  throw new Error(`Is the local stack running? supabase status gave: ${Object.keys(env).join(', ')}`);
+  throw new Error(
+    `Is the local stack running? supabase status gave: ${Object.keys(env).join(', ')}`,
+  );
 }
 
 const opts = { auth: { persistSession: false, autoRefreshToken: false } };
@@ -53,7 +55,11 @@ export async function fails(call: Res<unknown>): Promise<string> {
 }
 
 /** Calls an Edge Function; returns its JSON or throws its `{ error }` code (same contract as RPCs). */
-export async function invoke<T = unknown>(client: SupabaseClient, name: string, body: Record<string, unknown>): Promise<T> {
+export async function invoke<T = unknown>(
+  client: SupabaseClient,
+  name: string,
+  body: Record<string, unknown>,
+): Promise<T> {
   const { data, error } = await client.functions.invoke(name, { body });
   if (!error) return data as T;
   if (error instanceof FunctionsHttpError) {
@@ -63,7 +69,11 @@ export async function invoke<T = unknown>(client: SupabaseClient, name: string, 
   throw error;
 }
 
-export async function failsInvoke(client: SupabaseClient, name: string, body: Record<string, unknown>): Promise<string> {
+export async function failsInvoke(
+  client: SupabaseClient,
+  name: string,
+  body: Record<string, unknown>,
+): Promise<string> {
   try {
     await invoke(client, name, body);
   } catch (e) {

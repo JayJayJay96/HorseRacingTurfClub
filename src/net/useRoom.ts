@@ -14,16 +14,21 @@ export function useRoom(code: string, presenceKey?: string) {
   const [online, setOnline] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const loaded = useRef(false);
+  const latest = useRef(0);
 
   const refresh = useCallback(async () => {
+    // Refetches can overlap (subscribe, events, after an action); only the newest one may apply.
+    const seq = ++latest.current;
     try {
       const next = await fetchRoom(code);
+      if (seq !== latest.current) return;
       if (next) {
         loaded.current = true;
         setState(next);
         setError(null);
       } else setError(errorText('room_not_found'));
     } catch (e) {
+      if (seq !== latest.current) return;
       // After the first load a failed refetch (network blip, phone asleep) keeps the last state;
       // the next change event or resubscribe retries.
       if (!loaded.current) setError(errorText(e));

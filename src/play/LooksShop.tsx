@@ -15,11 +15,12 @@ export function LooksShop({ roomId, mine, balance, act, busy }: Props) {
 
   const buy = (c: Cosmetic) => {
     setConfirming(null);
-    act(() =>
-      buyCosmetic(roomId, c.code)
-        .then(() => fetchOwnedCosmetics(mine.id))
-        .then(setOwned),
-    );
+    act(async () => {
+      await buyCosmetic(roomId, c.code);
+      // The buy went through; a failed refetch of the owned list must not report it as failed.
+      setOwned((prev) => [...prev, c.code]);
+      fetchOwnedCosmetics(mine.id).then(setOwned, () => {});
+    });
   };
 
   return (

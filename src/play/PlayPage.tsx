@@ -251,8 +251,9 @@ function MyRecord({ stats, id }: { stats: OfficeStats | null; id: string }) {
       {badges.length > 0 && (
         <ul className="badges">
           {badges.map((b) => (
-            <li key={b.badge} title={BADGES[b.badge].description}>
+            <li key={b.badge}>
               {BADGES[b.badge].icon} {BADGES[b.badge].name}
+              <small> · {BADGES[b.badge].description}</small>
             </li>
           ))}
         </ul>

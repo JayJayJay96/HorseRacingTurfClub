@@ -16,7 +16,7 @@ export function StatsPage() {
     void ensureSignedIn().finally(() => setSignedIn(true));
   }, []);
   const { stats, error, loaded } = useOfficeStats(signedIn, signedIn);
-  const [replay, setReplay] = useState<{ race: string; gun: number } | null>(null);
+  const [replay, setReplay] = useState<{ race: string; n: number } | null>(null);
 
   if (!loaded) return <main>Loading…</main>;
   if (error) {
@@ -42,12 +42,9 @@ export function StatsPage() {
     <main className="stats">
       <h1>Office stats</h1>
       {replay ? (
-        <Replay stats={stats} race={replay.race} gun={replay.gun} onClose={() => setReplay(null)} />
+        <Replay key={replay.n} stats={stats} race={replay.race} onClose={() => setReplay(null)} />
       ) : (
-        <Overview
-          stats={stats}
-          onReplay={(race) => setReplay({ race, gun: Date.now() + COUNTDOWN_SECONDS * 1000 })}
-        />
+        <Overview stats={stats} onReplay={(race) => setReplay({ race, n: Date.now() })} />
       )}
     </main>
   );
@@ -123,8 +120,9 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
       ) : (
         <ul className="badges">
           {stats.badges.map((b) => (
-            <li key={`${b.id}-${b.badge}`} title={BADGES[b.badge].description}>
+            <li key={`${b.id}-${b.badge}`}>
               {BADGES[b.badge].icon} {BADGES[b.badge].name} · {who(b.id)}
+              <small> · {BADGES[b.badge].description}</small>
             </li>
           ))}
         </ul>
@@ -152,9 +150,11 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
   );
 }
 
-function Replay(props: { stats: OfficeStats; race: string; gun: number; onClose: () => void }) {
-  const { stats, race, gun, onClose } = props;
+function Replay(props: { stats: OfficeStats; race: string; onClose: () => void }) {
+  const { stats, race, onClose } = props;
   const { timeline, error } = useTimeline(race);
+  // The countdown starts once the timeline has loaded, so a slow fetch can't skip the start.
+  const gun = useMemo(() => (timeline ? Date.now() + COUNTDOWN_SECONDS * 1000 : 0), [timeline]);
   const names = useMemo(
     () => Object.fromEntries(stats.members.map((m) => [m.id, horseName(m)])),
     [stats.members],

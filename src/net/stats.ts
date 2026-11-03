@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BadgeCode } from '../history/badges.ts';
 import { errorText } from './rooms.ts';
 import { supabase } from './supabase.ts';
@@ -48,14 +48,19 @@ export function useOfficeStats(key: unknown = 0, enabled = true) {
   const [stats, setStats] = useState<OfficeStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const latest = useRef(0);
   const load = useCallback(() => {
+    // Only the newest request may update state (phase changes can overlap).
+    const ticket = ++latest.current;
     fetchOfficeStats().then(
       (s) => {
+        if (ticket !== latest.current) return;
         setStats(s);
         setError(null);
         setLoaded(true);
       },
       (e: unknown) => {
+        if (ticket !== latest.current) return;
         setError(errorText(e));
         setLoaded(true);
       },

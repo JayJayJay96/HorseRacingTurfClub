@@ -6,12 +6,14 @@ import {
   boxesOf,
   canPlace,
   formatOdds,
+  horseName,
+  horseNameOf,
   nameOf,
   oddsOf,
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
-import { canOpenShop, joinUrl } from '../lobby/lobby.ts';
+import { canOpenShop, joinUrl, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
   addPlayer,
   errorText,
@@ -34,6 +36,7 @@ import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
 import { JoinQr } from './JoinQr.tsx';
+import { OfficeHostLogin } from './OfficeHostLogin.tsx';
 
 type Act = (fn: () => Promise<unknown>) => void;
 type BoardProps = RoomState & { online: ReadonlySet<string>; act: Act; busy: boolean };
@@ -47,6 +50,8 @@ export function TrackPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Not the host (or the screen was taken over elsewhere): the office unlocks with the admin password.
+  if (error && code === OFFICE_CODE) return <OfficeHostLogin />;
   if (error) {
     return (
       <main className="track">
@@ -78,7 +83,8 @@ export function TrackPage() {
   );
 }
 
-function LobbyBoard({ room, players, online, act }: BoardProps) {
+function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
+  const office = room.kind === 'office';
   const [name, setName] = useState('');
   const [prize, setPrize] = useState(room.prize);
   const length = room.race_length as RaceLength;
@@ -139,29 +145,38 @@ function LobbyBoard({ room, players, online, act }: BoardProps) {
                 />{' '}
                 {p.name}
               </label>
+              {office && <span>💰 {balances[p.id] ?? 0}</span>}
               {p.uid && <span>{online.has(p.id) ? '📱 online' : '📴 offline'}</span>}
-              <button
-                type="button"
-                aria-label={`Remove ${p.name}`}
-                onClick={() => act(() => removePlayer(p.id))}
-              >
-                ✕
-              </button>
+              {!office && (
+                <button
+                  type="button"
+                  aria-label={`Remove ${p.name}`}
+                  onClick={() => act(() => removePlayer(p.id))}
+                >
+                  ✕
+                </button>
+              )}
             </li>
           ))}
         </ul>
-        <form onSubmit={add}>
-          <input
-            aria-label="Name"
-            placeholder="Add a name (no phone)"
-            value={name}
-            maxLength={24}
-            onChange={(e) => setName(e.target.value)}
-          />{' '}
-          <button type="submit" disabled={!name.trim()}>
-            Add
-          </button>
-        </form>
+        {office ? (
+          <p>
+            People, PINs and coins are managed at <a href="/admin">/admin</a>.
+          </p>
+        ) : (
+          <form onSubmit={add}>
+            <input
+              aria-label="Name"
+              placeholder="Add a name (no phone)"
+              value={name}
+              maxLength={24}
+              onChange={(e) => setName(e.target.value)}
+            />{' '}
+            <button type="submit" disabled={!name.trim()}>
+              Add
+            </button>
+          </form>
+        )}
         <p>
           <button
             type="button"
@@ -205,7 +220,7 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
           .filter((p) => p.ticked)
           .map((p) => (
             <li key={p.id}>
-              🐎 {p.name} {boxIcons(purchases, p.id)}
+              🐎 {horseName(p)} {boxIcons(purchases, p.id)}
               {p.uid && !online.has(p.id) && ' (offline)'}
             </li>
           ))}
@@ -258,7 +273,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
         <tbody>
           {horses.map((id) => (
             <tr key={id}>
-              <td>{nameOf(players, id)}</td>
+              <td>{horseNameOf(players, id)}</td>
               <td>{boxIcons(purchases, id)}</td>
               <td>{formatOdds(odds[id]?.win)}</td>
               {canPlace(horses) && <td>{formatOdds(odds[id]?.place)}</td>}
@@ -286,7 +301,11 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
 function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   const left = useSecondsLeft(race?.ends_at ?? null);
   const { timeline, error } = useTimeline(race?.id ?? null);
-  const names = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p.name])), [players]);
+  const names = useMemo(
+    () => Object.fromEntries(players.map((p) => [p.id, horseName(p)])),
+    [players],
+  );
+  const colors = useMemo(() => colorsByPlayer(players), [players]);
   const asked = useRef(false);
   const retry = useRef(0);
   useEffect(() => () => clearTimeout(retry.current), []);
@@ -306,7 +325,12 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   return (
     <section>
       {timeline && race?.started_at ? (
-        <RaceView timeline={timeline} startAtMs={gunMs(race.started_at)} names={names} />
+        <RaceView
+          timeline={timeline}
+          startAtMs={gunMs(race.started_at)}
+          names={names}
+          colors={colors}
+        />
       ) : (
         <p>{error ?? 'Loading the race…'}</p>
       )}
@@ -333,21 +357,21 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
         {top3.map((id) => (
           <li key={id}>
             <Silk color={colorsByPlayer(players)(id, (race?.horses ?? []).indexOf(id)).silk} />{' '}
-            {nameOf(players, id)}
+            {horseNameOf(players, id)}
             {timeline && ` · ${timeline.finishTimes[id]?.toFixed(2)} s`}
           </li>
         ))}
       </ol>
       {race?.prize && top3.length > 0 && (
         <p>
-          🏆 {nameOf(players, top3[0])}: {race.prize}
+          🏆 {horseNameOf(players, top3[0])}: {race.prize}
         </p>
       )}
       <h2>Payouts</h2>
       {best && (
         <p>
           🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
-          {nameOf(players, best.horse_id)}
+          {horseNameOf(players, best.horse_id)}
         </p>
       )}
       {winners.length === 0 ? (
@@ -356,7 +380,7 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
         <ul>
           {winners.map((b) => (
             <li key={b.id}>
-              {nameOf(players, b.player_id)} won {b.payout} on {nameOf(players, b.horse_id)} (
+              {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)} (
               {b.kind})
             </li>
           ))}

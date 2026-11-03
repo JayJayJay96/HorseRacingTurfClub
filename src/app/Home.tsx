@@ -62,7 +62,7 @@ export function Home() {
           </a>
         </p>
         <p>
-          <a href="/admin">Admin</a>
+          <a href="/stats">Stats</a> · <a href="/admin">Admin</a>
         </p>
       </section>
       {error && <p role="alert">{error}</p>}

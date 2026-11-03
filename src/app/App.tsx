@@ -1,4 +1,5 @@
 import { AdminPage } from '../admin/AdminPage.tsx';
+import { StatsPage } from '../history/StatsPage.tsx';
 import { PlayPage } from '../play/PlayPage.tsx';
 import { TrackPage } from '../track/TrackPage.tsx';
 import { Home } from './Home.tsx';
@@ -13,6 +14,8 @@ export function App() {
       return <PlayPage />;
     case '/admin':
       return <AdminPage />;
+    case '/stats':
+      return <StatsPage />;
     case '/sandbox':
       return <Sandbox />;
     default:

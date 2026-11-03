@@ -42,7 +42,8 @@ export function createSoundEngine(): SoundEngine {
   let noise: AudioBuffer | null = null;
   let desiredTheme: MusicTheme | null = null;
   let sequencer: { theme: MusicTheme; stop: () => void } | null = null;
-  let queued = 0;
+  // Utterances not yet ended; holding them also stops Chrome/Safari GC-ing them before onend.
+  const live = new Set<SpeechSynthesisUtterance>();
 
   const running = (): AudioContext | null => (ctx && ctx.state === 'running' ? ctx : null);
   const musicLevel = () => (settings && !settings.muted ? settings.music : 0);
@@ -53,7 +54,11 @@ export function createSoundEngine(): SoundEngine {
   function ensureGraph(c: AudioContext) {
     if (master) return;
     master = c.createGain();
-    master.connect(c.destination);
+    // Compressor as a limiter so stacked effects + music don't clip.
+    const limiter = c.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.ratio.value = 20;
+    master.connect(limiter).connect(c.destination);
     musicBus = c.createGain();
     musicBus.connect(master);
     sfxBus = c.createGain();
@@ -137,8 +142,16 @@ export function createSoundEngine(): SoundEngine {
     let next = c.currentTime + 0.05;
     let index = 0;
     const timer = setInterval(() => {
+      // Background tabs throttle timers; skip the missed steps instead of playing them as a burst.
+      if (next < c.currentTime - 0.1) next = c.currentTime + 0.05;
       while (next < c.currentTime + LOOKAHEAD_S) {
         const i = index % STEPS_PER_LOOP;
+        // Muted: keep the clock moving but create no nodes.
+        if (musicLevel() <= 0) {
+          next += step;
+          index++;
+          continue;
+        }
         const lead = t.lead[i];
         const bass = t.bass[i];
         const hit = t.drums[i];
@@ -227,22 +240,25 @@ export function createSoundEngine(): SoundEngine {
     const synth = globalThis.speechSynthesis;
     const level = voiceLevel();
     if (!synth || !settings?.commentator || level <= 0) return;
-    if (queued >= 2) {
+    if (live.size >= 2) {
+      live.clear(); // before cancel(): cancel fires onerror/onend on the dropped utterances
       synth.cancel();
-      queued = 0;
     }
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'en-US';
     u.rate = 1.15;
     u.volume = level;
-    const voice = synth.getVoices().find((v) => v.lang.startsWith('en'));
+    const voices = synth.getVoices();
+    const voice =
+      voices.find((v) => v.lang === 'en-US' || v.lang === 'en_US') ??
+      voices.find((v) => v.lang.startsWith('en'));
     if (voice) u.voice = voice;
     const done = () => {
-      queued = Math.max(0, queued - 1);
+      live.delete(u);
     };
     u.onend = done;
     u.onerror = done;
-    queued++;
+    live.add(u);
     synth.speak(u);
   }
 
@@ -253,34 +269,39 @@ export function createSoundEngine(): SoundEngine {
         ctx = new Ctor();
         ensureGraph(ctx);
       }
-      if (ctx.state === 'suspended') {
-        void ctx
-          .resume()
-          .then(syncMusic)
-          .catch(() => undefined);
-      } else {
+      const c = ctx;
+      if (c.state === 'running') {
+        removeGesture();
         syncMusic();
+      } else {
+        // Keep listening until the context really runs: some gestures (e.g. iOS pointerdown) don't count.
+        void c
+          .resume()
+          .then(() => {
+            if (c.state === 'running') removeGesture();
+            syncMusic();
+          })
+          .catch(() => undefined);
       }
     } catch {
+      // Drop the half-built graph too, so a retry rebuilds it on the new context.
       ctx = null;
+      master = null;
+      musicBus = null;
+      sfxBus = null;
     }
   }
 
-  // The first gesture anywhere on the page unlocks audio (browser autoplay rules).
+  // Gestures anywhere on the page unlock audio (browser autoplay rules); touch browsers only honour
+  // some event types, so listen to several until the context is running.
   const hasDocument = !!Ctor && typeof document !== 'undefined';
-  const onGesture = () => {
-    unlock();
-    removeGesture();
-  };
+  const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+  const onGesture = () => unlock();
   function removeGesture() {
     if (!hasDocument) return;
-    document.removeEventListener('pointerdown', onGesture);
-    document.removeEventListener('keydown', onGesture);
+    for (const g of GESTURES) document.removeEventListener(g, onGesture);
   }
-  if (hasDocument) {
-    document.addEventListener('pointerdown', onGesture);
-    document.addEventListener('keydown', onGesture);
-  }
+  if (hasDocument) for (const g of GESTURES) document.addEventListener(g, onGesture);
 
   return {
     webAudio: !!Ctor,

@@ -44,3 +44,11 @@ export function raceCues(timeline: Timeline, from: number, to: number): SfxName[
   }
   return out;
 }
+
+const PRIORITY: readonly SfxName[] = ['go', 'bell', 'count'];
+
+/** At most `max` cues, race-structure cues (go/bell/count) first so a pile-up can't drop them. */
+export function prioritise(cues: readonly SfxName[], max: number): SfxName[] {
+  const key = (c: SfxName) => (PRIORITY.includes(c) ? PRIORITY.indexOf(c) : PRIORITY.length);
+  return [...cues].sort((a, b) => key(a) - key(b)).slice(0, max);
+}

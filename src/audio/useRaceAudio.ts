@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { createCommentator } from './commentator.ts';
-import { raceCues, type SfxName } from './raceCues.ts';
+import { prioritise, raceCues, type SfxName } from './raceCues.ts';
 import { soundEngine } from './sound.ts';
 
 const TICK_MS = 100;
@@ -30,6 +30,7 @@ export function useRaceAudio(
     if (!timeline) return;
     const clock = () => (Date.now() - startAtMs) / 1000;
     let last = clock();
+    const lastFinish = Math.max(...Object.values(timeline.finishTimes));
     const com = commentary
       ? createCommentator(timeline, (h) => optsRef.current.names?.[h] ?? '?', last)
       : null;
@@ -37,13 +38,12 @@ export function useRaceAudio(
       const t = clock();
       const engine = soundEngine();
       const keep = optsRef.current.cues;
-      for (const c of raceCues(timeline, last, t)
-        .filter((x) => !keep || keep(x))
-        .slice(0, MAX_CUES)) {
-        engine.sfx(c);
-      }
+      const cues = raceCues(timeline, last, t).filter((x) => !keep || keep(x));
+      for (const c of prioritise(cues, MAX_CUES)) engine.sfx(c);
       for (const line of com?.linesUpTo(t) ?? []) engine.say(line);
       last = t;
+      // Nothing left to play once the race is well over.
+      if (t > lastFinish + 5) clearInterval(timer);
     }, TICK_MS);
     return () => clearInterval(timer);
   }, [timeline, startAtMs, commentary]);

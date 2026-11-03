@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fakeTimeline } from '../sim/testTimeline.ts';
 import type { RaceEvent } from '../sim/types.ts';
-import { raceCues } from './raceCues.ts';
+import { prioritise, raceCues } from './raceCues.ts';
 
 const events: RaceEvent[] = [
   { t: 1, type: 'pickup', horse: 'a', kind: 'speed', item: 'speed:self1' },
@@ -34,5 +34,18 @@ describe('raceCues', () => {
       item: 'attack:all',
     }));
     expect(raceCues(fakeTimeline({ a: 10, b: 5 }, 100, many), 0, 2)).toEqual(['hit']);
+  });
+});
+
+describe('prioritise', () => {
+  it('keeps go/bell/count ahead of earlier hits', () => {
+    expect(prioritise(['hit', 'speed', 'attack', 'count', 'bell', 'go'], 3)).toEqual([
+      'go',
+      'bell',
+      'count',
+    ]);
+  });
+  it('keeps the order of the rest', () => {
+    expect(prioritise(['hit', 'speed', 'go', 'attack'], 3)).toEqual(['go', 'hit', 'speed']);
   });
 });

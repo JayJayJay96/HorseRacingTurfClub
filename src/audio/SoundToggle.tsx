@@ -28,10 +28,11 @@ export function SoundToggle({ settings, update, full = false }: Props) {
     <div className="sound">
       <button
         type="button"
+        aria-label="Sound"
         aria-pressed={!settings.muted}
         onClick={() => update({ muted: !settings.muted })}
       >
-        {settings.muted ? '🔇 Sound off' : '🔊 Sound on'}
+        {settings.muted ? '🔇 Sound' : '🔊 Sound'}
       </button>
       {full && (
         <>

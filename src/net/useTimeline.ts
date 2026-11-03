@@ -7,7 +7,8 @@ const RETRY_MS = 2000;
 /** Loads a race's Timeline once (pass null to skip). Retries while it fails or isn't written yet. */
 export function useTimeline(raceId: string | null) {
   const [loaded, setLoaded] = useState<{ raceId: string; timeline: Timeline } | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Tagged with its race, so a new race (or a later success) never shows an old error.
+  const [error, setError] = useState<{ raceId: string; text: string } | null>(null);
   useEffect(() => {
     if (!raceId) return;
     let live = true;
@@ -21,7 +22,7 @@ export function useTimeline(raceId: string | null) {
         },
         (e: unknown) => {
           if (!live) return;
-          setError(errorText(e));
+          setError({ raceId, text: errorText(e) });
           timer = window.setTimeout(load, RETRY_MS);
         },
       );
@@ -32,5 +33,5 @@ export function useTimeline(raceId: string | null) {
     };
   }, [raceId]);
   const timeline = loaded?.raceId === raceId ? loaded.timeline : null;
-  return { timeline, error: timeline ? null : error };
+  return { timeline, error: !timeline && error?.raceId === raceId ? error.text : null };
 }

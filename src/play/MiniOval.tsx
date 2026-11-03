@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { colorsOf } from '../render/palette.ts';
 import { TRACK, finishS, horsePoint, trackBounds, trackPoint } from '../render/track.ts';
 import { progressAt } from '../sim/playback.ts';
@@ -10,11 +11,13 @@ export function MiniOval({ timeline, t, mine }: { timeline: Timeline; t: number;
   const lanes = timeline.horses.length;
   const width = lanes * TRACK.laneWidth;
   const { halfWidth, halfHeight } = trackBounds(TRACK, lanes);
-  const path = Array.from({ length: 121 }, (_, i) =>
-    trackPoint(TRACK, (i / 120) * TRACK.lap, width / 2),
-  )
-    .map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-    .join(' ');
+  const path = useMemo(
+    () =>
+      Array.from({ length: 121 }, (_, i) => trackPoint(TRACK, (i / 120) * TRACK.lap, width / 2))
+        .map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
+        .join(' '),
+    [width],
+  );
   const f0 = trackPoint(TRACK, finishS(TRACK), 0);
   const f1 = trackPoint(TRACK, finishS(TRACK), width);
   const dots = timeline.horses

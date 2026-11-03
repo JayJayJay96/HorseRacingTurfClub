@@ -320,7 +320,7 @@ function RunningPanel({ players, race, bets, mine }: PanelProps) {
         <ul>
           {myBets.map((b) => {
             const place = order.indexOf(b.horse_id);
-            const winning = b.kind === 'win' ? place === 0 : place < 3;
+            const winning = place >= 0 && (b.kind === 'win' ? place === 0 : place < 3);
             return (
               <li key={b.id}>
                 {winning ? '✅' : '⏳'} {b.stake} on {nameOf(players, b.horse_id)} to {b.kind}:{' '}

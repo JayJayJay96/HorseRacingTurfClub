@@ -156,3 +156,19 @@ a.button.primary {
   border-radius: 999px;
   padding: 4px 10px;
 }
+
+.sound {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+.sound-panel {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 8px;
+  background: Canvas;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 6px;
+}

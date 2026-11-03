@@ -1,0 +1,50 @@
+import { useEffect, useRef } from 'react';
+import type { HorseId, Timeline } from '../sim/types.ts';
+import { createCommentator } from './commentator.ts';
+import { raceCues, type SfxName } from './raceCues.ts';
+import { soundEngine } from './sound.ts';
+
+const TICK_MS = 100;
+/** At most this many effects per tick, so a pile-up doesn't turn into noise. */
+const MAX_CUES = 3;
+
+/**
+ * Plays a race's sounds against its clock (gun at `startAtMs`). `cues` filters which effects play
+ * (phones only want count/go/bell); `commentary` adds spoken lines. Starting mid-race skips the past.
+ */
+export function useRaceAudio(
+  timeline: Timeline | null,
+  startAtMs: number,
+  opts: {
+    names?: Readonly<Record<HorseId, string>>;
+    commentary?: boolean;
+    cues?: (c: SfxName) => boolean;
+  },
+) {
+  const { commentary = false } = opts;
+  const optsRef = useRef(opts);
+  useEffect(() => {
+    optsRef.current = opts;
+  });
+  useEffect(() => {
+    if (!timeline) return;
+    const clock = () => (Date.now() - startAtMs) / 1000;
+    let last = clock();
+    const com = commentary
+      ? createCommentator(timeline, (h) => optsRef.current.names?.[h] ?? '?', last)
+      : null;
+    const timer = setInterval(() => {
+      const t = clock();
+      const engine = soundEngine();
+      const keep = optsRef.current.cues;
+      for (const c of raceCues(timeline, last, t)
+        .filter((x) => !keep || keep(x))
+        .slice(0, MAX_CUES)) {
+        engine.sfx(c);
+      }
+      for (const line of com?.linesUpTo(t) ?? []) engine.say(line);
+      last = t;
+    }, TICK_MS);
+    return () => clearInterval(timer);
+  }, [timeline, startAtMs, commentary]);
+}

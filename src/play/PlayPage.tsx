@@ -245,7 +245,8 @@ function MyRecord({ stats, id }: { stats: OfficeStats | null; id: string }) {
     <>
       {record && (
         <p>
-          Your record: {record.races} races · {record.wins} wins · form {formatForm(record.last5)}
+          Your record: {record.races} {record.races === 1 ? 'race' : 'races'} · {record.wins}{' '}
+          {record.wins === 1 ? 'win' : 'wins'} · form {formatForm(record.last5)}
         </p>
       )}
       {badges.length > 0 && (

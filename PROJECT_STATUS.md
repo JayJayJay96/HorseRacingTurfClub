@@ -217,4 +217,17 @@
   - Members can query `badges` directly during a race (like results; the UI and `office_stats` hide them until PODIUM).
 - Deploy order: `db push` (013), then `functions deploy start-race`, then push `master`. Races started between the first two steps get no event badges (SQL badges still work).
 
-Next: Phase 7 (Sound & commentator; cheers could join it).
+## Phase 7 — Sound, commentator & cheers (branch `phase7-sound`)
+
+- [x] Task 0: Branch
+- [ ] Task 1: Settings and chiptune themes
+- [ ] Task 2: Race cue names and sound engine
+- [ ] Task 3: Race cues
+- [ ] Task 4: Commentator
+- [ ] Task 5: Sound hooks and toggle
+- [ ] Task 6: Big screen audio
+- [ ] Task 7: Cheers
+- [ ] Task 8: Phone sounds
+- [ ] Task 9: Smoke test, docs, deploy
+
+Next: Phase 7 in progress.

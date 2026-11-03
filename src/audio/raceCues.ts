@@ -1,3 +1,6 @@
+import { eventsBetween } from '../sim/playback.ts';
+import type { RaceEvent, Timeline } from '../sim/types.ts';
+
 export type SfxName =
   | 'count'
   | 'go'
@@ -11,3 +14,33 @@ export type SfxName =
   | 'fizzle'
   | 'coin'
   | 'cheer';
+
+function cueOf(e: RaceEvent): SfxName | null {
+  switch (e.type) {
+    case 'pickup':
+      if (!e.item) return 'fizzle';
+      if (e.item.startsWith('speed:')) return 'speed';
+      if (e.item.startsWith('attack:')) return 'attack';
+      if (e.item.startsWith('defense:')) return 'shield';
+      return 'dud';
+    case 'hit':
+      return 'hit';
+    case 'blocked':
+    case 'reflected':
+      return 'shield';
+    case 'finish':
+      return e.place === 1 ? 'bell' : null;
+  }
+}
+
+/** Sounds for race time (from, to]: the 3-2-1 countdown, "go" at 0, then timeline events. */
+export function raceCues(timeline: Timeline, from: number, to: number): SfxName[] {
+  const out: SfxName[] = [];
+  for (const k of [3, 2, 1]) if (from < -k && -k <= to) out.push('count');
+  if (from < 0 && 0 <= to) out.push('go');
+  for (const e of eventsBetween(timeline, from, to)) {
+    const cue = cueOf(e);
+    if (cue && out.at(-1) !== cue) out.push(cue);
+  }
+  return out;
+}

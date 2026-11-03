@@ -59,6 +59,22 @@ describe('badges at Start', () => {
     expect(await badgesOf(outsider.player.id)).toEqual([]);
   });
 
+  it('malformed awards never block Start; valid entries still count', async () => {
+    const r = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    const bad = { photo_finish: ['not-a-uuid', a.player.id], sniper: 'oops' };
+    await officeRace(r, [a, b], [a.player.id, b.player.id], {
+      awards: bad as unknown as Record<string, string[]>,
+    });
+    expect(await badgesOf(a.player.id)).toEqual(['first_win', 'photo_finish']);
+    expect(await badgesOf(b.player.id)).toEqual([]);
+    await officeRace(r, [a, b], [b.player.id, a.player.id], {
+      awards: [] as unknown as Record<string, string[]>,
+    });
+    expect(await badgesOf(b.player.id)).toEqual(['first_win']);
+  });
+
   it('big spender: 3 boxes in 5 races', async () => {
     const r = await officeRoom();
     const a = await member('A');
@@ -126,6 +142,7 @@ describe('office_stats', () => {
   it('is null for non-members and the full picture for members', async () => {
     const r = await officeRoom();
     // Leaderboards are office-wide top 5s: clear earlier races (and their bets and coins) so reruns pass.
+    // This wipes office history in the LOCAL test database only; tests never run against hosted.
     await ok(r.admin.from('races').delete().eq('room_id', r.room.id));
     const a = await member('A');
     const b = await member('B');

@@ -69,11 +69,12 @@ begin
     -- Event badges computed from the timeline, only for horses in this race.
     insert into public.badges (room_id, player_id, badge, race_id)
     select v_room.id, h.horse::uuid, a.key, p_race
-    from jsonb_each(coalesce(p_awards, '{}'::jsonb)) a
+    -- Malformed awards are skipped, never cast: a deterministic error here would fail every Start retry.
+    from jsonb_each(case when jsonb_typeof(p_awards) = 'object' then p_awards else '{}'::jsonb end) a
     cross join lateral jsonb_array_elements_text(
       case when jsonb_typeof(a.value) = 'array' then a.value else '[]'::jsonb end) h(horse)
     where a.key in ('photo_finish', 'comeback', 'banana_king', 'untouchable', 'sniper')
-      and h.horse::uuid = any (v_race.horses)
+      and h.horse = any (v_race.horses::text[])
     on conflict do nothing;
     -- First win.
     insert into public.badges (room_id, player_id, badge, race_id)
@@ -84,7 +85,7 @@ begin
         from (select finish_order from public.races
               where room_id = v_room.id and id <> p_race and finish_order is not null
                 and p_finish[1] = any (horses)
-              order by started_at desc limit 2) o) then
+              order by started_at desc, id desc limit 2) o) then
       insert into public.badges (room_id, player_id, badge, race_id)
       values (v_room.id, p_finish[1], 'hat_trick', p_race)
       on conflict do nothing;

@@ -105,3 +105,12 @@ button.primary {
     grid-template-columns: 1fr;
   }
 }
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.swatches .silk {
+  width: 1.4em;
+  height: 1.4em;
+}

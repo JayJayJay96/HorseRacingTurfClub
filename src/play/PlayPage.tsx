@@ -6,7 +6,7 @@ import {
   boxesOf,
   canPlace,
   formatOdds,
-  nameOf,
+  horseNameOf,
   oddsOf,
   ordinal,
 } from '../betting/betting.ts';
@@ -16,6 +16,7 @@ import {
   cancelBet,
   errorText,
   joinRoom,
+  officeLogout,
   placeBet,
   setReady,
   type BetKind,
@@ -25,10 +26,13 @@ import {
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
+import { colorsByPlayer } from '../render/palette.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
 import { gunMs, standingsAt } from '../sim/playback.ts';
+import { HorsePanel } from './HorsePanel.tsx';
 import { MiniOval } from './MiniOval.tsx';
+import { OfficeLogin } from './OfficeLogin.tsx';
 
 /** Phone: join the room, then follow its phase. */
 export function PlayPage() {
@@ -37,6 +41,7 @@ export function PlayPage() {
   const [checking, setChecking] = useState(true);
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [office, setOffice] = useState(false);
 
   useEffect(() => {
     if (!code) return;
@@ -44,7 +49,8 @@ export function PlayPage() {
     ensureSignedIn()
       .then(() => joinRoom(code, ''))
       .then(setMe, (e: unknown) => {
-        if (!(e instanceof Error && e.message === 'bad_name')) setError(errorText(e));
+        if (e instanceof Error && e.message === 'office_room') setOffice(true);
+        else if (!(e instanceof Error && e.message === 'bad_name')) setError(errorText(e));
       })
       .finally(() => setChecking(false));
   }, [code]);
@@ -59,6 +65,7 @@ export function PlayPage() {
   }
   if (checking) return <main className="play">Loading…</main>;
   if (me) return <PlayRoom code={code} me={me} />;
+  if (office) return <OfficeLogin onLogin={setMe} />;
 
   const join = (e: FormEvent) => {
     e.preventDefault();
@@ -116,6 +123,16 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       </main>
     );
   }
+  if (mine.uid !== me.uid) {
+    return (
+      <main className="play">
+        <p>You signed in on another phone.</p>
+        <button type="button" onClick={() => window.location.reload()}>
+          Sign in here
+        </button>
+      </main>
+    );
+  }
 
   const act: Act = (fn) => {
     if (inflight.current) return;
@@ -146,6 +163,21 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       </p>
       {room.phase === 'LOBBY' && (
         <p>{mine.ticked ? "You're racing today! 🐎" : 'Waiting for the host to tick you in.'}</p>
+      )}
+      {room.kind === 'office' && room.phase === 'LOBBY' && (
+        <>
+          <p>💰 {props.balance} coins</p>
+          <HorsePanel roomId={room.id} mine={mine} act={act} busy={busy} />
+          <p>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => act(() => officeLogout(room.id).then(() => window.location.reload()))}
+            >
+              Not you? Switch person
+            </button>
+          </p>
+        </>
       )}
       {room.phase === 'SHOP' && <ShopPanel {...props} />}
       {room.phase === 'ODDS_LOCKED' && <p>The shop is closed. Calculating odds…</p>}
@@ -222,7 +254,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
           <select value={horse} onChange={(e) => setPick(e.target.value)}>
             {horses.map((id) => (
               <option key={id} value={id}>
-                {nameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
+                {horseNameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
                 {canPlace(horses) && ` · Place ${formatOdds(odds[id]?.place)}`}
               </option>
             ))}
@@ -278,10 +310,10 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
         <ul>
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {nameOf(players, b.horse_id)} to {b.kind} @ {formatOdds(b.odds)}{' '}
+              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind} @ {formatOdds(b.odds)}{' '}
               <button
                 type="button"
-                aria-label={`Cancel ${b.stake} bet on ${nameOf(players, b.horse_id)}`}
+                aria-label={`Cancel ${b.stake} bet on ${horseNameOf(players, b.horse_id)}`}
                 disabled={busy}
                 onClick={() => act(() => cancelBet(b.id))}
               >
@@ -311,7 +343,7 @@ function RunningPanel({ players, race, bets, mine }: PanelProps) {
             ? 'All home! Results in a moment…'
             : "🏇 And they're off!"}
       </p>
-      <MiniOval timeline={timeline} t={t} mine={mine.id} />
+      <MiniOval timeline={timeline} t={t} mine={mine.id} colors={colorsByPlayer(players)} />
       {t >= 0 && timeline.horses.includes(mine.id) && (
         <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
       )}
@@ -322,7 +354,7 @@ function RunningPanel({ players, race, bets, mine }: PanelProps) {
             const winning = place >= 0 && (b.kind === 'win' ? place === 0 : place < 3);
             return (
               <li key={b.id}>
-                {winning ? '✅' : '⏳'} {b.stake} on {nameOf(players, b.horse_id)} to {b.kind}:{' '}
+                {winning ? '✅' : '⏳'} {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}:{' '}
                 {ordinal(place + 1)} now
               </li>
             );
@@ -343,7 +375,7 @@ function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
         <ul>
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {nameOf(players, b.horse_id)} to {b.kind}:{' '}
+              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}:{' '}
               {b.payout ? `won ${b.payout}` : 'lost'}
             </li>
           ))}

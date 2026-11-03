@@ -73,7 +73,7 @@
 - [x] Task 9: Phone: PIN login and horse panel
 - [x] Task 10: Big screen: office unlock and lobby
 - [x] Task 11: Home and /admin
-- [x] Task 12: Smoke test and docs (hosted deploy pending owner: admin secret)
+- [x] Task 12: Smoke test, docs, hosted deploy (2026-11-03)
 
 ## Session log
 
@@ -183,6 +183,6 @@
 - Late claim: `join_room` v4 claims a pre-entered name in LOBBY, SHOP, ODDS_LOCKED and BETTING (not RUNNING); a claimer after the shop opened gets that race's 100 coins. New names still join only in the LOBBY. It now locks the room row first (same lock order as the other RPCs).
 - Cancel race: `set_phase` v4 also allows ODDS_LOCKED→LOBBY and BETTING→LOBBY (host only). Deleting the race cascades its topups, floors, purchases and bets: a full refund in both modes. A `lock-odds`/`start-race` call still running then fails in its `*_finish` (`race_not_found`/`wrong_phase`). The big screen has "Cancel race (refund everything)" on the odds and betting boards, behind a confirm.
 - Checks: `npm test` 108 pass, `npm run test:db` 89 pass, typecheck, lint and build clean. Not smoke-tested in a browser.
-- Not yet deployed: the hosted DB needs `npx supabase db push --linked`.
+- Deployed 2026-11-04: hosted DB migrated (012), `master` pushed; Vercel production branch set to `master`, so pushes go live on their own (deploy the DB first when a push needs a migration).
 
 Next: Phase 6 (History & fun).

@@ -126,6 +126,47 @@ button.primary {
   font-size: 2.5rem;
   line-height: 1;
 }
+.horse-pick {
+  display: grid;
+  gap: 8px;
+}
+.horse-pick .card {
+  flex-wrap: wrap;
+}
+.horse-pick .odds-line {
+  margin-left: auto;
+}
+/* Win/Place: native radios (arrow keys still work) drawn as a two-part toggle. */
+.segmented {
+  display: flex;
+  border: 0;
+  padding: 0;
+}
+.segmented label {
+  position: relative;
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  font-family: var(--font-pixel);
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
+  cursor: pointer;
+}
+.segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segmented label:has(input:checked) {
+  color: var(--bg);
+  background: var(--gold);
+}
+.segmented label:has(input:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
 /* DOM order stays 1st, 2nd, 3rd; `order` shows the steps as 2nd, 1st, 3rd. */
 .podium {
   display: grid;

@@ -36,6 +36,7 @@ import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { BOX_COLOR, colorsByPlayer } from '../render/palette.ts';
+import { Silk } from '../render/RaceView.tsx';
 import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
@@ -339,6 +340,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   const kind = canPlace(horses) ? choice : 'win';
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
+  const colors = colorsByPlayer(players);
   const myBets = bets.filter((b) => b.player_id === mine.id);
 
   const submit = (e: FormEvent) => {
@@ -348,20 +350,30 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   return (
     <>
-      <p>💰 {balance} coins</p>
       <form className="shop" onSubmit={submit}>
-        <label>
-          Horse{' '}
-          <select value={horse} onChange={(e) => setPick(e.target.value)}>
-            {horses.map((id) => (
-              <option key={id} value={id}>
-                {horseNameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
+        <fieldset className="horse-pick">
+          <legend>Horse</legend>
+          {horses.map((id, lane) => (
+            <label key={id} className="card" htmlFor={`horse-${id}`}>
+              <input
+                id={`horse-${id}`}
+                type="radio"
+                name="horse"
+                value={id}
+                checked={horse === id}
+                onChange={() => setPick(id)}
+              />
+              <Silk color={colors(id, lane).silk} />
+              <span className="pixel">#{lane + 1}</span>
+              <span>{horseNameOf(players, id)}</span>
+              <span className="pixel odds-line">
+                Win {formatOdds(odds[id]?.win)}
                 {canPlace(horses) && ` · Place ${formatOdds(odds[id]?.place)}`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="segmented">
           <legend>Bet</legend>
           <label htmlFor="kind-win">
             <input
@@ -371,9 +383,9 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
               value="win"
               checked={kind === 'win'}
               onChange={() => setChoice('win')}
-            />{' '}
+            />
             Win (1st)
-          </label>{' '}
+          </label>
           {canPlace(horses) && (
             <label htmlFor="kind-place">
               <input
@@ -383,7 +395,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 value="place"
                 checked={kind === 'place'}
                 onChange={() => setChoice('place')}
-              />{' '}
+              />
               Place (top 3)
             </label>
           )}

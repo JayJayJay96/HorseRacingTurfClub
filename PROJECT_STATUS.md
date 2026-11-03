@@ -47,17 +47,17 @@
 ## Phase 4 — Playback + podium (branch `phase4-playback`)
 
 - [x] Task 0: Branch
-- [ ] Task 1: Playback maths (pure)
-- [ ] Task 2: Start covers countdown and finish hold
-- [ ] Task 3: Track geometry
-- [ ] Task 4: Camera
-- [ ] Task 5: Item labels and palette
-- [ ] Task 6: Pixel 2D renderer
-- [ ] Task 7: RaceView and sandbox
-- [ ] Task 8: Timeline loading
-- [ ] Task 9: Big screen running and podium
-- [ ] Task 10: Phone mini view
-- [ ] Task 11: Smoke test and docs
+- [x] Task 1: Playback maths (pure)
+- [x] Task 2: Start covers countdown and finish hold
+- [x] Task 3: Track geometry
+- [x] Task 4: Camera
+- [x] Task 5: Item labels and palette
+- [x] Task 6: Pixel 2D renderer
+- [x] Task 7: RaceView and sandbox
+- [x] Task 8: Timeline loading
+- [x] Task 9: Big screen running and podium
+- [x] Task 10: Phone mini view
+- [x] Task 11: Smoke test and docs
 
 ## Session log
 
@@ -114,4 +114,20 @@
   - A phone reload logs 1-2 `join_room` 400 `bad_name` errors before rejoining (nothing on screen).
   - Edge Function catch-all returns raw error text for unexpected errors (no secrets); could map to `internal`.
 
-Next: Phase 4 (playback + podium). Task 13 (owner: hosted Supabase + Vercel + `supabase functions deploy`) can happen any time.
+- Built Phase 4 per `docs/superpowers/plans/2026-10-30-phase4-playback-podium.md` (Tasks 0-11) on 2026-11-03.
+- Decisions:
+  - Clients fetch `race_timelines` once per race and play it from `now − (started_at + 5 s countdown)`; a reload resumes at the same point.
+  - `start-race` sets `ends_at` to countdown + last finish + 4 s hold (`playbackSeconds`), so PODIUM (and payouts on phones) only comes after the replay shows the finish. No migration needed.
+  - One stadium oval: 1200 m lap, 300 m straights, finish mid home straight in front of the stands; lanes are visual only.
+  - Pixel canvas 640×360 scaled with `image-rendering: pixelated`; side-view sprites drawn in code, 6 coats × 11 silks per lane.
+  - After a browser check (deviations from the plan): camera follow zoom 6 / finish shot 3.5 at 60 m (plan: 2.5 / 1.8 at 150 m); sprites 2× when zoomed in; no name tags on the canvas (silks match the HTML standings); finished horses coast past the line on screen.
+- Smoke test (4 origins, Short race, 4 horses + 1 watcher): countdown in sync on all screens; phone mini oval and live bet lines; phone and big-screen reloads mid-race resume with matching positions; PODIUM only after the hold; podium swatches, times, prize and biggest win; Cal's 40 Win on Siti @ 4.1× paid 164 (balance 164); Next race → 3-horse race hides Place and plays. Not observed: the phone's 4 s "All home!" line (timing).
+- Checks: `npm test` 105 pass, `npm run test:db` 54 pass, typecheck, lint and build clean.
+- Deferred:
+  - Cheers (spec §5 RUNNING), sound (Phase 7), HD-2D (Phase 8).
+  - Devices use their own clock against the DB's `started_at` (no server clock offset); NTP-synced devices agree within ~1 s.
+  - Generic track path / more maps (Phase 9); one oval for now.
+  - Results are readable in the DB during RUNNING; the spoiler guard is UI-only (from Phase 3).
+  - The box-hiding loop and popups scan all events each frame; fine at 22 horses, revisit if profiling says so.
+
+Next: Phase 5 (Office mode). Task 13 (owner: hosted Supabase + Vercel + `supabase functions deploy`) can happen any time.

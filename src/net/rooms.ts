@@ -188,6 +188,7 @@ const ERROR_TEXT: Record<string, string> = {
   office_only: 'Only office horses can be customised.',
   bad_horse: 'Pick a coat and silk from the list; horse names are up to 24 characters.',
   bad_password: 'Wrong admin password.',
+  admin_locked: 'Too many wrong admin passwords. Try again in 10 minutes.',
   admin_not_configured: 'The admin password is not set on the server.',
   bad_action: 'Unknown admin action.',
   bad_amount: 'Amount must be a whole number, not 0.',

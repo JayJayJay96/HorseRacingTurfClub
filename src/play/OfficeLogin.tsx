@@ -41,7 +41,13 @@ export function OfficeLogin({ onLogin }: { onLogin: (player: RoomPlayer) => void
         <form className="shop" onSubmit={submit}>
           <label>
             Who are you?{' '}
-            <select value={pick} onChange={(e) => setPick(e.target.value)}>
+            <select
+              value={pick}
+              onChange={(e) => {
+                setPick(e.target.value);
+                setPin('');
+              }}
+            >
               <option value="">Pick your name</option>
               {roster.map((r) => (
                 <option key={r.id} value={r.id}>

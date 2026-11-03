@@ -29,6 +29,10 @@ const loadPassword = () => {
     return '';
   }
 };
+/** These mean the stored password is useless right now: drop it and show the form again. */
+const isAuthError = (e: unknown) =>
+  e instanceof Error && (e.message === 'bad_password' || e.message === 'admin_locked');
+
 const storePassword = (v: string) => {
   try {
     if (v) sessionStorage.setItem(KEY, v);
@@ -56,7 +60,7 @@ export function AdminPage() {
     (pw: string) =>
       adminAction<Overview>(pw, 'overview').then(setData, (e: unknown) => {
         setError(errorText(e));
-        if (e instanceof Error && e.message === 'bad_password') {
+        if (isAuthError(e)) {
           storePassword('');
           setPassword('');
         }
@@ -74,7 +78,10 @@ export function AdminPage() {
     adminAction(password, action, args)
       .then(
         () => refresh(password),
-        (e: unknown) => setError(errorText(e)),
+        (e: unknown) => {
+          setError(errorText(e));
+          if (isAuthError(e)) lock();
+        },
       )
       .finally(() => setBusy(false));
   };
@@ -145,63 +152,65 @@ export function AdminPage() {
           Add person
         </button>
       </form>
-      <table className="odds">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Coins</th>
-            <th>PIN</th>
-            <th>Phone</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data?.members.map((m) => (
-            <tr key={m.id}>
-              <td>
-                {m.name}
-                {m.horse_name && ` (🐎 ${m.horse_name})`}
-                {m.archived && ' — removed'}
-              </td>
-              <td>{m.balance}</td>
-              <td>{m.has_pin ? 'set' : '—'}</td>
-              <td>{m.phone ? '📱' : ''}</td>
-              <td>
-                <button type="button" disabled={busy} onClick={() => rename(m)}>
-                  Rename
-                </button>{' '}
-                <button type="button" disabled={busy} onClick={() => adjust(m)}>
-                  Coins
-                </button>{' '}
-                {!m.archived && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={busy || !m.has_pin}
-                      onClick={() =>
-                        window.confirm(`Reset ${m.name}'s PIN?`) &&
-                        run('reset_pin', { player: m.id })
-                      }
-                    >
-                      Reset PIN
-                    </button>{' '}
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() =>
-                        window.confirm(`Remove ${m.name}? Their history stays.`) &&
-                        run('archive', { player: m.id })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </>
-                )}
-              </td>
+      <div className="scroll-x">
+        <table className="odds">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Coins</th>
+              <th>PIN</th>
+              <th>Phone</th>
+              <th>Actions</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {data?.members.map((m) => (
+              <tr key={m.id}>
+                <td>
+                  {m.name}
+                  {m.horse_name && ` (🐎 ${m.horse_name})`}
+                  {m.archived && ' — removed'}
+                </td>
+                <td>{m.balance}</td>
+                <td>{m.has_pin ? 'set' : '—'}</td>
+                <td>{m.phone ? '📱' : ''}</td>
+                <td>
+                  <button type="button" disabled={busy} onClick={() => rename(m)}>
+                    Rename
+                  </button>{' '}
+                  <button type="button" disabled={busy} onClick={() => adjust(m)}>
+                    Coins
+                  </button>{' '}
+                  {!m.archived && (
+                    <>
+                      <button
+                        type="button"
+                        disabled={busy || !m.has_pin}
+                        onClick={() =>
+                          window.confirm(`Reset ${m.name}'s PIN?`) &&
+                          run('reset_pin', { player: m.id })
+                        }
+                      >
+                        Reset PIN
+                      </button>{' '}
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          window.confirm(`Remove ${m.name}? Their history stays.`) &&
+                          run('archive', { player: m.id })
+                        }
+                      >
+                        Remove
+                      </button>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <h2>Recent races</h2>
       <ul>
         {data?.races.map((r) => (

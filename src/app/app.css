@@ -126,3 +126,7 @@ a.button.primary {
   font-size: 1.25rem;
   padding: 12px 24px;
 }
+
+.scroll-x {
+  overflow-x: auto;
+}

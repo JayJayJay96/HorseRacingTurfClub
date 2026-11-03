@@ -74,7 +74,7 @@ button.primary {
 }
 .race {
   display: grid;
-  grid-template-columns: 1fr 260px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 16px;
   align-items: start;
 }

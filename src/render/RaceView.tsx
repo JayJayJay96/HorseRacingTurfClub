@@ -32,7 +32,13 @@ export function RaceView({ timeline, startAtMs, names }: Props) {
   const t = useRaceTime(startAtMs);
   return (
     <div className="race">
-      <canvas ref={canvas} width={VIEW.width} height={VIEW.height} />
+      <canvas
+        ref={canvas}
+        width={VIEW.width}
+        height={VIEW.height}
+        role="img"
+        aria-label="Race track (standings listed alongside)"
+      />
       <ol className="standings">
         {standingsAt(timeline, t).map((h) => {
           const time = timeline.finishTimes[h]!;

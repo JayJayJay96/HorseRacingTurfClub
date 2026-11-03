@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { adminClient, anonClient, fails, ok } from './helpers.ts';
-import { member, officeRoom, officeRow } from './officeFixtures.ts';
+import { balanceOf, member, officeRoom, officeRow } from './officeFixtures.ts';
 import { balance, shopRoom } from './raceFixtures.ts';
 
 describe('office room', () => {
@@ -145,5 +145,92 @@ describe('office login', () => {
         m.client.rpc('set_my_horse', { p_room: room.id, p_coat: 6, p_silk: 0, p_horse_name: '' }),
       ),
     ).toBe('bad_horse');
+  });
+});
+
+describe('office race flow', () => {
+  it('roster is admin-managed: no add/remove from the big screen, archived can not be ticked', async () => {
+    const { host, room, admin } = await officeRoom();
+    const m = await member('R');
+    expect(await fails(host.rpc('add_player', { p_room: room.id, p_name: 'Zed' }))).toBe(
+      'admin_only',
+    );
+    expect(await fails(host.rpc('remove_player', { p_player: m.player.id }))).toBe('admin_only');
+    await ok(
+      admin
+        .from('room_players')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', m.player.id),
+    );
+    expect(await fails(host.rpc('set_ticked', { p_player: m.player.id, p_ticked: true }))).toBe(
+      'player_not_found',
+    );
+  });
+
+  it('opening the shop pays +100 to horses in the race and lifts others to 50; cancel undoes it', async () => {
+    const { host, room, admin } = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    const watcher = await member('W');
+    // The watcher has spent down to 10.
+    await ok(
+      admin.from('coin_ledger').insert({
+        room_id: room.id,
+        player_id: watcher.player.id,
+        type: 'admin_adjust',
+        amount: -90,
+        reason: 'test',
+      }),
+    );
+    for (const p of [a, b])
+      await ok(host.rpc('set_ticked', { p_player: p.player.id, p_ticked: true }));
+    await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
+    expect(await balanceOf(a.client, room.id, a.player.id)).toBe(200);
+    expect(await balanceOf(a.client, room.id, watcher.player.id)).toBe(50);
+    await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'LOBBY' }));
+    expect(await balanceOf(a.client, room.id, a.player.id)).toBe(100);
+    expect(await balanceOf(a.client, room.id, watcher.player.id)).toBe(10);
+  });
+
+  it('carries coins across races and feeds history into the next race input', async () => {
+    const { host, room, admin } = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    for (const p of [a, b])
+      await ok(host.rpc('set_ticked', { p_player: p.player.id, p_ticked: true }));
+    await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
+    await ok(a.client.rpc('buy_box', { p_room: room.id, p_box: 'attack' })); // 200 - 20
+    const input = await ok(host.rpc('lock_odds_begin', { p_room: room.id }));
+    expect(input.history).toEqual({
+      [a.player.id]: { races: 0, wins: 0, top3: 0 },
+      [b.player.id]: { races: 0, wins: 0, top3: 0 },
+    });
+    const odds = { [a.player.id]: { win: 2, place: 1.1 }, [b.player.id]: { win: 2, place: 1.1 } };
+    await ok(admin.rpc('lock_odds_finish', { p_race: input.race_id, p_odds: odds }));
+    await ok(host.rpc('start_race_begin', { p_room: room.id }));
+    await ok(
+      admin.rpc('start_race_finish', {
+        p_race: input.race_id,
+        p_timeline: {},
+        p_finish: [a.player.id, b.player.id],
+        p_seconds: 0.01,
+      }),
+    );
+    await new Promise((r) => setTimeout(r, 50));
+    await ok(host.rpc('finish_race', { p_room: room.id }));
+    await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'LOBBY' }));
+    expect(await balanceOf(a.client, room.id, a.player.id)).toBe(180);
+
+    await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
+    expect(await balanceOf(a.client, room.id, a.player.id)).toBe(280);
+    const next = await ok(host.rpc('lock_odds_begin', { p_room: room.id }));
+    expect(next.history[a.player.id]).toEqual({ races: 1, wins: 1, top3: 1 });
+    expect(next.history[b.player.id]).toEqual({ races: 1, wins: 0, top3: 1 });
+  });
+
+  it('Private races carry no history', async () => {
+    const r = await shopRoom();
+    const input = await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+    expect(input.history).toBeNull();
   });
 });

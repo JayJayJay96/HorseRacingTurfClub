@@ -14,6 +14,7 @@ describe('lock_odds', () => {
       length: 'short',
       horses: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
       bought: {},
+      history: null,
     });
     expect(await phaseOf(r)).toBe('ODDS_LOCKED');
     expect(await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }))).toEqual(input);

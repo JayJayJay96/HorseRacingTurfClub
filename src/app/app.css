@@ -163,6 +163,11 @@ a.button.primary {
   right: 8px;
   z-index: 10;
 }
+/* Phones: keep the toggle in the page flow so it doesn't cover the heading. */
+.play .sound {
+  position: static;
+  text-align: right;
+}
 .sound-panel {
   display: grid;
   gap: 4px;

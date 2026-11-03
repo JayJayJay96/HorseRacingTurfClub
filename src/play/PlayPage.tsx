@@ -41,6 +41,15 @@ import { HorsePanel } from './HorsePanel.tsx';
 import { MiniOval } from './MiniOval.tsx';
 import { OfficeLogin } from './OfficeLogin.tsx';
 
+/** Coin sound after a successful buy or bet; a sound problem must never look like a failed action. */
+function playCoin() {
+  try {
+    soundEngine().sfx('coin');
+  } catch {
+    // sound is best effort
+  }
+}
+
 /** Phone: join the room, then follow its phase. */
 export function PlayPage() {
   const code = normalizeCode(new URLSearchParams(window.location.search).get('code') ?? '');
@@ -291,7 +300,7 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
             key={box}
             type="button"
             disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
-            onClick={() => act(() => buyBox(room.id, box).then(() => soundEngine().sfx('coin')))}
+            onClick={() => act(() => buyBox(room.id, box).then(playCoin))}
           >
             {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
           </button>
@@ -315,7 +324,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    act(() => placeBet(room.id, horse, kind, amount).then(() => soundEngine().sfx('coin')));
+    act(() => placeBet(room.id, horse, kind, amount).then(playCoin));
   };
 
   return (

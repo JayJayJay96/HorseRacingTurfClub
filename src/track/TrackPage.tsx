@@ -393,7 +393,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
             names={names}
             colors={colors}
           />
-          <ul className="cheers" aria-live="polite">
+          <ul className="cheers" aria-hidden="true">
             {shown.map((c) => (
               <li key={c.id}>
                 {c.emoji} {nameOf(players, c.player)}

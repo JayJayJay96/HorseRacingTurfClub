@@ -35,13 +35,15 @@ export function useCheers(
   useEffect(() => {
     if (!roomId) return;
     const gate = createCheerGate();
+    // Room-wide cap: spoofed ids could otherwise flood the screen (at most 5 cheers a second).
+    const roomGate = createCheerGate(200);
     let seq = 0;
     const channel = supabase
       .channel(channelName(roomId))
       .on('broadcast', { event: 'cheer' }, ({ payload }) => {
         if (!isCheer(payload) || !live.current.playerIds.has(payload.player)) return;
         const now = Date.now();
-        if (!gate(payload.player, now)) return;
+        if (!gate(payload.player, now) || !roomGate('*', now)) return;
         seq += 1;
         const id = seq;
         // Copy only the validated fields; extra payload keys are never kept.

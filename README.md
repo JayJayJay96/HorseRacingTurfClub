@@ -48,6 +48,12 @@ Edge Functions:
 After changing a migration: `npx supabase db reset`, then regenerate types (Git Bash):
 `npx supabase gen types typescript --local > src/net/database.types.ts`
 
+Office mode:
+
+- The office is one permanent room, code `TURF`. People, PINs, coins and races are managed at `/admin`; the same admin password unlocks the office big screen (`/track?code=TURF`). Phones join at `/play?code=TURF` with their name and a 4-digit PIN (set on first sign-in).
+- Local admin password: put `ADMIN_PASSWORD=<anything>` in `supabase/functions/.env` (gitignored), then `npx supabase stop && npx supabase start`; the edge runtime loads that file automatically.
+- Hosted: the owner sets it once with `npx supabase secrets set ADMIN_PASSWORD=<long random password>` (never commit or share it). 10 wrong passwords lock `/admin` for 10 minutes; to clear a lock, run `select public.admin_gate_reset();` in the SQL editor.
+
 Testing with several devices:
 
 - Real phones on the LAN: set `VITE_SUPABASE_URL=http://<pc-lan-ip>:54321` in `.env.local`, run `npm run dev -- --host`, and open the host page via `http://<pc-lan-ip>:5173`. `127.0.0.1` on a phone is the phone itself, and the QR code uses the host page's origin.

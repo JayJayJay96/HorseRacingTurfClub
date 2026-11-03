@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { RaceView } from '../render/RaceView.tsx';
+import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
 import type { RaceLength, Timeline } from '../sim/types.ts';
@@ -12,43 +14,34 @@ const SAMPLE_HORSES = [
   'Durian Dasher',
 ];
 
-/** Phase 1 sandbox: runs the engine with a crypto seed and lists the result. No graphics yet. */
+/** Runs the engine locally with a crypto seed and plays it back; no Supabase needed. */
 export function Sandbox() {
-  const [timeline, setTimeline] = useState<Timeline | null>(null);
-  const run = (length: RaceLength) =>
-    setTimeline(
-      simulateRace({
+  const [run, setRun] = useState<{ timeline: Timeline; gun: number } | null>(null);
+  const names = useMemo(() => Object.fromEntries(SAMPLE_HORSES.map((h) => [h, h])), []);
+  const start = (length: RaceLength) =>
+    setRun({
+      timeline: simulateRace({
         seed: createCryptoRng().nextInt(2 ** 32),
         horses: SAMPLE_HORSES,
-        bought: {},
+        bought: { [SAMPLE_HORSES[0]!]: ['speed', 'attack', 'defense'] },
         length,
       }),
-    );
+      gun: Date.now() + COUNTDOWN_SECONDS * 1000,
+    });
 
   return (
-    <main>
-      <h1>Horse Racing Turf Club</h1>
-      <p>Phase 1 sandbox: runs the race engine and lists the result.</p>
-      <button type="button" onClick={() => run('short')}>
-        Run short race
-      </button>{' '}
-      <button type="button" onClick={() => run('long')}>
-        Run long race
-      </button>
-      {timeline && (
-        <>
-          <p>
-            Seed {timeline.seed} · {timeline.length} · {timeline.events.length} events
-          </p>
-          <ol>
-            {timeline.finishOrder.map((id) => (
-              <li key={id}>
-                {id}: {timeline.finishTimes[id]?.toFixed(2)} s
-              </li>
-            ))}
-          </ol>
-        </>
-      )}
+    <main className="track">
+      <h1>Horse Racing Turf Club · sandbox</h1>
+      <p>
+        <button type="button" onClick={() => start('short')}>
+          Run short race
+        </button>{' '}
+        <button type="button" onClick={() => start('long')}>
+          Run long race
+        </button>
+        {run && ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events`}
+      </p>
+      {run && <RaceView key={run.gun} timeline={run.timeline} startAtMs={run.gun} names={names} />}
     </main>
   );
 }

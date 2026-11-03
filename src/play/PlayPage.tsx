@@ -11,7 +11,6 @@ import {
   oddsOf,
   ordinal,
 } from '../betting/betting.ts';
-import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
 import { normalizeCode } from '../lobby/lobby.ts';
 import {
   buyBox,
@@ -26,7 +25,11 @@ import {
 } from '../net/rooms.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
+import { useTimeline } from '../net/useTimeline.ts';
+import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
+import { gunMs, standingsAt } from '../sim/playback.ts';
+import { MiniOval } from './MiniOval.tsx';
 
 /** Phone: join the room, then follow its phase. */
 export function PlayPage() {
@@ -148,7 +151,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       {room.phase === 'SHOP' && <ShopPanel {...props} />}
       {room.phase === 'ODDS_LOCKED' && <p>The shop is closed. Calculating odds…</p>}
       {room.phase === 'BETTING' && <BetPanel {...props} />}
-      {room.phase === 'RUNNING' && <RunningPanel endsAt={state.race?.ends_at ?? null} />}
+      {room.phase === 'RUNNING' && <RunningPanel {...props} />}
       {room.phase === 'PODIUM' && <ResultPanel {...props} />}
       {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
         <p>
@@ -293,9 +296,42 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   );
 }
 
-function RunningPanel({ endsAt }: { endsAt: string | null }) {
-  const left = useSecondsLeft(endsAt);
-  return <p>🏇 The race is on! Results in {left} s.</p>;
+function RunningPanel({ players, race, bets, mine }: PanelProps) {
+  const { timeline, error } = useTimeline(race?.id ?? null);
+  const t = useRaceTime(race?.started_at ? gunMs(race.started_at) : 0);
+  if (!timeline || !race?.started_at) return <p>{error ?? 'Loading the race…'}</p>;
+  const order = standingsAt(timeline, t);
+  const last = Math.max(...Object.values(timeline.finishTimes));
+  const myBets = bets.filter((b) => b.player_id === mine.id);
+  return (
+    <>
+      <p>
+        {t < 0
+          ? `🏁 Starting in ${Math.ceil(-t)}…`
+          : t > last
+            ? 'All home! Results in a moment…'
+            : "🏇 And they're off!"}
+      </p>
+      <MiniOval timeline={timeline} t={t} mine={mine.id} />
+      {t >= 0 && timeline.horses.includes(mine.id) && (
+        <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
+      )}
+      {t >= 0 && myBets.length > 0 && (
+        <ul>
+          {myBets.map((b) => {
+            const place = order.indexOf(b.horse_id);
+            const winning = place >= 0 && (b.kind === 'win' ? place === 0 : place < 3);
+            return (
+              <li key={b.id}>
+                {winning ? '✅' : '⏳'} {b.stake} on {nameOf(players, b.horse_id)} to {b.kind}:{' '}
+                {ordinal(place + 1)} now
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
 }
 
 function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {

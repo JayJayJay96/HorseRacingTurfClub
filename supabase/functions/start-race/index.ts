@@ -1,4 +1,5 @@
 import { packTimeline } from '../../../src/sim/pack.ts';
+import { playbackSeconds } from '../../../src/sim/playback.ts';
 import { createCryptoRng } from '../../../src/sim/rng.ts';
 import { simulateRace } from '../../../src/sim/simulate.ts';
 import { rpc, serve, type RaceInputRow } from '../_shared/http.ts';
@@ -12,7 +13,8 @@ serve(async ({ room }, user, admin) => {
     p_race: input.race_id,
     p_timeline: packTimeline(timeline),
     p_finish: timeline.finishOrder,
-    p_seconds: Math.max(...Object.values(timeline.finishTimes)),
+    // ends_at covers the countdown, the race and the finish hold, so PODIUM comes after the replay.
+    p_seconds: playbackSeconds(timeline),
   });
   return { race: input.race_id };
 });

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ODDS } from '../../src/sim/odds.ts';
+import type { PackedTimeline } from '../../src/sim/pack.ts';
+import { playbackSeconds } from '../../src/sim/playback.ts';
 import { anonClient, failsInvoke, guestClient, invoke, ok } from './helpers.ts';
 import { balance, shopRoom } from './raceFixtures.ts';
 
@@ -60,6 +62,8 @@ describe('lock-odds and start-race', () => {
     );
     expect(stored.timeline.finishOrder).toEqual(done.finish_order);
     expect(stored.timeline.progressDm[r.ali.player.id].length).toBeGreaterThan(100);
+    const span = (Date.parse(done.ends_at) - Date.parse(done.started_at)) / 1000;
+    expect(span).toBeCloseTo(playbackSeconds(stored.timeline as PackedTimeline), 2);
   });
 
   it('refuses non-hosts, signed-out callers and wrong phases', { timeout: 60_000 }, async () => {

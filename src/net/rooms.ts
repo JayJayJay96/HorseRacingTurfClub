@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import type { BoxType, RaceLength } from '../sim/types.ts';
+import { unpackTimeline, type PackedTimeline } from '../sim/pack.ts';
+import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
 import type { Database } from './database.types.ts';
 import { supabase } from './supabase.ts';
 
@@ -93,6 +94,14 @@ export async function fetchRoom(code: string): Promise<RoomState | null> {
     bets: bets ?? [],
     ledger: ledger ?? [],
   };
+}
+
+/** The race's stored Timeline, unpacked; null until Start has written it. */
+export async function fetchTimeline(raceId: string): Promise<Timeline | null> {
+  const row = await call(
+    supabase.from('race_timelines').select('timeline').eq('race_id', raceId).maybeSingle(),
+  );
+  return row ? unpackTimeline(row.timeline as unknown as PackedTimeline) : null;
 }
 
 const ERROR_TEXT: Record<string, string> = {

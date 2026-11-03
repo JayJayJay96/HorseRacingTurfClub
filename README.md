@@ -18,8 +18,10 @@ Spec: [`docs/superpowers/specs/2026-10-29-horse-racing-turf-club-design.md`](doc
 
 ```
 src/
-  sim/   pure TypeScript race engine (no DOM/React/Node; `.ts` imports so Deno can use it)
-  app/   React app shell
+  sim/      pure TypeScript race engine + playback maths (no DOM/React/Node; `.ts` imports so Deno can use it)
+  render/   track geometry, camera, pixel 2D canvas renderer (RaceView)
+  net/      Supabase client, room state, timeline loading
+  track/    big screen (/track)        play/  phone (/play)        app/  shell, home, sandbox
 ```
 
 ## Local development
@@ -28,7 +30,7 @@ src/
 2. `npm install`
 3. `npx supabase start` (first run downloads images)
 4. Copy `.env.example` to `.env.local`; fill it from `npx supabase status -o env` (`API_URL`, `ANON_KEY`).
-5. `npm run dev` — open `/` to host or join; `/sandbox` runs the race engine alone.
+5. `npm run dev` — open `/` to host or join; `/sandbox` simulates and plays a race locally (no Supabase needed).
 
 Tests:
 
@@ -39,6 +41,7 @@ Tests:
 Edge Functions:
 
 - `npx supabase start` also serves the Edge Functions in `supabase/functions` (`lock-odds`, `start-race`), with hot reload.
+- Hot reload only sees files that existed at `supabase start`: after adding a new file a function imports (e.g. a new `src/sim/*.ts`), run `npx supabase stop && npx supabase start` (data is kept). If functions return 503 right after Docker boots, restart the `supabase_edge_runtime_HorseRacingTurfClub` container.
 - After editing `supabase/config.toml`, run `npx supabase stop && npx supabase start`.
 - Function logs: `docker logs -f supabase_edge_runtime_HorseRacingTurfClub`.
 

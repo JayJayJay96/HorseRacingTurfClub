@@ -72,3 +72,36 @@ button.primary {
 .podium {
   font-size: 2rem;
 }
+.race {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 16px;
+  align-items: start;
+}
+.race canvas {
+  width: 100%;
+  image-rendering: pixelated;
+  background: #3d7a3a;
+}
+.standings {
+  margin: 0;
+  padding-left: 1.5em;
+  font-size: 1rem;
+}
+.silk {
+  display: inline-block;
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 2px;
+  vertical-align: middle;
+  outline: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+}
+.mini {
+  width: 100%;
+  height: auto;
+}
+@media (max-width: 700px) {
+  .race {
+    grid-template-columns: 1fr;
+  }
+}

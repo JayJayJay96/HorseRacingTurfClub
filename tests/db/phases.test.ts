@@ -34,7 +34,9 @@ describe('set_phase', () => {
 
   it('refuses non-hosts', async () => {
     const { phone, room } = await readyRoom();
-    expect(await fails(phone.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }))).toBe('not_host');
+    expect(await fails(phone.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }))).toBe(
+      'not_host',
+    );
   });
 
   it('freezes lobby actions while the shop is open', async () => {
@@ -42,11 +44,17 @@ describe('set_phase', () => {
     await ok(host.rpc('set_ticked', { p_player: ali.id, p_ticked: true }));
     await ok(host.rpc('set_ticked', { p_player: siti.id, p_ticked: true }));
     await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
-    expect(await fails(host.rpc('set_ticked', { p_player: ali.id, p_ticked: false }))).toBe('wrong_phase');
-    expect(await fails(host.rpc('add_player', { p_room: room.id, p_name: 'Bob' }))).toBe('wrong_phase');
+    expect(await fails(host.rpc('set_ticked', { p_player: ali.id, p_ticked: false }))).toBe(
+      'wrong_phase',
+    );
+    expect(await fails(host.rpc('add_player', { p_room: room.id, p_name: 'Bob' }))).toBe(
+      'wrong_phase',
+    );
     expect(await fails(host.rpc('remove_player', { p_player: siti.id }))).toBe('wrong_phase');
     expect(
-      await fails(host.rpc('update_room_settings', { p_room: room.id, p_length: 'long', p_prize: '' })),
+      await fails(
+        host.rpc('update_room_settings', { p_room: room.id, p_length: 'long', p_prize: '' }),
+      ),
     ).toBe('wrong_phase');
   });
 });
@@ -54,7 +62,9 @@ describe('set_phase', () => {
 describe('set_ready', () => {
   it('works only in SHOP, and phase changes clear it', async () => {
     const { host, phone, room, ali, siti } = await readyRoom();
-    expect(await fails(phone.rpc('set_ready', { p_room: room.id, p_ready: true }))).toBe('wrong_phase');
+    expect(await fails(phone.rpc('set_ready', { p_room: room.id, p_ready: true }))).toBe(
+      'wrong_phase',
+    );
 
     await ok(host.rpc('set_ticked', { p_player: ali.id, p_ticked: true }));
     await ok(host.rpc('set_ticked', { p_player: siti.id, p_ticked: true }));
@@ -89,11 +99,14 @@ describe('join_room outside the lobby', () => {
     return r;
   }
 
-  it('refuses new names and host-typed claims', async () => {
-    const { room } = await shopRoom();
+  it('refuses new names after the lobby but lets a phone claim a pre-entered horse', async () => {
+    const { room, siti } = await shopRoom();
     const late = await anonClient();
-    expect(await fails(late.rpc('join_room', { p_code: room.code, p_name: 'Bob' }))).toBe('wrong_phase');
-    expect(await fails(late.rpc('join_room', { p_code: room.code, p_name: 'Siti' }))).toBe('wrong_phase');
+    expect(await fails(late.rpc('join_room', { p_code: room.code, p_name: 'Bob' }))).toBe(
+      'wrong_phase',
+    );
+    const claimed = await ok(late.rpc('join_room', { p_code: room.code, p_name: 'siti' }));
+    expect(claimed.id).toBe(siti.id);
   });
 
   it('still lets a known device rejoin', async () => {

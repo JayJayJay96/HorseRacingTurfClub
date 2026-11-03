@@ -278,16 +278,29 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
         {BOX_TYPES.map((b) => `${BOX_ICON[b]} ${BOX_NAME[b]} ${PRICES[b]}`).join(' · ')}
       </p>
       <ReadyLine players={players} />
-      <ul className="roster">
-        {players
-          .filter((p) => p.ticked)
-          .map((p) => (
-            <li key={p.id}>
-              🐎 {horseName(p)} {boxIcons(purchases, p.id)}
-              {p.uid && !online.has(p.id) && ' (offline)'}
-            </li>
-          ))}
-      </ul>
+      <div className="panel">
+        <table className="odds board">
+          <thead>
+            <tr>
+              <th>Horse</th>
+              <th>Boxes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players
+              .filter((p) => p.ticked)
+              .map((p) => (
+                <tr key={p.id}>
+                  <td>
+                    🐎 {horseName(p)}
+                    {p.uid && !online.has(p.id) && ' (offline)'}
+                  </td>
+                  <td>{boxIcons(purchases, p.id)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
       <p>
         <button type="button" disabled={busy} onClick={() => act(() => setPhase(room.id, 'LOBBY'))}>
           Back to lobby (cancels purchases)
@@ -324,31 +337,40 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   const horses = race?.horses ?? [];
   const office = room.kind === 'office';
   const { stats } = useOfficeStats(room.race_id, office);
+  const colors = colorsByPlayer(players);
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
-      <table className="odds">
-        <thead>
-          <tr>
-            <th>Horse</th>
-            {office && <th>Form</th>}
-            <th>Boxes</th>
-            <th>Win</th>
-            {canPlace(horses) && <th>Place</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {horses.map((id) => (
-            <tr key={id}>
-              <td>{horseNameOf(players, id)}</td>
-              {office && <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>}
-              <td>{boxIcons(purchases, id)}</td>
-              <td>{formatOdds(odds[id]?.win)}</td>
-              {canPlace(horses) && <td>{formatOdds(odds[id]?.place)}</td>}
+      <div className="panel">
+        <table className="odds board">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Horse</th>
+              {office && <th>Form</th>}
+              <th>Boxes</th>
+              <th>Win</th>
+              {canPlace(horses) && <th>Place</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {horses.map((id, lane) => (
+              <tr key={id}>
+                <td className="pixel">#{lane + 1}</td>
+                <td>
+                  <Silk color={colors(id, lane).silk} /> {horseNameOf(players, id)}
+                </td>
+                {office && (
+                  <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>
+                )}
+                <td>{boxIcons(purchases, id)}</td>
+                <td className="pixel">{formatOdds(odds[id]?.win)}</td>
+                {canPlace(horses) && <td className="pixel">{formatOdds(odds[id]?.place)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p>
         Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length}{' '}
         {bets.length === 1 ? 'bet' : 'bets'}.

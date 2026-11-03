@@ -100,6 +100,12 @@ button.primary {
   padding: 4px 16px;
   text-align: left;
 }
+.board {
+  width: 100%;
+}
+.board td.pixel {
+  font-size: 1.25em;
+}
 .shop {
   display: grid;
   gap: 8px;

@@ -110,39 +110,41 @@ export function PlayPage() {
   };
 
   return (
-    <main className="play">
-      <h1>Room {code}</h1>
-      {roster.length > 0 && (
-        <>
-          <h2>Pre-entered by the host</h2>
-          <ul className="pick">
-            {roster.map((p) => (
-              <li key={p.name}>
-                <button type="button" className="primary" onClick={() => claim(p.name)}>
-                  I'm {p.name}
-                  {p.ticked && ' 🐎 racing'}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <h2>Or join with a new name</h2>
-        </>
-      )}
-      <form onSubmit={join}>
-        <label>
-          Your name{' '}
-          <input
-            value={name}
-            maxLength={24}
-            autoComplete="nickname"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>{' '}
-        <button type="submit" className="primary" disabled={!name.trim()}>
-          Join
-        </button>
-      </form>
-      {error && <p role="alert">{error}</p>}
+    <main className="play center">
+      <section className="panel">
+        <h1>Room {code}</h1>
+        {roster.length > 0 && (
+          <>
+            <h2>Pre-entered by the host</h2>
+            <ul className="pick">
+              {roster.map((p) => (
+                <li key={p.name}>
+                  <button type="button" className="primary" onClick={() => claim(p.name)}>
+                    I'm {p.name}
+                    {p.ticked && ' 🐎 racing'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <h2>Or join with a new name</h2>
+          </>
+        )}
+        <form onSubmit={join}>
+          <label>
+            Your name{' '}
+            <input
+              value={name}
+              maxLength={24}
+              autoComplete="nickname"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>{' '}
+          <button type="submit" className="primary" disabled={!name.trim()}>
+            Join
+          </button>
+        </form>
+        {error && <p role="alert">{error}</p>}
+      </section>
     </main>
   );
 }
@@ -462,23 +464,31 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
     setCooling(true);
     coolTimer.current = window.setTimeout(() => setCooling(false), CHEER_GAP_MS);
   };
+  const lane = timeline.horses.indexOf(mine.id);
   return (
     <>
-      <p>
+      <p className={t < 0 ? 'race-status glow' : 'race-status'}>
         {t < 0
           ? `🏁 Starting in ${Math.ceil(-t)}…`
           : t > last
             ? 'All home! Results in a moment…'
             : "🏇 And they're off!"}
-        {timeline.horses.includes(mine.id) && ` You're #${timeline.horses.indexOf(mine.id) + 1}.`}
       </p>
-      <MiniOval
-        timeline={timeline}
-        t={t}
-        mine={mine.id}
-        colors={colorsByPlayer(players)}
-        track={trackById(race.track)}
-      />
+      {lane >= 0 && (
+        <p className="you">
+          You're #{lane + 1}
+          {t >= 0 && ` · ${ordinal(order.indexOf(mine.id) + 1)}`}
+        </p>
+      )}
+      <div className="panel">
+        <MiniOval
+          timeline={timeline}
+          t={t}
+          mine={mine.id}
+          colors={colorsByPlayer(players)}
+          track={trackById(race.track)}
+        />
+      </div>
       {shown.length > 0 && (
         <p aria-hidden="true">
           {shown
@@ -501,9 +511,6 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
             </button>
           ))}
         </p>
-      )}
-      {t >= 0 && timeline.horses.includes(mine.id) && (
-        <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
       )}
       {t >= 0 && myBets.length > 0 && (
         <ul>
@@ -528,13 +535,19 @@ function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
   const myBets = bets.filter((b) => b.player_id === mine.id);
   return (
     <>
-      {place >= 0 && <p>Your horse finished {ordinal(place + 1)}.</p>}
+      {place >= 0 && (
+        <p className="panel place-card">
+          Your horse finished <strong>{ordinal(place + 1)}</strong>.
+        </p>
+      )}
       {myBets.length > 0 && (
-        <ul>
+        <ul className="my-bets">
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}:{' '}
-              {b.payout ? `won ${b.payout}` : 'lost'}
+              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}{' '}
+              <span className={b.payout ? 'chip win' : 'chip loss'}>
+                {b.payout ? `won ${b.payout}` : 'lost'}
+              </span>
             </li>
           ))}
         </ul>

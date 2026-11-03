@@ -172,3 +172,41 @@ a.button.primary {
   border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
   border-radius: 6px;
 }
+
+.race-wrap {
+  position: relative;
+}
+.cheers {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+  font-size: 1.5rem;
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+}
+.cheers li {
+  animation: cheer-float 3s ease-out forwards;
+}
+@keyframes cheer-float {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-80px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cheers li {
+    animation: none;
+  }
+}
+.cheer-row button {
+  font-size: 1.5rem;
+  min-width: 48px;
+}

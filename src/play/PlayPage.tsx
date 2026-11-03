@@ -25,6 +25,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { CHEER_GAP_MS, CHEERS, sendCheer, type CheerEmoji } from '../net/cheers.ts';
 import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
@@ -394,13 +395,21 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   );
 }
 
-function RunningPanel({ players, race, bets, mine }: PanelProps) {
+function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
   const { timeline, error } = useTimeline(race?.id ?? null);
   const t = useRaceTime(race?.started_at ? gunMs(race.started_at) : 0);
+  const [cooling, setCooling] = useState(false);
+  const coolTimer = useRef(0);
+  useEffect(() => () => clearTimeout(coolTimer.current), []);
   if (!timeline || !race?.started_at) return <p>{error ?? 'Loading the race…'}</p>;
   const order = standingsAt(timeline, t);
   const last = Math.max(...Object.values(timeline.finishTimes));
   const myBets = bets.filter((b) => b.player_id === mine.id);
+  const cheer = (emoji: CheerEmoji) => {
+    sendCheer(room.id, { player: mine.id, emoji }).catch(() => {}); // best effort
+    setCooling(true);
+    coolTimer.current = window.setTimeout(() => setCooling(false), CHEER_GAP_MS);
+  };
   return (
     <>
       <p>
@@ -411,6 +420,22 @@ function RunningPanel({ players, race, bets, mine }: PanelProps) {
             : "🏇 And they're off!"}
       </p>
       <MiniOval timeline={timeline} t={t} mine={mine.id} colors={colorsByPlayer(players)} />
+      {t >= 0 && t <= last && (
+        <p className="cheer-row">
+          Cheer!{' '}
+          {CHEERS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              aria-label={`Cheer ${emoji}`}
+              disabled={cooling}
+              onClick={() => cheer(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </p>
+      )}
       {t >= 0 && timeline.horses.includes(mine.id) && (
         <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
       )}

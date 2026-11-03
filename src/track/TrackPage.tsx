@@ -29,6 +29,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { useCheers } from '../net/cheers.ts';
 import { useOfficeStats } from '../net/stats.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
@@ -357,6 +358,15 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
     names,
     commentary: true,
   });
+  const ids = useMemo(() => new Set(players.map((p) => p.id)), [players]);
+  const lastCheerSfx = useRef(0);
+  const shown = useCheers(room.id, ids, () => {
+    const n = Date.now();
+    if (n - lastCheerSfx.current >= 300) {
+      lastCheerSfx.current = n;
+      soundEngine().sfx('cheer');
+    }
+  });
   const asked = useRef(false);
   const retry = useRef(0);
   useEffect(() => () => clearTimeout(retry.current), []);
@@ -376,12 +386,21 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   return (
     <section>
       {timeline && race?.started_at ? (
-        <RaceView
-          timeline={timeline}
-          startAtMs={gunMs(race.started_at)}
-          names={names}
-          colors={colors}
-        />
+        <div className="race-wrap">
+          <RaceView
+            timeline={timeline}
+            startAtMs={gunMs(race.started_at)}
+            names={names}
+            colors={colors}
+          />
+          <ul className="cheers" aria-live="polite">
+            {shown.map((c) => (
+              <li key={c.id}>
+                {c.emoji} {nameOf(players, c.player)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
         <p>{error ?? 'Loading the race…'}</p>
       )}

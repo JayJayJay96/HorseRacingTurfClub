@@ -210,6 +210,12 @@ label.card {
   cursor: pointer;
 }
 
+/* Radio and checkbox cards: the ring goes on the whole card, not only the tiny native control. */
+.card:has(:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .chip {
   display: inline-block;
   padding: 2px 8px;

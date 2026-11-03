@@ -537,7 +537,7 @@ function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
     <>
       {place >= 0 && (
         <p className="panel place-card">
-          Your horse finished <strong>{ordinal(place + 1)}</strong>.
+          Your horse finished <strong>{ordinal(place + 1)}.</strong>
         </p>
       )}
       {myBets.length > 0 && (

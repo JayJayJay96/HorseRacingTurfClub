@@ -62,12 +62,13 @@ export function TrackPage() {
   const [busy, setBusy] = useState(false);
   const { settings, update } = useAudioSettings('screen');
   const phase = state?.room.phase;
+  // Keyed on the theme, not the phase: Lobby -> Shop -> Betting keeps the same song playing.
+  const music =
+    phase === undefined || phase === 'PODIUM' ? null : phase === 'RUNNING' ? 'race' : 'lobby';
   useEffect(() => {
-    const music =
-      phase === undefined || phase === 'PODIUM' ? null : phase === 'RUNNING' ? 'race' : 'lobby';
     soundEngine().setMusic(music);
     return () => soundEngine().setMusic(null);
-  }, [phase]);
+  }, [music]);
 
   // Not the host (or the screen was taken over elsewhere): the office unlocks with the admin password.
   if (error && code === OFFICE_CODE) return <OfficeHostLogin />;

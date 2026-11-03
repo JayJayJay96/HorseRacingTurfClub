@@ -29,7 +29,18 @@ export interface SoundEngine {
 const LOOKAHEAD_S = 0.15;
 const SCHEDULER_MS = 30;
 
-export function createSoundEngine(): SoundEngine {
+/** A random song index, never `last` again when there is a choice. */
+export function nextSong(count: number, last: number, r = Math.random()): number {
+  if (count < 2) return 0;
+  if (last < 0) return Math.floor(r * count);
+  const i = Math.floor(r * (count - 1));
+  return i >= last ? i + 1 : i;
+}
+
+/** `songs`: audio file URLs per theme; a theme without any plays its chiptune loop. */
+export function createSoundEngine(
+  songs: Readonly<Record<MusicTheme, readonly string[]>> = { lobby: [], race: [] },
+): SoundEngine {
   const Ctor =
     globalThis.AudioContext ??
     (globalThis as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -132,10 +143,41 @@ export function createSoundEngine(): SoundEngine {
   }
 
   // ---------- music ----------
+  /** Random songs one after another, through the music bus so the volume and mute apply. */
+  function startSongs(c: AudioContext, bus: GainNode, theme: MusicTheme) {
+    const list = songs[theme];
+    let last = -1;
+    let el: HTMLAudioElement | null = null;
+    let node: MediaElementAudioSourceNode | null = null;
+    const play = () => {
+      last = nextSong(list.length, last);
+      el = new Audio(list[last]);
+      node = c.createMediaElementSource(el);
+      node.connect(bus);
+      el.onended = () => {
+        node?.disconnect();
+        play();
+      };
+      void el.play().catch(() => undefined);
+    };
+    play();
+    sequencer = {
+      theme,
+      stop: () => {
+        if (el) {
+          el.onended = null;
+          el.pause();
+        }
+        node?.disconnect();
+      },
+    };
+  }
+
   function startSequencer(theme: MusicTheme) {
     const c = running();
     if (!c || !musicBus) return;
     stopSequencer();
+    if (songs[theme].length) return startSongs(c, musicBus, theme);
     const bus = musicBus;
     const t = THEMES[theme];
     const step = stepSeconds(t);

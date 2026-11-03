@@ -76,7 +76,14 @@ export function PlayPage() {
 
   const claim = (n: string) => {
     setError(null);
-    joinRoom(code, n).then(setMe, (err: unknown) => setError(errorText(err)));
+    joinRoom(code, n).then(setMe, (err: unknown) => {
+      setError(errorText(err));
+      // Another phone may have just taken that name: refresh the list.
+      void privateRoster(code).then(
+        (names) => setRoster(names ?? []),
+        () => {},
+      );
+    });
   };
   const join = (e: FormEvent) => {
     e.preventDefault();
@@ -89,14 +96,16 @@ export function PlayPage() {
       {roster.length > 0 && (
         <>
           <h2>Pre-entered by the host</h2>
-          <p>
+          <ul className="pick">
             {roster.map((p) => (
-              <button key={p.name} type="button" onClick={() => claim(p.name)}>
-                I'm {p.name}
-                {p.ticked ? ' 🐎' : ''}
-              </button>
+              <li key={p.name}>
+                <button type="button" className="primary" onClick={() => claim(p.name)}>
+                  I'm {p.name}
+                  {p.ticked && ' 🐎 racing'}
+                </button>
+              </li>
             ))}
-          </p>
+          </ul>
           <h2>Or join with a new name</h2>
         </>
       )}

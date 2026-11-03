@@ -171,6 +171,9 @@
   - A chosen coat/silk can match another lane's default colours.
   - The office ledger, races and members only grow (fine at office scale; `room_balances` sums per member).
   - No last-5 form on the odds board yet (Phase 6).
+  - Members can read the office ledger, including admin adjustment reasons: keep reasons non-sensitive.
+  - The host FK is now `on delete set null` for Private rooms too: a deleted host leaves a hostless room until the 24 h cleanup.
+  - A reset PIN or a removal doesn't push an update to the affected phone; it notices on its next reload.
   - Hosted deploy of Phase 5 needs the owner to set the `ADMIN_PASSWORD` secret first.
 
 Next: Phase 6 (History & fun).

@@ -95,10 +95,29 @@ button.primary {
   font-size: 2rem;
 }
 .race {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 260px;
   gap: 16px;
   align-items: start;
+}
+.race .fullscreen {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+}
+.race:fullscreen {
+  padding: 16px;
+  align-content: center;
+  background: Canvas;
+}
+.race:fullscreen canvas {
+  max-height: calc(100vh - 32px);
+  object-fit: contain;
+}
+.race:fullscreen .standings {
+  font-size: 1.5rem;
 }
 .race canvas {
   width: 100%;
@@ -201,9 +220,6 @@ a.button.primary {
   border-radius: 6px;
 }
 
-.race-wrap {
-  position: relative;
-}
 .cheers {
   position: absolute;
   left: 8px;

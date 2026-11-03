@@ -449,6 +449,7 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
           : t > last
             ? 'All home! Results in a moment…'
             : "🏇 And they're off!"}
+        {timeline.horses.includes(mine.id) && ` You're #${timeline.horses.indexOf(mine.id) + 1}.`}
       </p>
       <MiniOval
         timeline={timeline}

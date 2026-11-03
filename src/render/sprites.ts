@@ -102,3 +102,46 @@ export function drawHorse(
   }
   ctx.restore();
 }
+
+/** 3×5 pixel digits, rows top to bottom, 3 bits each (MSB = left). */
+const DIGITS = [
+  [7, 5, 5, 5, 7],
+  [2, 6, 2, 2, 7],
+  [7, 1, 7, 4, 7],
+  [7, 1, 7, 1, 7],
+  [5, 5, 7, 1, 1],
+  [7, 4, 7, 1, 7],
+  [7, 4, 7, 5, 7],
+  [7, 1, 2, 2, 2],
+  [7, 5, 7, 5, 7],
+  [7, 5, 7, 1, 7],
+] as const;
+
+/** Saddle-cloth style number badge in `silk`, centred on x with its bottom edge at y. */
+export function drawNumber(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  n: number,
+  silk: string,
+  size = 1,
+) {
+  const digits = String(n);
+  const w = digits.length * 4 + 1;
+  const left = Math.round(x) - Math.ceil(w / 2) * size;
+  const top = Math.round(y) - 7 * size;
+  ctx.fillStyle = '#000'; // outline so light silks read on dirt
+  ctx.fillRect(left - size, top - size, (w + 2) * size, 9 * size);
+  ctx.fillStyle = silk;
+  ctx.fillRect(left, top, w * size, 7 * size);
+  ctx.fillStyle = contrastOf(silk);
+  [...digits].forEach((d, i) => {
+    DIGITS[Number(d)]!.forEach((bits, row) => {
+      for (let col = 0; col < 3; col++) {
+        if (bits & (4 >> col)) {
+          ctx.fillRect(left + (1 + i * 4 + col) * size, top + (1 + row) * size, size, size);
+        }
+      }
+    });
+  });
+}

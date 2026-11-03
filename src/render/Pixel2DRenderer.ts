@@ -1,9 +1,9 @@
 import { eventsBetween, progressAt } from '../sim/playback.ts';
-import type { BoxSpot, HorseId, Timeline } from '../sim/types.ts';
+import type { BoxSpot, HorseId, RaceEvent, Timeline } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
-import { popupOf } from './items.ts';
+import { ITEM_INFO, popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
-import { drawHorse, poseOf } from './sprites.ts';
+import { drawHorse, drawNumber, poseOf } from './sprites.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
 
 /** Spec §4: every renderer plays the same Timeline on the same track. */
@@ -26,6 +26,11 @@ const RAIL = '#f5f5f5';
 const STANDS = '#5d5d6e';
 const EASE = 0.06;
 const POPUP_SECONDS = 2;
+/**
+ * Display only: a box is drawn where its horse was this long before the sim opened it, and the
+ * item spins over the horse until then, so the effect reads as landing after the grab.
+ */
+export const ITEM_HOLD_SECONDS = 1.5;
 /** Finished horses ease past the line (m/s) instead of piling up on it. Display only. */
 const COAST_SPEED = 10;
 /** A box appears once its horse is within this share of the race before it (owner 2026-11-04). */
@@ -54,9 +59,14 @@ export class Pixel2DRenderer implements RaceRenderer {
   private camera: Camera = WIDE;
   /** EASE, or 1 (snap) when the viewer prefers reduced motion; read once per play(). */
   private ease = EASE;
+  private motion = true;
   // Per-timeline caches, built in play() so draw() does no per-frame sorting or filtering.
   private boxes: (readonly BoxSpot[])[] = [];
-  private pickups: number[][] = [];
+  /** Per lane, sorted: when each box is grabbed on screen (ITEM_HOLD_SECONDS before it opens). */
+  private grabs: number[][] = [];
+  /** Per lane: where each box is drawn, in metres. */
+  private boxAt: number[][] = [];
+  private held: Extract<RaceEvent, { type: 'pickup' }>[] = [];
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
   private halfWidth = 1;
@@ -75,18 +85,26 @@ export class Pixel2DRenderer implements RaceRenderer {
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     this.camera = WIDE;
-    this.ease =
+    this.motion = !(
       typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 1
-        : EASE;
+    );
+    this.ease = this.motion ? EASE : 1;
     this.boxes = timeline.horses.map((h) =>
       [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
     );
-    this.pickups = timeline.horses.map((h) =>
-      timeline.events
-        .filter((e) => e.type === 'pickup' && e.horse === h)
-        .map((e) => e.t)
+    this.held = timeline.events.filter((e) => e.type === 'pickup');
+    this.grabs = timeline.horses.map((h) =>
+      this.held
+        .filter((e) => e.horse === h)
+        .map((e) => e.t - ITEM_HOLD_SECONDS)
         .sort((a, b) => a - b),
+    );
+    // One pickup per box, in order; a box nobody reached stays at its sim spot.
+    this.boxAt = this.boxes.map((boxes, lane) =>
+      boxes.map((box, i) => {
+        const grab = this.grabs[lane]![i];
+        return grab === undefined ? box.at : progressAt(timeline, timeline.horses[lane]!, grab);
+      }),
     );
     this.trails = timeline.horses.map(() => new Float64Array(TRAIL * 2));
     this.trailHead = timeline.horses.map(() => 0);
@@ -192,10 +210,11 @@ export class Pixel2DRenderer implements RaceRenderer {
     timeline.horses.forEach((horse, lane) => {
       const boxes = this.boxes[lane] ?? [];
       const reach = progressAt(timeline, horse, t) + timeline.distance * BOX_REVEAL;
-      for (let i = countUpTo(this.pickups[lane] ?? [], t); i < boxes.length; i++) {
+      for (let i = countUpTo(this.grabs[lane] ?? [], t); i < boxes.length; i++) {
         const box = boxes[i]!;
-        if (box.at > reach) break;
-        const p = screen(horsePoint(track, timeline.distance, box.at, lane));
+        const at = this.boxAt[lane]![i]!;
+        if (at > reach) break;
+        const p = screen(horsePoint(track, timeline.distance, at, lane));
         ctx.fillStyle = BOX_COLOR[box.kind];
         ctx.fillRect(Math.round(p.x) - 1, Math.round(p.y) - 1, 3, 3);
       }
@@ -218,7 +237,7 @@ export class Pixel2DRenderer implements RaceRenderer {
         return { horse, lane, m, p, colors, pose: poseOf(a.x - p.x, a.y - p.y) };
       })
       .sort((a, b) => a.p.y - b.p.y);
-    // No name tags: a tight pack makes them unreadable; silks match the standings list.
+    // Numbers, not name tags: a tight pack makes names unreadable; #n matches the standings list.
     // Trails under every horse, in world points mapped like screen() but without allocating.
     for (const h of drawn) {
       const kind = h.colors.trail;
@@ -245,9 +264,28 @@ export class Pixel2DRenderer implements RaceRenderer {
     for (const h of drawn) {
       drawHorse(ctx, h.p.x, h.p.y, h.colors, Math.floor(h.m / 1.5), h.pose, size);
     }
+    // Badges after every horse so a horse behind never covers a number.
+    for (const h of drawn)
+      drawNumber(ctx, h.p.x, h.p.y - 17 * size - 2, h.lane + 1, h.colors.silk, size);
+    const above = (p: Point) => p.y - 26 * size - 4;
+
+    // Grabbed items hover and spin over their horse until they open.
+    ctx.textAlign = 'center';
+    ctx.font = `${10 * size}px sans-serif`;
+    for (const e of this.held) {
+      if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
+      const p = where.get(e.horse);
+      if (!p) continue;
+      const icon = e.item ? ITEM_INFO[e.item].icon : '💨';
+      const bob = this.motion ? Math.sin(t * 8) * 2 : 0;
+      ctx.save();
+      ctx.translate(p.x, above(p) + bob);
+      if (this.motion) ctx.scale(Math.cos(t * 2 * Math.PI * 1.5) || 0.01, 1);
+      ctx.fillText(icon, 0, 0);
+      ctx.restore();
+    }
 
     // Item popups float up for POPUP_SECONDS.
-    ctx.textAlign = 'center';
     ctx.font = '10px sans-serif';
     // White text crosses grass and dirt (3.1:1 on dirt), so it gets a dark outline.
     ctx.strokeStyle = '#000';
@@ -256,7 +294,7 @@ export class Pixel2DRenderer implements RaceRenderer {
     for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
       const p = where.get(e.horse);
       if (!p) continue;
-      const y = p.y - 14 * size - 6 - (t - e.t) * 8;
+      const y = above(p) - (t - e.t) * 8;
       ctx.fillStyle = '#fff';
       ctx.strokeText(popupOf(e), p.x, y);
       ctx.fillText(popupOf(e), p.x, y);

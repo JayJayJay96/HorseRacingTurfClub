@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { raceAnnouncement } from '../app/announce.ts';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
@@ -19,11 +19,22 @@ type Props = {
   /** Per-horse colours (Office); lane colours by default. */
   colors?: ColorsOf;
   track?: Track;
+  /** Overlays (e.g. cheers) that should stay visible in fullscreen. */
+  children?: ReactNode;
 };
 
 /** Big-screen race: the pixel track plus live standings. */
-export function RaceView({ timeline, startAtMs, names, colors, track = TRACK }: Props) {
+export function RaceView({ timeline, startAtMs, names, colors, track = TRACK, children }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const sync = () => setFull(document.fullscreenElement === box.current);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+  const toggleFull = () =>
+    (full ? document.exitFullscreen() : box.current!.requestFullscreen()).catch(() => {});
   // A ref, so a room refetch (new colours function) doesn't restart the race.
   const colorsRef = useRef(colors ?? defaultColors);
   useEffect(() => {
@@ -39,7 +50,12 @@ export function RaceView({ timeline, startAtMs, names, colors, track = TRACK }: 
 
   const t = useRaceTime(startAtMs);
   return (
-    <div className="race">
+    <div className="race" ref={box}>
+      {document.fullscreenEnabled && (
+        <button type="button" className="fullscreen" aria-pressed={full} onClick={toggleFull}>
+          {full ? 'Exit fullscreen' : '⛶ Fullscreen'}
+        </button>
+      )}
       <canvas
         ref={canvas}
         width={VIEW.width}
@@ -53,15 +69,16 @@ export function RaceView({ timeline, startAtMs, names, colors, track = TRACK }: 
       <ol className="standings">
         {standingsAt(timeline, t).map((h) => {
           const time = timeline.finishTimes[h]!;
+          const lane = timeline.horses.indexOf(h);
           return (
             <li key={h}>
-              <Silk color={(colors ?? defaultColors)(h, timeline.horses.indexOf(h)).silk} />{' '}
-              {names[h] ?? '?'}
+              <Silk color={(colors ?? defaultColors)(h, lane).silk} /> #{lane + 1} {names[h] ?? '?'}
               {time <= t && ` · ${time.toFixed(2)} s`}
             </li>
           );
         })}
       </ol>
+      {children}
     </div>
   );
 }

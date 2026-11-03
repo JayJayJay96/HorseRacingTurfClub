@@ -420,14 +420,13 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
     <section>
       <h1 className="visually-hidden">Race · room {room.code}</h1>
       {timeline && race?.started_at ? (
-        <div className="race-wrap">
-          <RaceView
-            timeline={timeline}
-            startAtMs={gunMs(race.started_at)}
-            names={names}
-            colors={colors}
-            track={trackById(race.track)}
-          />
+        <RaceView
+          timeline={timeline}
+          startAtMs={gunMs(race.started_at)}
+          names={names}
+          colors={colors}
+          track={trackById(race.track)}
+        >
           <ul className="cheers" aria-hidden="true">
             {shown.map((c) => (
               <li key={c.id}>
@@ -435,7 +434,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
               </li>
             ))}
           </ul>
-        </div>
+        </RaceView>
       ) : (
         <p>{error ?? 'Loading the race…'}</p>
       )}

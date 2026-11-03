@@ -4,7 +4,10 @@ create extension if not exists pgcrypto with schema extensions;
 
 alter table public.rooms
   add column kind text not null default 'private' check (kind in ('private', 'office')),
-  alter column host_uid drop not null;
+  alter column host_uid drop not null,
+  -- The office host is any device; deleting that auth user must not take the office and its history.
+  drop constraint rooms_host_uid_fkey,
+  add constraint rooms_host_uid_fkey foreign key (host_uid) references auth.users (id) on delete set null;
 create unique index rooms_one_office_idx on public.rooms ((true)) where kind = 'office';
 
 -- Office horses: cosmetic choices (null = lane default colours) and soft removal (history stays).
@@ -22,6 +25,9 @@ create table private.office_pins (
   fails integer not null default 0,
   locked_until timestamptz
 );
+-- Only security-definer functions touch it: no grants, RLS on with no policies.
+revoke all on private.office_pins from public, anon, authenticated;
+alter table private.office_pins enable row level security;
 
 -- Coins outside any race: the starting 100 (topup) and admin adjustments (with a reason).
 alter table public.coin_ledger

@@ -8,7 +8,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_room uuid := (select id from public.rooms where kind = 'office');
+  v_room uuid := (select id from public.rooms where kind = 'office' for update); -- room lock first
   v_name text := btrim(coalesce(p_name, ''));
   v_player public.room_players;
 begin
@@ -72,6 +72,8 @@ begin
   if auth.uid() is null then
     raise exception 'not_signed_in';
   end if;
+  -- Room before player, like every other lock path (no deadlocks).
+  perform 1 from public.rooms where kind = 'office' for update;
   select p.* into v_player
     from public.room_players p join public.rooms r on r.id = p.room_id
     where p.id = p_player and r.kind = 'office' and p.archived_at is null
@@ -105,7 +107,7 @@ begin
   -- One person per phone, one phone per person.
   update public.room_players set uid = null, ready = false
     where room_id = v_player.room_id and uid = auth.uid() and id <> p_player;
-  update public.room_players set uid = auth.uid() where id = p_player returning * into v_player;
+  update public.room_players set uid = auth.uid(), ready = false where id = p_player returning * into v_player;
   update public.rooms set last_activity_at = now() where id = v_player.room_id;
   return to_jsonb(v_player);
 end;
@@ -120,10 +122,10 @@ security definer
 set search_path = ''
 as $$
 begin
+  update public.rooms set last_activity_at = now() where id = p_room and kind = 'office'; -- room lock first
   update public.room_players p set uid = null, ready = false
     from public.rooms r
     where r.id = p_room and r.kind = 'office' and p.room_id = r.id and p.uid = auth.uid();
-  update public.rooms set last_activity_at = now() where id = p_room and kind = 'office';
 end;
 $$;
 revoke execute on function public.office_logout(uuid) from public, anon;
@@ -189,7 +191,8 @@ begin
   return v_player;
 exception when unique_violation then
   -- lost a race: same device joined twice (return its entry) or same name taken
-  select * into v_player from public.room_players where room_id = v_room_id and uid = auth.uid();
+  select * into v_player from public.room_players
+    where room_id = v_room_id and uid = auth.uid() and archived_at is null;
   if found then
     return v_player;
   end if;

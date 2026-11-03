@@ -26,6 +26,24 @@ describe('office room', () => {
     expect(
       await fails(stranger.rpc('update_room_settings', { p_room: room.id, p_prize: 'x' })),
     ).toBe('not_host');
+    await officeRoom(); // give the office a host again
+  });
+
+  it('survives deleting its host device (host_uid goes null, history stays)', async () => {
+    const { host, room, admin } = await officeRoom();
+    const { data } = await host.auth.getUser();
+    const { error } = await admin.auth.admin.deleteUser(data.user!.id);
+    expect(error).toBeNull();
+    const [after] = await ok(admin.from('rooms').select('host_uid').eq('id', room.id));
+    expect(after).toEqual({ host_uid: null });
+    await officeRoom();
+  });
+
+  it('keeps PIN data out of reach of clients', async () => {
+    const phone = await anonClient();
+    const { data, error } = await phone.schema('private').from('office_pins').select('*');
+    expect(data ?? []).toEqual([]);
+    expect(error).not.toBeNull();
   });
 
   it('accepts ledger rows without a race only as topup or reasoned admin_adjust', async () => {
@@ -50,6 +68,12 @@ describe('office room', () => {
       /check/,
     );
     expect(await fails(admin.from('coin_ledger').insert(row('payout', 'why')))).toMatch(/check/);
+    await ok(
+      admin
+        .from('room_players')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', (p as { id: string }).id),
+    );
   });
 
   it('room_balances: members see everyone, outsiders see nothing; Private stays per race', async () => {
@@ -82,6 +106,42 @@ describe('office login', () => {
     await ok(phone2.rpc('office_login', { p_player: m.player.id, p_pin: '1234' }));
     expect(await ok(m.client.from('rooms').select('id').eq('id', room.id))).toEqual([]);
     expect(await ok(phone2.from('rooms').select('id').eq('id', room.id))).toHaveLength(1);
+  });
+
+  it('clears Ready when the member moves to a new phone', async () => {
+    const m = await member('Y');
+    const admin = adminClient();
+    await ok(admin.from('room_players').update({ ready: true }).eq('id', m.player.id));
+    const phone2 = await anonClient();
+    await ok(phone2.rpc('office_login', { p_player: m.player.id, p_pin: '1234' }));
+    const [row] = await ok(admin.from('room_players').select('ready').eq('id', m.player.id));
+    expect(row).toEqual({ ready: false });
+  });
+
+  it('a wrong PIN leaves the member on the old phone', async () => {
+    const m = await member('G');
+    const room = await officeRow();
+    const phone2 = await anonClient();
+    expect(
+      await ok(phone2.rpc('office_login', { p_player: m.player.id, p_pin: '0000' })),
+    ).toBeNull();
+    expect(await ok(m.client.from('rooms').select('id').eq('id', room.id))).toHaveLength(1);
+    expect(await ok(phone2.from('rooms').select('id').eq('id', room.id))).toEqual([]);
+  });
+
+  it('a correct PIN resets the fail count', async () => {
+    const m = await member('C');
+    const phone = await anonClient();
+    for (let round = 0; round < 2; round++) {
+      for (let i = 0; i < 4; i++) {
+        expect(
+          await ok(phone.rpc('office_login', { p_player: m.player.id, p_pin: '9999' })),
+        ).toBeNull();
+      }
+      expect(
+        await ok(phone.rpc('office_login', { p_player: m.player.id, p_pin: '1234' })),
+      ).not.toBeNull();
+    }
   });
 
   it('locks a name for 5 minutes after 5 wrong PINs', async () => {

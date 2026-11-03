@@ -1,6 +1,7 @@
 -- /admin actions (spec §10). Service role only: the admin Edge Function checks the password first.
 
--- Locks an office member; p_active = false also finds archived ones.
+-- Locks the office room, then the member (room before player, like every lock path).
+-- p_active = false also finds archived ones.
 create function private.office_member(p_player uuid, p_active boolean default true)
 returns public.room_players
 language plpgsql
@@ -10,6 +11,7 @@ as $$
 declare
   v_player public.room_players;
 begin
+  perform 1 from public.rooms where kind = 'office' for update;
   select p.* into v_player
     from public.room_players p join public.rooms r on r.id = p.room_id
     where p.id = p_player and r.kind = 'office' and (not p_active or p.archived_at is null)
@@ -81,7 +83,8 @@ as $$
 declare
   v_player public.room_players := private.office_member(p_player);
 begin
-  if (select phase from public.rooms where id = v_player.room_id for update) <> 'LOBBY' then
+  -- office_member already holds the room lock.
+  if (select phase from public.rooms where id = v_player.room_id) <> 'LOBBY' then
     raise exception 'wrong_phase';
   end if;
   update public.room_players set archived_at = now(), ticked = false, ready = false, uid = null

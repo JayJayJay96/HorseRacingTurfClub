@@ -17,10 +17,16 @@ type Overview = {
 describe('admin RPCs', () => {
   it('are not callable by clients', async () => {
     const phone = await anonClient();
+    const zero = '00000000-0000-0000-0000-000000000000';
     for (const call of [
       phone.rpc('admin_overview'),
       phone.rpc('admin_add_member', { p_name: 'Hack' }),
       phone.rpc('admin_claim_host', { p_uid: '00000000-0000-0000-0000-000000000000' }),
+      phone.rpc('admin_adjust', { p_player: zero, p_amount: 1, p_reason: 'x' }),
+      phone.rpc('admin_rename', { p_player: zero, p_name: 'x' }),
+      phone.rpc('admin_archive', { p_player: zero }),
+      phone.rpc('admin_reset_pin', { p_player: zero }),
+      phone.rpc('admin_delete_race', { p_race: zero }),
     ]) {
       expect(await fails(call)).toMatch(/permission denied/);
     }

@@ -110,6 +110,22 @@ button.primary {
   display: grid;
   gap: 8px;
 }
+.box-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.box-card {
+  flex-direction: column;
+  justify-content: center;
+  min-height: 140px;
+  border-top: 8px solid;
+  text-align: center;
+}
+.box-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
 /* DOM order stays 1st, 2nd, 3rd; `order` shows the steps as 2nd, 1st, 3rd. */
 .podium {
   display: grid;

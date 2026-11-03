@@ -35,7 +35,7 @@ import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
-import { colorsByPlayer } from '../render/palette.ts';
+import { BOX_COLOR, colorsByPlayer } from '../render/palette.ts';
 import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
@@ -304,19 +304,24 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
   return (
     <>
       <p>
-        💰 {balance} coins · your boxes:{' '}
-        {boxes.length ? boxes.map((b) => BOX_ICON[b]).join(' ') : 'none'} ({boxes.length}/
-        {MAX_BOUGHT})
+        Your boxes: {boxes.length ? boxes.map((b) => BOX_ICON[b]).join(' ') : 'none'}{' '}
+        <span className="chip">
+          {boxes.length}/{MAX_BOUGHT} boxes
+        </span>
       </p>
-      <div className="shop">
+      <div className="box-cards">
         {BOX_TYPES.map((box) => (
           <button
             key={box}
             type="button"
+            className="card box-card"
+            style={{ borderTopColor: BOX_COLOR[box] }}
             disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
             onClick={() => act(() => buyBox(room.id, box).then(playCoin))}
           >
-            {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
+            <span className="box-icon">{BOX_ICON[box]}</span>
+            <span>{BOX_NAME[box]}</span>
+            <span className="chip">{PRICES[box]} coins</span>
           </button>
         ))}
       </div>

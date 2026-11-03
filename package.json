@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:balance": "vitest run --config vitest.balance.config.ts",
     "test:db": "vitest run --config vitest.db.config.ts",
+    "test:e2e": "playwright test",
     "preview": "vite preview"
   },
   "prettier": {
@@ -28,6 +29,8 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^24.13.3",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",

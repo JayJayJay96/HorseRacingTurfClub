@@ -6,6 +6,7 @@ import { ensureSignedIn } from '../net/supabase.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { colorsByPlayer } from '../render/palette.ts';
 import { RaceView } from '../render/RaceView.tsx';
+import { trackById } from '../render/track.ts';
 import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { BADGES, formatForm } from './badges.ts';
 
@@ -160,13 +161,14 @@ function Replay(props: { stats: OfficeStats; race: string; onClose: () => void }
     [stats.members],
   );
   const colors = useMemo(() => colorsByPlayer(stats.members), [stats.members]);
+  const track = trackById(stats.recent.find((r) => r.race === race)?.track);
   return (
     <section>
       <button type="button" onClick={onClose}>
         ← Back to stats
       </button>
       {timeline ? (
-        <RaceView timeline={timeline} startAtMs={gun} names={names} colors={colors} />
+        <RaceView timeline={timeline} startAtMs={gun} names={names} colors={colors} track={track} />
       ) : (
         <p>{error ?? 'Loading the replay…'}</p>
       )}

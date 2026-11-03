@@ -1,6 +1,8 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { unpackTimeline, type PackedTimeline } from '../sim/pack.ts';
 import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
+import type { TrackId } from '../render/track.ts';
+import type { CosmeticSlot } from '../shop/cosmetics.ts';
 import type { Database } from './database.types.ts';
 import { supabase } from './supabase.ts';
 
@@ -44,6 +46,8 @@ export const setRaceLength = (roomId: string, length: RaceLength) =>
   call(supabase.rpc('update_room_settings', { p_room: roomId, p_length: length }));
 export const setPrize = (roomId: string, prize: string) =>
   call(supabase.rpc('update_room_settings', { p_room: roomId, p_prize: prize }));
+export const setTrack = (roomId: string, track: TrackId | 'random') =>
+  call(supabase.rpc('update_room_settings', { p_room: roomId, p_track: track }));
 export const setPhase = (roomId: string, phase: 'LOBBY' | 'SHOP') =>
   call(supabase.rpc('set_phase', { p_room: roomId, p_phase: phase }));
 export const setReady = (roomId: string, ready: boolean) =>
@@ -114,6 +118,25 @@ export const setMyHorse = (
       p_horse_name: horseName,
     } satisfies SetMyHorseArgs as never),
   );
+
+export const buyCosmetic = (roomId: string, code: string) =>
+  call(supabase.rpc('buy_cosmetic', { p_room: roomId, p_code: code }));
+export const equipCosmetic = (roomId: string, slot: CosmeticSlot, code: string | null) =>
+  call(
+    // A null code unequips; the generated Args say string, so only the checked object is cast.
+    supabase.rpc('equip_cosmetic', {
+      p_room: roomId,
+      p_slot: slot,
+      p_code: code,
+    } satisfies { p_room: string; p_slot: string; p_code: string | null } as never),
+  );
+/** The caller's bought cosmetic codes. */
+export async function fetchOwnedCosmetics(playerId: string): Promise<string[]> {
+  const rows = await call(
+    supabase.from('player_cosmetics').select('code').eq('player_id', playerId),
+  );
+  return (rows ?? []).map((r) => r.code);
+}
 
 /** Null when the room doesn't exist or this device isn't in it (RLS hides it). */
 export async function fetchRoom(code: string): Promise<RoomState | null> {
@@ -197,6 +220,10 @@ const ERROR_TEXT: Record<string, string> = {
   bad_amount: 'Amount must be a whole number, not 0.',
   bad_reason: 'Give a reason (up to 100 characters).',
   race_in_use: "Can't delete the race in progress.",
+  unknown_cosmetic: "That item isn't in the shop.",
+  already_owned: 'You already own that.',
+  not_owned: 'Buy that first.',
+  wrong_slot: "That item doesn't go there.",
 };
 
 export function errorText(e: unknown): string {

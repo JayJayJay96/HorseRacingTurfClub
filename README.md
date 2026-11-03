@@ -13,6 +13,7 @@ Spec: [`docs/superpowers/specs/2026-10-29-horse-racing-turf-club-design.md`](doc
 | `npm run lint` | oxlint |
 | `npm test` | Fast unit tests |
 | `npm run test:balance` | 10,000-race balance suite (takes minutes) |
+| `npm run test:e2e` | Playwright E2E + axe (needs the local stack) |
 
 ## Layout
 
@@ -37,6 +38,7 @@ Tests:
 - `npm test` — unit tests (no Docker)
 - `npm run test:db` — database/RPC/RLS tests against the local stack. The realtime test can fail on the first run right after `db reset`; rerun once.
 - `npm run test:balance` — 10,000-race balance suite (minutes)
+- `npm run test:e2e` — Playwright E2E (private race with 3 phones, office looks shop and Kidney track, axe checks). Needs Docker and the local stack running, plus `ADMIN_PASSWORD` in `supabase/functions/.env`; starts its own dev server on port 5180. First time: `npx playwright install chromium`. Takes about 3 minutes.
 
 Edge Functions:
 
@@ -52,6 +54,7 @@ Office mode:
 
 - The office is one permanent room, code `TURF`. People, PINs, coins and races are managed at `/admin`; the same admin password unlocks the office big screen (`/track?code=TURF`). Phones join at `/play?code=TURF` with their name and a 4-digit PIN (set on first sign-in). `/stats` shows leaderboards, horse records, badges and replays (office members and the big screen only).
 - Local admin password: put `ADMIN_PASSWORD=<anything>` in `supabase/functions/.env` (gitignored), then `npx supabase stop && npx supabase start`; the edge runtime loads that file automatically.
+- Before each race the host picks the track (Oval, Speedway, Kidney or Random); the shape is looks only. Office members can buy silk patterns and trails with coins in the phone's Looks shop (lobby only).
 - Hosted: the owner sets it once with `npx supabase secrets set ADMIN_PASSWORD=<long random password>` (never commit or share it). Deploy with `npx supabase db push --linked` and `npx supabase functions deploy admin lock-odds start-race`. 10 wrong passwords lock `/admin` for 10 minutes; to clear a lock, run `select public.admin_gate_reset();` in the SQL editor.
 
 Running it:

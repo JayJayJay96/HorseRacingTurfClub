@@ -1,5 +1,5 @@
 import { eventsBetween, progressAt } from '../sim/playback.ts';
-import type { HorseId, Timeline } from '../sim/types.ts';
+import type { BoxSpot, HorseId, Timeline } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
 import { popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
@@ -30,12 +30,40 @@ const POPUP_SECONDS = 2;
 const COAST_SPEED = 10;
 /** A box appears once its horse is within this share of the race before it (owner 2026-11-04). */
 export const BOX_REVEAL = 0.1;
+/** Trail length in samples, and the on-screen gap between samples (px at size 1). */
+export const TRAIL = 8;
+const TRAIL_GAP = 3;
+const TRAIL_COLOR = { 'trail:dust': '#a39382', 'trail:sparkle': '#ffd54f' } as const;
+
+/** Count of sorted `times` that are <= t. */
+function countUpTo(times: readonly number[], t: number): number {
+  let lo = 0;
+  let hi = times.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (times[mid]! <= t) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
 
 export class Pixel2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
   private raf = 0;
   private readonly colors: ColorsOf;
   private camera: Camera = WIDE;
+  /** EASE, or 1 (snap) when the viewer prefers reduced motion; read once per play(). */
+  private ease = EASE;
+  // Per-timeline caches, built in play() so draw() does no per-frame sorting or filtering.
+  private boxes: (readonly BoxSpot[])[] = [];
+  private pickups: number[][] = [];
+  /** Both rails as one closed path in world metres; draw() maps it to screen space. */
+  private ribbon = new Path2D();
+  private halfWidth = 1;
+  /** Per lane: the last TRAIL world positions as x,y pairs, a ring written at `trailHead`. */
+  private trails: Float64Array[] = [];
+  private trailHead: number[] = [];
+  private trailCount: number[] = [];
 
   constructor(canvas: HTMLCanvasElement, colors: ColorsOf = defaultColors) {
     this.canvas = canvas;
@@ -47,6 +75,33 @@ export class Pixel2DRenderer implements RaceRenderer {
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
     this.camera = WIDE;
+    this.ease =
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 1
+        : EASE;
+    this.boxes = timeline.horses.map((h) =>
+      [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
+    );
+    this.pickups = timeline.horses.map((h) =>
+      timeline.events
+        .filter((e) => e.type === 'pickup' && e.horse === h)
+        .map((e) => e.t)
+        .sort((a, b) => a - b),
+    );
+    this.trails = timeline.horses.map(() => new Float64Array(TRAIL * 2));
+    this.trailHead = timeline.horses.map(() => 0);
+    this.trailCount = timeline.horses.map(() => 0);
+    const outer = timeline.horses.length * track.laneWidth;
+    this.halfWidth = trackBounds(track, timeline.horses.length).halfWidth;
+    this.ribbon = new Path2D();
+    for (const offset of [outer + 2, -2]) {
+      for (let s = 0; s <= track.lap; s += 4) {
+        const p = trackPoint(track, s, offset);
+        if (s === 0) this.ribbon.moveTo(p.x, p.y);
+        else this.ribbon.lineTo(p.x, p.y);
+      }
+      this.ribbon.closePath();
+    }
     const frame = () => {
       this.draw(ctx, timeline, track, (Date.now() - startAtMs) / 1000);
       this.raf = requestAnimationFrame(frame);
@@ -58,17 +113,36 @@ export class Pixel2DRenderer implements RaceRenderer {
     cancelAnimationFrame(this.raf);
   }
 
+  /**
+   * A sample each time the horse is `gap` world metres past the last one, so trails look the same
+   * length at any zoom. Cleared at the gate and once the horse finishes (then it coasts out).
+   */
+  private recordTrail(lane: number, at: Point, racing: boolean, gap: number) {
+    const count = this.trailCount[lane]!;
+    if (!racing) {
+      this.trailCount[lane] = 0;
+      return;
+    }
+    const ring = this.trails[lane]!;
+    const head = this.trailHead[lane]!;
+    const last = ((head - 1 + TRAIL) % TRAIL) * 2;
+    if (count && Math.hypot(at.x - ring[last]!, at.y - ring[last + 1]!) < gap) return;
+    ring[head * 2] = at.x;
+    ring[head * 2 + 1] = at.y;
+    this.trailHead[lane] = (head + 1) % TRAIL;
+    this.trailCount[lane] = Math.min(TRAIL, count + 1);
+  }
+
   private draw(ctx: CanvasRenderingContext2D, timeline: Timeline, track: Track, t: number) {
     const target = cameraAt(track, timeline, t);
     const c = this.camera;
     this.camera = {
-      x: c.x + (target.x - c.x) * EASE,
-      y: c.y + (target.y - c.y) * EASE,
-      zoom: c.zoom + (target.zoom - c.zoom) * EASE,
+      x: c.x + (target.x - c.x) * this.ease,
+      y: c.y + (target.y - c.y) * this.ease,
+      zoom: c.zoom + (target.zoom - c.zoom) * this.ease,
     };
-    const lanes = timeline.horses.length;
-    const outer = lanes * track.laneWidth;
-    const scale = (VIEW.width / (2 * trackBounds(track, lanes).halfWidth + 20)) * this.camera.zoom;
+    const outer = timeline.horses.length * track.laneWidth;
+    const scale = (VIEW.width / (2 * this.halfWidth + 20)) * this.camera.zoom;
     const screen = (p: Point): Point => ({
       x: (p.x - this.camera.x) * scale + VIEW.width / 2,
       y: (p.y - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2,
@@ -78,32 +152,30 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.fillStyle = GRASS;
     ctx.fillRect(0, 0, VIEW.width, VIEW.height);
 
-    // Track ribbon between the rails.
-    const ring = (offset: number) => {
-      for (let s = 0; s <= track.lap; s += 4) {
-        const p = screen(trackPoint(track, s, offset));
-        if (s === 0) ctx.moveTo(p.x, p.y);
-        else ctx.lineTo(p.x, p.y);
-      }
-      ctx.closePath();
-    };
-    ctx.beginPath();
-    ring(outer + 2);
-    ring(-2);
+    // Track ribbon between the rails: the cached world path under screen()'s affine map, stroked
+    // under the identity transform so the rails stay 1 px wide.
+    const ribbon = new Path2D();
+    ribbon.addPath(
+      this.ribbon,
+      new DOMMatrix([
+        scale,
+        0,
+        0,
+        scale * VIEW.tilt,
+        VIEW.width / 2 - this.camera.x * scale,
+        VIEW.height / 2 - this.camera.y * scale * VIEW.tilt,
+      ]),
+    );
     ctx.fillStyle = DIRT;
-    ctx.fill('evenodd');
+    ctx.fill(ribbon, 'evenodd');
     ctx.strokeStyle = RAIL;
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ring(-2);
-    ctx.stroke();
-    ctx.beginPath();
-    ring(outer + 2);
-    ctx.stroke();
+    ctx.stroke(ribbon);
 
     // Stands below the home straight, then the finish line.
-    const s0 = screen({ x: -track.straight / 2, y: track.radius + outer + 8 });
-    const s1 = screen({ x: track.straight / 2, y: track.radius + outer + 40 });
+    const { stands } = track;
+    const s0 = screen({ x: stands.x0, y: stands.y0 + outer });
+    const s1 = screen({ x: stands.x1, y: stands.y1 + outer });
     ctx.fillStyle = STANDS;
     ctx.fillRect(s0.x, s0.y, s1.x - s0.x, s1.y - s0.y);
     const f0 = screen(trackPoint(track, finishS(track), -2));
@@ -118,12 +190,10 @@ export class Pixel2DRenderer implements RaceRenderer {
     // Unopened boxes: a horse passes its lane's boxes in order, one pickup each. A box only shows
     // when its own horse is close, so nobody runs over a box that does nothing for them.
     timeline.horses.forEach((horse, lane) => {
-      const opened = timeline.events.filter(
-        (e) => e.type === 'pickup' && e.horse === horse && e.t <= t,
-      ).length;
+      const boxes = this.boxes[lane] ?? [];
       const reach = progressAt(timeline, horse, t) + timeline.distance * BOX_REVEAL;
-      const boxes = [...(timeline.boxes[horse] ?? [])].sort((a, b) => a.at - b.at);
-      for (const box of boxes.slice(opened)) {
+      for (let i = countUpTo(this.pickups[lane] ?? [], t); i < boxes.length; i++) {
+        const box = boxes[i]!;
         if (box.at > reach) break;
         const p = screen(horsePoint(track, timeline.distance, box.at, lane));
         ctx.fillStyle = BOX_COLOR[box.kind];
@@ -132,6 +202,8 @@ export class Pixel2DRenderer implements RaceRenderer {
     });
 
     // Horses, back to front.
+    const size = this.camera.zoom > 3 ? 2 : 1;
+    const gap = (TRAIL_GAP * size) / scale;
     const where = new Map<HorseId, Point>();
     const drawn = timeline.horses
       .map((horse, lane) => {
@@ -141,38 +213,63 @@ export class Pixel2DRenderer implements RaceRenderer {
         const p = screen(here);
         const a = screen(horsePoint(track, timeline.distance, m + 1, lane));
         where.set(horse, p);
-        return { horse, lane, m, p, pose: poseOf(a.x - p.x, a.y - p.y) };
+        const colors = this.colors(horse, lane);
+        if (colors.trail) this.recordTrail(lane, here, t > 0 && t < finished, gap);
+        return { horse, lane, m, p, colors, pose: poseOf(a.x - p.x, a.y - p.y) };
       })
       .sort((a, b) => a.p.y - b.p.y);
     // No name tags: a tight pack makes them unreadable; silks match the standings list.
-    const size = this.camera.zoom > 3 ? 2 : 1;
+    // Trails under every horse, in world points mapped like screen() but without allocating.
     for (const h of drawn) {
-      drawHorse(
-        ctx,
-        h.p.x,
-        h.p.y,
-        this.colors(h.horse, h.lane),
-        Math.floor(h.m / 1.5),
-        h.pose,
-        size,
-      );
+      const kind = h.colors.trail;
+      const count = this.trailCount[h.lane] ?? 0;
+      if (!count || (kind !== 'trail:dust' && kind !== 'trail:sparkle')) continue;
+      const ring = this.trails[h.lane]!;
+      const head = this.trailHead[h.lane]!;
+      for (let i = 0; i < count; i++) {
+        const k = ((head - 1 - i + TRAIL) % TRAIL) * 2; // newest first
+        const x = (ring[k]! - this.camera.x) * scale + VIEW.width / 2;
+        const y = (ring[k + 1]! - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2;
+        ctx.globalAlpha = 1 - (i + 1) / (TRAIL + 1);
+        if (kind === 'trail:dust') {
+          ctx.fillStyle = TRAIL_COLOR[kind];
+          ctx.fillRect(Math.round(x) - size, Math.round(y) - size, 2 * size, size);
+        } else {
+          // Gold/white flicker, lifted to the jockey's height.
+          ctx.fillStyle = (Math.floor(t * 12) + i) % 2 ? '#ffffff' : TRAIL_COLOR[kind];
+          ctx.fillRect(Math.round(x), Math.round(y) - (6 + (i % 3) * 2) * size, size, size);
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (const h of drawn) {
+      drawHorse(ctx, h.p.x, h.p.y, h.colors, Math.floor(h.m / 1.5), h.pose, size);
     }
 
     // Item popups float up for POPUP_SECONDS.
     ctx.textAlign = 'center';
     ctx.font = '10px sans-serif';
+    // White text crosses grass and dirt (3.1:1 on dirt), so it gets a dark outline.
+    ctx.strokeStyle = '#000';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
     for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
       const p = where.get(e.horse);
       if (!p) continue;
+      const y = p.y - 14 * size - 6 - (t - e.t) * 8;
       ctx.fillStyle = '#fff';
-      ctx.fillText(popupOf(e), p.x, p.y - 14 * size - 6 - (t - e.t) * 8);
+      ctx.strokeText(popupOf(e), p.x, y);
+      ctx.fillText(popupOf(e), p.x, y);
     }
 
     // Countdown, then GO!
     if (t < 1) {
       ctx.font = 'bold 64px sans-serif';
       ctx.fillStyle = '#fff';
-      ctx.fillText(t < 0 ? String(Math.ceil(-t)) : 'GO!', VIEW.width / 2, VIEW.height / 2 + 20);
+      ctx.lineWidth = 6;
+      const label = t < 0 ? String(Math.ceil(-t)) : 'GO!';
+      ctx.strokeText(label, VIEW.width / 2, VIEW.height / 2 + 20);
+      ctx.fillText(label, VIEW.width / 2, VIEW.height / 2 + 20);
     }
   }
 }

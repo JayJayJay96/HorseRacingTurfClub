@@ -1,4 +1,4 @@
-import type { HorseColors } from './palette.ts';
+import { contrastOf, type HorseColors } from './palette.ts';
 
 export type Pose = 'side-right' | 'side-left' | 'away' | 'toward';
 
@@ -35,6 +35,11 @@ export function drawHorse(
     ctx.fillStyle = color;
     ctx.fillRect(dx, dy, w, h);
   };
+  // The jockey's body rect in this pose, which the silk pattern decorates.
+  let bx = -1;
+  let by = -12;
+  let bw = 3;
+  let bh = 4;
   const lift = frame % 2; // also the gallop bob
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y) - lift * size);
@@ -47,6 +52,10 @@ export function drawHorse(
     px(2, -12, 2, 3, coat); // neck ahead, off to one side
     px(2, -13, 2, 1, mane); // ears
     px(-2, -13, 4, 3, silk); // jockey's back
+    bx = -2;
+    by = -13;
+    bw = 4;
+    bh = 3;
     px(-3, -10, 1, 2, silk); // jockey's legs either side
     px(2, -10, 1, 2, silk);
     px(-1, -15, 2, 2, silk); // cap
@@ -55,6 +64,8 @@ export function drawHorse(
     px(1, -3 - lift, 1, 3 + lift, coat);
     px(-3, -9, 7, 5, coat); // chest and shoulders
     px(-4, -13, 3, 4, silk); // jockey, off to one side of the head
+    bx = -4;
+    by = -13;
     px(-4, -15, 2, 2, silk); // cap
     px(0, -12, 3, 4, coat); // head facing us
     px(0, -13, 1, 1, coat); // ears
@@ -77,6 +88,17 @@ export function drawHorse(
     px(4, -12, 2, 1, mane); // mane
     px(-1, -12, 3, 4, silk); // jockey
     px(0, -14, 2, 2, silk); // cap
+  }
+  if (colors.pattern) {
+    const ink = contrastOf(silk);
+    if (colors.pattern === 'pattern:hoops') {
+      for (let row = by + 1; row < by + bh; row += 2) px(bx, row, bw, 1, ink);
+    } else if (colors.pattern === 'pattern:sash') {
+      for (let i = 0; i < bh; i++) px(bx + Math.min(i, bw - 1), by + i, 1, 1, ink);
+    } else if (colors.pattern === 'pattern:stars') {
+      px(bx, by + 1, 1, 1, ink);
+      px(bx + bw - 1, by + bh - 1, 1, 1, ink);
+    }
   }
   ctx.restore();
 }

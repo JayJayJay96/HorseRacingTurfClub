@@ -421,3 +421,6 @@ verify_jwt = false
 
 [functions.start-race]
 verify_jwt = false
+
+[functions.admin]
+verify_jwt = false

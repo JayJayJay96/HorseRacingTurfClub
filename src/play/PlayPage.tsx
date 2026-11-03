@@ -11,6 +11,9 @@ import {
   ordinal,
 } from '../betting/betting.ts';
 import { BADGES, formatForm } from '../history/badges.ts';
+import { soundEngine, useAudioSettings } from '../audio/sound.ts';
+import { SoundToggle } from '../audio/SoundToggle.tsx';
+import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { normalizeCode } from '../lobby/lobby.ts';
 import {
   buyBox,
@@ -25,6 +28,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { CHEER_GAP_MS, CHEERS, sendCheer, type CheerEmoji } from '../net/cheers.ts';
 import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
@@ -36,6 +40,15 @@ import { gunMs, standingsAt } from '../sim/playback.ts';
 import { HorsePanel } from './HorsePanel.tsx';
 import { MiniOval } from './MiniOval.tsx';
 import { OfficeLogin } from './OfficeLogin.tsx';
+
+/** Coin sound after a successful buy or bet; a sound problem must never look like a failed action. */
+function playCoin() {
+  try {
+    soundEngine().sfx('coin');
+  } catch {
+    // sound is best effort
+  }
+}
 
 /** Phone: join the room, then follow its phase. */
 export function PlayPage() {
@@ -144,6 +157,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
     state?.room.phase,
     state?.room.kind === 'office' && state.room.phase === 'LOBBY',
   );
+  const { settings, update } = useAudioSettings('phone');
 
   if (error) {
     return (
@@ -197,6 +211,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
 
   return (
     <main className="play">
+      <SoundToggle settings={settings} update={update} />
       <h1>{mine.name}</h1>
       <p>
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
@@ -285,7 +300,7 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
             key={box}
             type="button"
             disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
-            onClick={() => act(() => buyBox(room.id, box))}
+            onClick={() => act(() => buyBox(room.id, box).then(playCoin))}
           >
             {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
           </button>
@@ -309,7 +324,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    act(() => placeBet(room.id, horse, kind, amount));
+    act(() => placeBet(room.id, horse, kind, amount).then(playCoin));
   };
 
   return (
@@ -394,13 +409,23 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   );
 }
 
-function RunningPanel({ players, race, bets, mine }: PanelProps) {
+function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
   const { timeline, error } = useTimeline(race?.id ?? null);
-  const t = useRaceTime(race?.started_at ? gunMs(race.started_at) : 0);
+  const gun = race?.started_at ? gunMs(race.started_at) : 0;
+  const t = useRaceTime(gun);
+  useRaceAudio(timeline, gun, { cues: (c) => c === 'count' || c === 'go' || c === 'bell' });
+  const [cooling, setCooling] = useState(false);
+  const coolTimer = useRef(0);
+  useEffect(() => () => clearTimeout(coolTimer.current), []);
   if (!timeline || !race?.started_at) return <p>{error ?? 'Loading the race…'}</p>;
   const order = standingsAt(timeline, t);
   const last = Math.max(...Object.values(timeline.finishTimes));
   const myBets = bets.filter((b) => b.player_id === mine.id);
+  const cheer = (emoji: CheerEmoji) => {
+    sendCheer(room.id, { player: mine.id, emoji }).catch(() => {}); // best effort
+    setCooling(true);
+    coolTimer.current = window.setTimeout(() => setCooling(false), CHEER_GAP_MS);
+  };
   return (
     <>
       <p>
@@ -411,6 +436,22 @@ function RunningPanel({ players, race, bets, mine }: PanelProps) {
             : "🏇 And they're off!"}
       </p>
       <MiniOval timeline={timeline} t={t} mine={mine.id} colors={colorsByPlayer(players)} />
+      {t >= 0 && t <= last && (
+        <p className="cheer-row">
+          Cheer!{' '}
+          {CHEERS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              aria-label={`Cheer ${emoji}`}
+              disabled={cooling}
+              onClick={() => cheer(emoji)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </p>
+      )}
       {t >= 0 && timeline.horses.includes(mine.id) && (
         <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
       )}

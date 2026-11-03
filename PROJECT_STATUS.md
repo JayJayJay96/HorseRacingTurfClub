@@ -217,4 +217,35 @@
   - Members can query `badges` directly during a race (like results; the UI and `office_stats` hide them until PODIUM).
 - Deploy order: `db push` (013), then `functions deploy start-race`, then push `master`. Races started between the first two steps get no event badges (SQL badges still work).
 
-Next: Phase 7 (Sound & commentator; cheers could join it).
+## Phase 7 — Sound, commentator & cheers (branch `phase7-sound`)
+
+- [x] Task 0: Branch
+- [x] Task 1: Settings and chiptune themes
+- [x] Task 2: Race cue names and sound engine
+- [x] Task 3: Race cues
+- [x] Task 4: Commentator
+- [x] Task 5: Sound hooks and toggle
+- [x] Task 6: Big screen audio
+- [x] Task 7: Cheers
+- [x] Task 8: Phone sounds
+- [x] Task 9: Smoke test and docs (deploy after merge)
+
+### 2026-11-04 — Phase 7
+
+- Built Phase 7 per `docs/superpowers/plans/2026-11-04-phase7-sound.md` (Tasks 0-9). No database changes.
+- Decisions (owner: commentator, phone cheers and opt-in phone sounds; two original loops):
+  - Web Audio engine adapted from King of Fate; music and effects synthesised at runtime, nothing bundled (`THIRD_PARTY_NOTICES.md`).
+  - Lobby loop in LOBBY..BETTING, race loop while RUNNING, quiet podium. Audio unlocks on the first click/tap.
+  - Pure `raceCues` (events → effects) and `createCommentator` (events → lines) drive `useRaceAudio` 10×/s against the race clock; a reload starts from "now".
+  - Cheers: Supabase Realtime Broadcast on `cheers:<roomId>`; phones `httpSend` without subscribing, only the big screen listens. Validated (emoji list, roster id), per-sender 1 per 2 s, room-wide 5 per second; names come from the roster.
+  - Settings per browser: big screen on by default with volumes and a commentator switch; phones muted by default.
+- Review fixes: no music burst after a background tab; touch-friendly unlock; a speech queue that can't stall; start/finish cues never dropped; a limiter on the master bus; room-wide cheer cap; safe coin sound; phone toggle in the page flow.
+- Smoke test (local office, big screen + 2 phones): after one click the lobby music scheduled notes; volume panel works; race music and effects scheduled; Ali's 🔥 floated "🔥 Ali" on the big screen and the phone's buttons waited 2 s; the commentator called the start, lead changes, a Golden Lasso, a Stampede, the final stretch and "Bea wins it! Ali second, Dan third." matching the podium; reloading the big screen mid-race didn't replay old lines; no console errors or failed requests. Not verified by ear (no speakers here) or on a real touch phone.
+- Checks: `npm test` 132 pass, typecheck, lint and build clean.
+- Deferred:
+  - The `/stats` replay is silent.
+  - Phones don't see each other's cheers (only the big screen).
+  - The commentator voice depends on the browser and computer.
+  - Anyone with the room id could send cheers in a player's name (cosmetic; rate-limited).
+
+Next: Phase 8 (HD-2D renderer) or Phase 9 (hardening & maps).

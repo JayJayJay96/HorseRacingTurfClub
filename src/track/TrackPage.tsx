@@ -29,6 +29,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { useCheers } from '../net/cheers.ts';
 import { useOfficeStats } from '../net/stats.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
@@ -37,6 +38,9 @@ import { RaceView, Silk } from '../render/RaceView.tsx';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
+import { soundEngine, useAudioSettings } from '../audio/sound.ts';
+import { SoundToggle } from '../audio/SoundToggle.tsx';
+import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
 
@@ -51,6 +55,14 @@ export function TrackPage() {
   const { state, online, error, refresh } = useRoom(code);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { settings, update } = useAudioSettings('screen');
+  const phase = state?.room.phase;
+  useEffect(() => {
+    const music =
+      phase === undefined || phase === 'PODIUM' ? null : phase === 'RUNNING' ? 'race' : 'lobby';
+    soundEngine().setMusic(music);
+    return () => soundEngine().setMusic(null);
+  }, [phase]);
 
   // Not the host (or the screen was taken over elsewhere): the office unlocks with the admin password.
   if (error && code === OFFICE_CODE) return <OfficeHostLogin />;
@@ -75,6 +87,7 @@ export function TrackPage() {
 
   return (
     <main className="track">
+      <SoundToggle settings={settings} update={update} full />
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />
       ) : (
@@ -341,6 +354,19 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
     [players],
   );
   const colors = useMemo(() => colorsByPlayer(players), [players]);
+  useRaceAudio(timeline, race?.started_at ? gunMs(race.started_at) : 0, {
+    names,
+    commentary: true,
+  });
+  const ids = useMemo(() => new Set(players.map((p) => p.id)), [players]);
+  const lastCheerSfx = useRef(0);
+  const shown = useCheers(room.id, ids, () => {
+    const n = Date.now();
+    if (n - lastCheerSfx.current >= 300) {
+      lastCheerSfx.current = n;
+      soundEngine().sfx('cheer');
+    }
+  });
   const asked = useRef(false);
   const retry = useRef(0);
   useEffect(() => () => clearTimeout(retry.current), []);
@@ -360,12 +386,21 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   return (
     <section>
       {timeline && race?.started_at ? (
-        <RaceView
-          timeline={timeline}
-          startAtMs={gunMs(race.started_at)}
-          names={names}
-          colors={colors}
-        />
+        <div className="race-wrap">
+          <RaceView
+            timeline={timeline}
+            startAtMs={gunMs(race.started_at)}
+            names={names}
+            colors={colors}
+          />
+          <ul className="cheers" aria-hidden="true">
+            {shown.map((c) => (
+              <li key={c.id}>
+                {c.emoji} {nameOf(players, c.player)}
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : (
         <p>{error ?? 'Loading the race…'}</p>
       )}

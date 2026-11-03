@@ -59,6 +59,11 @@ Running it:
 - Supabase pauses free projects after about a week of inactivity. If the site says it can't connect, open the Supabase dashboard and press **Restore**.
 - Watch Supabase → Usage after the first busy weeks: every update makes each phone refetch the room.
 
+Sound:
+
+- The big screen plays music, effects and race commentary (browser voice). The first click turns audio on; 🔊 Sound and Volume (top right) mute it or set music, effects and commentator levels.
+- Phones are silent by default; their 🔇 Sound toggle enables countdown beeps, the start, the finish bell and a coin sound. During a race, phones get cheer buttons that float on the big screen.
+
 Testing with several devices:
 
 - Real phones on the LAN: set `VITE_SUPABASE_URL=http://<pc-lan-ip>:54321` in `.env.local`, run `npm run dev -- --host`, and open the host page via `http://<pc-lan-ip>:5173`. `127.0.0.1` on a phone is the phone itself, and the QR code uses the host page's origin.

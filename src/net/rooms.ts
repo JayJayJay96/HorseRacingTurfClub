@@ -89,6 +89,12 @@ export async function officeLogin(playerId: string, pin: string): Promise<RoomPl
 }
 export const officeLogout = (roomId: string) =>
   call(supabase.rpc('office_logout', { p_room: roomId }));
+type SetMyHorseArgs = {
+  p_room: string;
+  p_coat: number | null;
+  p_silk: number | null;
+  p_horse_name: string;
+};
 export const setMyHorse = (
   roomId: string,
   coat: number | null,
@@ -96,12 +102,14 @@ export const setMyHorse = (
   horseName: string,
 ) =>
   call(
+    // The SQL accepts null coat/silk (= lane default); the generated Args say number, so only the
+    // checked object is cast.
     supabase.rpc('set_my_horse', {
       p_room: roomId,
       p_coat: coat,
       p_silk: silk,
       p_horse_name: horseName,
-    } as never), // the SQL accepts null coat/silk (= lane default); the generated types don't say so
+    } satisfies SetMyHorseArgs as never),
   );
 
 /** Null when the room doesn't exist or this device isn't in it (RLS hides it). */

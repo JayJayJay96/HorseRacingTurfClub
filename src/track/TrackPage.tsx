@@ -13,7 +13,7 @@ import {
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
-import { canOpenShop, joinUrl, OFFICE_CODE } from '../lobby/lobby.ts';
+import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
   addPlayer,
   errorText,
@@ -45,7 +45,7 @@ const LENGTH_LABEL: Record<RaceLength, string> = { short: 'Short (~2 min)', long
 
 /** Big screen for the host device. */
 export function TrackPage() {
-  const code = new URLSearchParams(window.location.search).get('code') ?? '';
+  const code = normalizeCode(new URLSearchParams(window.location.search).get('code') ?? '') ?? '';
   const { state, online, error, refresh } = useRoom(code);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);

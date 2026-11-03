@@ -20,23 +20,24 @@ describe('admin RPCs', () => {
     const zero = '00000000-0000-0000-0000-000000000000';
     for (const call of [
       phone.rpc('admin_overview'),
-      phone.rpc('admin_add_member', { p_name: 'Hack' }),
+      phone.rpc('admin_add_member', { p_name: 'Hack', p_pin: '1234' }),
       phone.rpc('admin_claim_host', { p_uid: '00000000-0000-0000-0000-000000000000' }),
       phone.rpc('admin_adjust', { p_player: zero, p_amount: 1, p_reason: 'x' }),
       phone.rpc('admin_rename', { p_player: zero, p_name: 'x' }),
       phone.rpc('admin_archive', { p_player: zero }),
-      phone.rpc('admin_reset_pin', { p_player: zero }),
+      phone.rpc('admin_reset_pin', { p_player: zero, p_pin: '1234' }),
       phone.rpc('admin_delete_race', { p_race: zero }),
-      phone.rpc('admin_gate', { p_ok: true }),
+      phone.rpc('admin_gate', { p_ok: true, p_uid: zero }),
       phone.rpc('admin_gate_reset'),
     ]) {
       expect(await fails(call)).toMatch(/permission denied/);
     }
   });
 
-  it('admin_gate locks after 10 wrong passwords, even for the right one', async () => {
+  it('admin_gate locks a device after 10 wrong passwords, even for the right one', async () => {
     const admin = adminClient();
-    const gate = (p_ok: boolean) => ok(admin.rpc('admin_gate', { p_ok }));
+    const device = crypto.randomUUID();
+    const gate = (p_ok: boolean, p_uid = device) => ok(admin.rpc('admin_gate', { p_ok, p_uid }));
     await ok(admin.rpc('admin_gate_reset'));
     try {
       for (let i = 0; i < 9; i++) expect(await gate(false)).toBe('bad_password');
@@ -44,6 +45,7 @@ describe('admin RPCs', () => {
       for (let i = 0; i < 10; i++) expect(await gate(false)).toBe('bad_password');
       expect(await gate(true)).toBe('admin_locked');
       expect(await gate(false)).toBe('admin_locked');
+      expect(await gate(true, crypto.randomUUID())).toBe('ok'); // other devices are unaffected
     } finally {
       await ok(admin.rpc('admin_gate_reset')); // the admin function tests use the real password
     }
@@ -73,9 +75,16 @@ describe('admin RPCs', () => {
     expect(
       (await ok(admin.rpc('admin_rename', { p_player: m.player.id, p_name: renamed }))).name,
     ).toBe(renamed);
-    await ok(admin.rpc('admin_reset_pin', { p_player: m.player.id }));
+    expect(await fails(admin.rpc('admin_reset_pin', { p_player: m.player.id, p_pin: '77' }))).toBe(
+      'bad_pin',
+    );
+    await ok(admin.rpc('admin_reset_pin', { p_player: m.player.id, p_pin: '7777' }));
+    // The reset signs the old phone out; only the new PIN works.
+    expect(await ok(m.client.from('rooms').select('id').eq('id', room.id))).toEqual([]);
     const phone = await anonClient();
-    // After a reset, the next login sets a new PIN.
+    expect(
+      await ok(phone.rpc('office_login', { p_player: m.player.id, p_pin: '1234' })),
+    ).toBeNull();
     expect(
       await ok(phone.rpc('office_login', { p_player: m.player.id, p_pin: '7777' })),
     ).not.toBeNull();

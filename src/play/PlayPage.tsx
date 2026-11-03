@@ -29,7 +29,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
-import { CHEER_GAP_MS, CHEERS, sendCheer, type CheerEmoji } from '../net/cheers.ts';
+import { CHEER_GAP_MS, CHEERS, sendCheer, useCheers, type CheerEmoji } from '../net/cheers.ts';
 import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
@@ -429,6 +429,7 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
   const gun = race?.started_at ? gunMs(race.started_at) : 0;
   const t = useRaceTime(gun);
   useRaceAudio(timeline, gun, { cues: (c) => c === 'count' || c === 'go' || c === 'bell' });
+  const shown = useCheers(room.id, new Set(players.map((p) => p.id)));
   const [cooling, setCooling] = useState(false);
   const coolTimer = useRef(0);
   useEffect(() => () => clearTimeout(coolTimer.current), []);
@@ -458,6 +459,13 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
         colors={colorsByPlayer(players)}
         track={trackById(race.track)}
       />
+      {shown.length > 0 && (
+        <p aria-hidden="true">
+          {shown
+            .map((c) => `${c.emoji} ${players.find((p) => p.id === c.player)?.name ?? '?'}`)
+            .join('  ')}
+        </p>
+      )}
       {t >= 0 && t <= last && (
         <p className="cheer-row">
           Cheer!{' '}

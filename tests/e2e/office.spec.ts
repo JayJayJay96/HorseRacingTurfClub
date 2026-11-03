@@ -48,6 +48,7 @@ test('office: admin adds members, phone buys and wears looks, host races on Kidn
   await openAdmin(adminPage);
   for (const n of names) {
     await adminPage.getByLabel('New member name').fill(n);
+    await adminPage.getByLabel('Their 4-digit PIN').fill('4321');
     await adminPage.getByRole('button', { name: 'Add person' }).click();
     await expect(adminPage.getByRole('cell', { name: n, exact: true })).toBeVisible();
   }
@@ -59,12 +60,12 @@ test('office: admin adds members, phone buys and wears looks, host races on Kidn
     adminClient().rpc('admin_adjust', { p_player: eve!.id, p_amount: 200, p_reason: 'e2e' }),
   );
 
-  // Phone: first sign-in sets the PIN.
+  // Phone: sign in with the PIN the admin set.
   const phone = await (await browser.newContext()).newPage();
   await phone.goto('/play?code=TURF');
   await phone.getByLabel('Who are you?').selectOption({ label: names[0]! });
-  await phone.getByLabel('Choose a 4-digit PIN').fill('4321');
-  await phone.getByRole('button', { name: 'Set PIN and sign in' }).click();
+  await phone.getByLabel('Your PIN').fill('4321');
+  await phone.getByRole('button', { name: 'Sign in' }).click();
   await expect(phone.getByRole('heading', { name: names[0]! })).toBeVisible();
 
   // Looks shop: buy, then wear.

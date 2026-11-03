@@ -66,6 +66,10 @@ export function useRoom(code: string, presenceKey?: string) {
           if (presenceKey && payload.old.id === presenceKey) changed.schedule();
         },
       )
+      // /admin removed this phone or reset its PIN: refetch to find out (RLS now hides the room).
+      .on('broadcast', { event: 'signed_out' }, ({ payload }) => {
+        if (presenceKey && payload?.player === presenceKey) changed.schedule();
+      })
       .on('presence', { event: 'sync' }, () =>
         setOnline(new Set(Object.keys(channel.presenceState()))),
       )

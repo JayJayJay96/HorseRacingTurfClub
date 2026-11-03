@@ -87,7 +87,7 @@ describe('office room', () => {
 });
 
 describe('office login', () => {
-  it('first login sets the PIN; later logins check it', async () => {
+  it('logins check the PIN the admin set', async () => {
     const m = await member('P', '4321');
     const roster = (await ok(m.client.rpc('office_roster'))) as { id: string; has_pin: boolean }[];
     expect(roster).toContainEqual({ id: m.player.id, name: m.name, has_pin: true });
@@ -97,6 +97,14 @@ describe('office login', () => {
     ).toBeNull();
     const again = await ok(other.rpc('office_login', { p_player: m.player.id, p_pin: '4321' }));
     expect(again.id).toBe(m.player.id);
+  });
+
+  it('the admin must give every new member a PIN', async () => {
+    const admin = adminClient();
+    const name = `NoPin${Date.now().toString(36)}`;
+    for (const p_pin of ['', '12a4', '12345'])
+      expect(await fails(admin.rpc('admin_add_member', { p_name: name, p_pin }))).toBe('bad_pin');
+    expect(await ok(admin.from('room_players').select('id').eq('name', name))).toEqual([]);
   });
 
   it('moves the member to the new phone; the old phone loses the room', async () => {

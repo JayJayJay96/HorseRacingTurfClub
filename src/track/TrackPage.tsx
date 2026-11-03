@@ -104,7 +104,7 @@ export function TrackPage() {
   );
 }
 
-function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
+function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) {
   const office = room.kind === 'office';
   const [name, setName] = useState('');
   const [prize, setPrize] = useState(room.prize);
@@ -233,7 +233,7 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
           <button
             type="button"
             className="primary"
-            disabled={!canOpenShop(players)}
+            disabled={busy || !canOpenShop(players)}
             onClick={() => act(() => setPhase(room.id, 'SHOP'))}
           >
             Open shop

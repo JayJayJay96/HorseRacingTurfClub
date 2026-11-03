@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAudioSettings } from '../audio/sound.ts';
+import { SoundToggle } from '../audio/SoundToggle.tsx';
+import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { horseName } from '../betting/betting.ts';
 import { OFFICE_CODE } from '../lobby/lobby.ts';
 import { useOfficeStats, type OfficeStats, type Ranked } from '../net/stats.ts';
@@ -16,7 +19,13 @@ export function StatsPage() {
   useEffect(() => {
     void ensureSignedIn().finally(() => setSignedIn(true));
   }, []);
-  const { stats, error, loaded } = useOfficeStats(signedIn, signedIn);
+  const { stats, error, loaded, reload } = useOfficeStats(signedIn, signedIn);
+  // Stats only change after a race; a slow poll keeps a screen left open current.
+  useEffect(() => {
+    if (!signedIn) return;
+    const poll = setInterval(() => document.hidden || reload(), 30_000);
+    return () => clearInterval(poll);
+  }, [signedIn, reload]);
   const [replay, setReplay] = useState<{ race: string; n: number } | null>(null);
 
   if (!loaded) return <main>Loading…</main>;
@@ -162,11 +171,14 @@ function Replay(props: { stats: OfficeStats; race: string; onClose: () => void }
   );
   const colors = useMemo(() => colorsByPlayer(stats.members), [stats.members]);
   const track = trackById(stats.recent.find((r) => r.race === race)?.track);
+  const { settings, update } = useAudioSettings('screen');
+  useRaceAudio(timeline, gun, { names, commentary: true });
   return (
     <section>
       <button type="button" onClick={onClose}>
         ← Back to stats
       </button>
+      <SoundToggle settings={settings} update={update} />
       {timeline ? (
         <RaceView timeline={timeline} startAtMs={gun} names={names} colors={colors} track={track} />
       ) : (

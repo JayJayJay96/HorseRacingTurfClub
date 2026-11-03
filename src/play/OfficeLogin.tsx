@@ -3,7 +3,7 @@ import { errorText, officeLogin, officeRoster, type RoomPlayer } from '../net/ro
 
 type Entry = { id: string; name: string; has_pin: boolean };
 
-/** Office phones: pick your name, enter (or on first login choose) your 4-digit PIN. */
+/** Office phones: pick your name, enter the 4-digit PIN the admin gave you. */
 export function OfficeLogin({ onLogin }: { onLogin: (player: RoomPlayer) => void }) {
   const [roster, setRoster] = useState<Entry[] | null>(null);
   const [pick, setPick] = useState('');
@@ -56,10 +56,11 @@ export function OfficeLogin({ onLogin }: { onLogin: (player: RoomPlayer) => void
               ))}
             </select>
           </label>
-          {chosen && (
+          {chosen && !chosen.has_pin && <p>{errorText('no_pin')}</p>}
+          {chosen?.has_pin && (
             <>
               <label>
-                {chosen.has_pin ? 'Your PIN' : 'Choose a 4-digit PIN'}{' '}
+                Your PIN{' '}
                 <input
                   type="password"
                   inputMode="numeric"
@@ -70,13 +71,8 @@ export function OfficeLogin({ onLogin }: { onLogin: (player: RoomPlayer) => void
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                 />
               </label>
-              {!chosen.has_pin && (
-                <p>
-                  First time: this PIN only guards game coins. Don't reuse a real PIN (bank, phone).
-                </p>
-              )}
               <button type="submit" className="primary" disabled={busy || pin.length !== 4}>
-                {chosen.has_pin ? 'Sign in' : 'Set PIN and sign in'}
+                Sign in
               </button>
             </>
           )}

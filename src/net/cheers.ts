@@ -10,17 +10,21 @@ export type ShownCheer = Cheer & { id: number; at: number };
 
 const channelName = (roomId: string) => `cheers:${roomId}`;
 
-/** Phone side: fire-and-forget over HTTP; no subscription, so phones never receive cheers. */
+/** Phone side: fire-and-forget over HTTP. */
 export async function sendCheer(roomId: string, cheer: Cheer): Promise<void> {
-  const channel = supabase.channel(channelName(roomId));
+  const name = channelName(roomId);
+  // channel() hands back the live channel when this device already listens (a racing phone):
+  // only a channel made just for this send may be removed.
+  const owned = !supabase.getChannels().some((c) => c.topic === `realtime:${name}`);
+  const channel = supabase.channel(name);
   try {
     await channel.httpSend('cheer', cheer);
   } finally {
-    void supabase.removeChannel(channel);
+    if (owned) void supabase.removeChannel(channel);
   }
 }
 
-/** Big-screen side: recent valid cheers from players in the room. */
+/** Big screen and racing phones: recent valid cheers from players in the room. */
 export function useCheers(
   roomId: string | null,
   playerIds: ReadonlySet<string>,

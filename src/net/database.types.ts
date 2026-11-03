@@ -501,7 +501,7 @@ export type Database = {
         };
       };
       admin_add_member: {
-        Args: { p_name: string };
+        Args: { p_name: string; p_pin: string };
         Returns: {
           archived_at: string | null;
           coat: number | null;
@@ -531,7 +531,7 @@ export type Database = {
       admin_archive: { Args: { p_player: string }; Returns: undefined };
       admin_claim_host: { Args: { p_uid: string }; Returns: undefined };
       admin_delete_race: { Args: { p_race: string }; Returns: undefined };
-      admin_gate: { Args: { p_ok: boolean }; Returns: string };
+      admin_gate: { Args: { p_ok: boolean; p_uid: string }; Returns: string };
       admin_gate_reset: { Args: Record<PropertyKey, never>; Returns: undefined };
       admin_overview: { Args: Record<PropertyKey, never>; Returns: Json };
       admin_rename: {
@@ -558,7 +558,7 @@ export type Database = {
           isSetofReturn: false;
         };
       };
-      admin_reset_pin: { Args: { p_player: string }; Returns: undefined };
+      admin_reset_pin: { Args: { p_pin: string; p_player: string }; Returns: undefined };
       buy_box: {
         Args: { p_box: string; p_room: string };
         Returns: {

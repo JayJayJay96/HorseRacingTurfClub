@@ -4,7 +4,7 @@ import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
 import type { TrackId } from '../render/track.ts';
 import type { CosmeticSlot } from '../shop/cosmetics.ts';
 import type { Database } from './database.types.ts';
-import { supabase } from './supabase.ts';
+import { ensureSignedIn, supabase } from './supabase.ts';
 
 type Tables = Database['public']['Tables'];
 export type Room = Tables['rooms']['Row'];
@@ -77,11 +77,15 @@ async function callFunction<T>(
 }
 export const lockOdds = (roomId: string) => callFunction('lock-odds', { room: roomId });
 export const startRace = (roomId: string) => callFunction('start-race', { room: roomId });
-export const adminAction = <T = unknown>(
+/** Signs the device in first: the admin lockout counts misses per device. */
+export const adminAction = async <T = unknown>(
   password: string,
   action: string,
   args: Record<string, unknown> = {},
-) => callFunction<T>('admin', { ...args, password, action });
+) => {
+  await ensureSignedIn();
+  return callFunction<T>('admin', { ...args, password, action });
+};
 
 export const officeRoster = () => call(supabase.rpc('office_roster'));
 /** Names the host pre-entered that no phone has claimed yet (Private rooms). */
@@ -210,6 +214,7 @@ const ERROR_TEXT: Record<string, string> = {
   wrong_pin: 'Wrong PIN.',
   pin_locked: 'Too many wrong PINs. Try again in 5 minutes.',
   bad_pin: 'PINs are 4 digits.',
+  no_pin: 'No PIN yet. Ask the admin to set one.',
   admin_only: 'People are managed in /admin.',
   office_only: 'Only office horses can be customised.',
   bad_horse: 'Pick a coat and silk from the list; horse names are up to 24 characters.',

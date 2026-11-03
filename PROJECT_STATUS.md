@@ -290,4 +290,20 @@
 - Checks: `npm test` 170 pass, `npm run test:db` 116 pass, typecheck, lint and build clean. Kidney + hoops + sparkle seen in `/sandbox`.
 - Not verified: a real screen reader; the shop on a real phone; prices are a first guess.
 
+## Race view polish + deferred fixes (master, 2026-11-04)
+
+- Race view: fullscreen button (cheers stay inside); pixel number badge (lane + 1) over each horse, `#n` in standings and "You're #n" on the phone; grabbed items hover and spin for 1.5 s before they open (display only: boxes are drawn where the horse was 1.5 s before the sim opened them, so the sim, odds and balance are unchanged).
+- Fixed deferred items:
+  - Office PINs are set in /admin (add needs a PIN; Reset/Set PIN asks for a new one). Nobody can claim a name; a name without a PIN shows "Ask the admin" (migration 0016).
+  - A PIN reset signs that phone out; reset and Remove tell the phone over its room channel (`signed_out` broadcast), so it updates at once.
+  - Admin lockout is per device (anonymous uid), not global.
+  - Big screen: Open shop is disabled while a request runs (the double-click).
+  - `/stats` polls every 30 s while visible; its replay has commentary and sound.
+  - Racing phones see everyone's cheers (`sendCheer` no longer removes a channel it didn't create).
+- Won't fix (owner 2026-11-04):
+  - Room refetch traffic: the free plan doesn't cap API requests; bursts already coalesce.
+  - Results readable during RUNNING: every screen needs the whole Timeline to animate; bets close at Start.
+- Known limits: fresh anonymous devices each get 10 admin guesses (plus the 1 s delay); members added before 0016 without a PIN need /admin → Set PIN.
+- Deploy: `db push` (0016), then `functions deploy admin`, then push `master`. Until the function is redeployed, adding members fails.
+
 Next: Phase 8 (HD-2D renderer).

@@ -40,10 +40,10 @@ export async function officeRoom() {
 }
 
 let seq = 0;
-/** A new member with a unique name; `pin` set, the returned phone signed in as them. */
+/** A new member with a unique name and PIN `pin`; the returned phone is signed in as them. */
 export async function member(prefix = 'M', pin = '1234') {
   const name = `${prefix}${Date.now().toString(36).slice(-5)}${seq++}`;
-  const player = await ok(adminClient().rpc('admin_add_member', { p_name: name }));
+  const player = await ok(adminClient().rpc('admin_add_member', { p_name: name, p_pin: pin }));
   const client: SupabaseClient = await anonClient();
   await ok(client.rpc('office_login', { p_player: player.id, p_pin: pin }));
   return { client, player: player as { id: string; name: string }, name };

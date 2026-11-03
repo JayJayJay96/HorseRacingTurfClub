@@ -50,6 +50,7 @@ export function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newPin, setNewPin] = useState('');
 
   const lock = () => {
     storePassword('');
@@ -116,8 +117,15 @@ export function AdminPage() {
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    run('add', { name: newName });
+    run('add', { name: newName, pin: newPin });
     setNewName('');
+    setNewPin('');
+  };
+  const setPin = (m: Member) => {
+    const pin = window.prompt(
+      `New 4-digit PIN for ${m.name}${m.phone ? ' (signs their phone out)' : ''}`,
+    );
+    if (pin) run('reset_pin', { player: m.id, pin });
   };
   const rename = (m: Member) => {
     const name = window.prompt(`New name for ${m.name}`, m.name);
@@ -148,7 +156,16 @@ export function AdminPage() {
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />{' '}
-        <button type="submit" disabled={busy || !newName.trim()}>
+        <input
+          aria-label="Their 4-digit PIN"
+          placeholder="PIN"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={4}
+          value={newPin}
+          onChange={(e) => setNewPin(e.target.value.replace(/\D/g, ''))}
+        />{' '}
+        <button type="submit" disabled={busy || !newName.trim() || newPin.length !== 4}>
           Add person
         </button>
       </form>
@@ -183,15 +200,8 @@ export function AdminPage() {
                   </button>{' '}
                   {!m.archived && (
                     <>
-                      <button
-                        type="button"
-                        disabled={busy || !m.has_pin}
-                        onClick={() =>
-                          window.confirm(`Reset ${m.name}'s PIN?`) &&
-                          run('reset_pin', { player: m.id })
-                        }
-                      >
-                        Reset PIN
+                      <button type="button" disabled={busy} onClick={() => setPin(m)}>
+                        {m.has_pin ? 'Reset PIN' : 'Set PIN'}
                       </button>{' '}
                       <button
                         type="button"

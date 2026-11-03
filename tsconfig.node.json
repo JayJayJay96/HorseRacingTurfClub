@@ -17,5 +17,11 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "vitest.balance.config.ts", "vitest.db.config.ts", "tests"]
+  "include": [
+    "vite.config.ts",
+    "vitest.balance.config.ts",
+    "vitest.db.config.ts",
+    "playwright.config.ts",
+    "tests"
+  ]
 }

@@ -34,6 +34,7 @@ export function LooksShop({ roomId, mine, balance, act, busy }: Props) {
               {!owned.includes(c.code) ? (
                 <button
                   type="button"
+                  aria-label={`Buy ${c.name}`}
                   disabled={busy || balance < c.price}
                   onClick={() => setConfirming(c)}
                 >
@@ -42,6 +43,7 @@ export function LooksShop({ roomId, mine, balance, act, busy }: Props) {
               ) : worn ? (
                 <button
                   type="button"
+                  aria-label={`Remove ${c.name}`}
                   disabled={busy}
                   onClick={() => act(() => equipCosmetic(roomId, c.slot, null))}
                 >
@@ -50,6 +52,7 @@ export function LooksShop({ roomId, mine, balance, act, busy }: Props) {
               ) : (
                 <button
                   type="button"
+                  aria-label={`Wear ${c.name}`}
                   disabled={busy}
                   onClick={() => act(() => equipCosmetic(roomId, c.slot, c.code))}
                 >

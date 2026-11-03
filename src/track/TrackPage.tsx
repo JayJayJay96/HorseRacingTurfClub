@@ -287,6 +287,8 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   const { timeline, error } = useTimeline(race?.id ?? null);
   const names = useMemo(() => Object.fromEntries(players.map((p) => [p.id, p.name])), [players]);
   const asked = useRef(false);
+  const retry = useRef(0);
+  useEffect(() => () => clearTimeout(retry.current), []);
   useEffect(() => {
     if (left > 0 || asked.current) return;
     asked.current = true;
@@ -295,7 +297,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
       act(() =>
         finishRace(room.id).catch((e: unknown) => {
           if (!(e instanceof Error && e.message === 'race_not_finished')) throw e;
-          setTimeout(tryFinish, 2000);
+          retry.current = window.setTimeout(tryFinish, 2000);
         }),
       );
     tryFinish();

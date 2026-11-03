@@ -248,4 +248,24 @@
   - The commentator voice depends on the browser and computer.
   - Anyone with the room id could send cheers in a player's name (cosmetic; rate-limited).
 
+## Fun polish (branch `fun-polish`)
+
+### 2026-11-04 — Fun polish
+
+- Built per `docs/superpowers/plans/2026-11-04-fun-polish.md`. No database changes.
+- Owner asks: funnier commentator (plain English, no local slang), fully random box spots, more horse angles. The oval question was answered only: the sim has no lanes, so every horse runs the same distance by design.
+- Boxes: each lane's spots are uniformly random in 10-90% of the distance (was even slots in 10-85%), sorted, at least 3% apart. Balance suite 8/8:
+
+  | Check | Short (was) | Long (was) |
+  |---|---|---|
+  | Equal field share | 9.5–10.4% (9.6–10.5%) | 9.2–10.5% (9.5–10.7%) |
+  | Winner within ±20 s | 100% | 100% |
+  | 3 Speed share (≤18%) | 17.3% (17.5%) | 17.1% (16.6%) |
+  | 3 Attack share (≤13%) | 11.0% (10.6%) | 11.2% (10.8%) |
+
+- Commentator: line pools in `src/audio/lines.ts` picked at random; intro and prize before the gun, outsider leads (Win odds ≥ 8), a joke per item, hornets once per swarm, neck and neck, crowd reactions to cheers (≤ 1 per 15 s), "Photo finish!" / "From last to first!" winner calls, and one podium line (`podiumLine`).
+- Sprites: `poseOf` picks side, 3/4 rear (`away`) or 3/4 front (`toward`) from the on-screen direction; 1 px gallop bob. No flicker on a full lap, so no hysteresis.
+- Checks: `npm test` 143 pass, typecheck, lint and build clean, `npm run test:db` 100 pass. Seen in `/sandbox`: rear views on the bend. Not heard by ear.
+- Deploy: redeploy `lock-odds` and `start-race` (they import `src/sim`), then push master.
+
 Next: Phase 8 (HD-2D renderer) or Phase 9 (hardening & maps).

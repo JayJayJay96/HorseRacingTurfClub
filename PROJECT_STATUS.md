@@ -59,6 +59,22 @@
 - [x] Task 10: Phone mini view
 - [x] Task 11: Smoke test and docs
 
+## Phase 5 — Office mode (branch `phase5-office`)
+
+- [x] Task 0: Branch
+- [x] Task 1: Odds blend with history (pure)
+- [x] Task 2: Office schema, wallets, host fix
+- [x] Task 3: PIN login and horse settings
+- [x] Task 4: Office race flow and history input
+- [x] Task 5: Admin RPCs
+- [x] Task 6: Edge Functions: admin, lock-odds history
+- [x] Task 7: Client library
+- [x] Task 8: Per-horse colours in the renderer
+- [x] Task 9: Phone: PIN login and horse panel
+- [x] Task 10: Big screen: office unlock and lobby
+- [x] Task 11: Home and /admin
+- [x] Task 12: Smoke test and docs (hosted deploy pending owner: admin secret)
+
 ## Session log
 
 ### 2026-10-29
@@ -136,4 +152,28 @@
 - GitHub `JayJayJay96/HorseRacingTurfClub` (`origin`, `master`); Vercel project `hanailab/horseracingturfclub` builds from it → https://horseracingturfclub.vercel.app with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` set.
 - Hosted check: anonymous sign-in, `create_room`, and a full big-screen race (2 host-added horses: odds, Start, playback, podium) worked; no console errors. Not yet tested: real phones joining over the internet.
 
-Next: Phase 5 (Office mode).
+### 2026-11-03 — Phase 5
+
+- Built Phase 5 per `docs/superpowers/plans/2026-11-03-phase5-office-mode.md` (Tasks 0-12).
+- Decisions (owner: big screen needs the admin password; odds history now; coat + silk + horse name):
+  - The office is a permanent `rooms` row (`kind = 'office'`, code `TURF`); its `room_players` are the members, archived (not deleted) when removed. PIN hashes live in `private.office_pins` (no client access, RLS on).
+  - Wallets: `coin_ledger.race_id` nullable for the starting 100 and admin adjustments; `private.balance` sums all office rows; `room_balances` replaces the per-race ledger fetch. LOBBY→SHOP: +100 per ticked horse, then floor 50 for everyone; both tied to the race, so cancelling undoes them.
+  - Odds blend `0.7·p_sim + 0.3·p_hist` with a 5-race prior toward the field share.
+  - `admin` Edge Function: password checked in constant time, then a DB lockout (`admin_gate`: 10 wrong → 10 min); claim_host uses the caller's verified JWT.
+  - `office_login` returns jsonb so a wrong PIN returns a real null (a raise would roll back the fail count).
+- Review fixes: null host is nobody (`lock_host_room` uses `is distinct from`); host FK `on delete set null` (deleting the host's anonymous user no longer deletes the office); room-before-player lock order everywhere; admin password lockout; `admin_locked` handling; typed `set_my_horse` args; normalised big-screen code.
+- Smoke test (local, 4 origins): /admin adds 4 people; big screen unlocked with the password (also `?code=turf`); 3 phones set PINs, wrong PIN → "Wrong PIN." and the owner stays signed in; Ali's coat/silk/"Thunder" show on the shop, odds board, track and standings; race 1 paid +100 per racer, Thunder won; balances carried (Ali 140 after a 60 box); race 2 odds favoured Thunder (3.2×, no box) from history; admin +25 → 325; removing a member mid-race refused; Cal's PIN reset; deleting race 1 reversed its coins exactly; a second screen took over the big screen and the first fell back to the unlock form.
+- Checks: `npm test` 108 pass, `npm run test:db` 83 pass, typecheck, lint and build clean.
+- Deferred:
+  - First sign-in sets the PIN, so anyone can claim a name that has no PIN yet (admin resets it).
+  - Anyone can lock `/admin` for 10 minutes with 10 wrong passwords (clear with `admin_gate_reset()`).
+  - Deleting a finished race can leave a negative balance if its payout was already spent; the next race's floor lifts it to 50.
+  - A chosen coat/silk can match another lane's default colours.
+  - The office ledger, races and members only grow (fine at office scale; `room_balances` sums per member).
+  - No last-5 form on the odds board yet (Phase 6).
+  - Members can read the office ledger, including admin adjustment reasons: keep reasons non-sensitive.
+  - The host FK is now `on delete set null` for Private rooms too: a deleted host leaves a hostless room until the 24 h cleanup.
+  - A reset PIN or a removal doesn't push an update to the affected phone; it notices on its next reload.
+  - Hosted deploy of Phase 5 needs the owner to set the `ADMIN_PASSWORD` secret first.
+
+Next: Phase 6 (History & fun).

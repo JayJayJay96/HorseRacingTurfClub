@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ODDS, priceOdds, simulateOdds } from './odds.ts';
+import { blendHistory, ODDS, priceOdds, simulateOdds } from './odds.ts';
 import { createSeededRng } from './rng.ts';
 
 const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `h${i}`);
@@ -57,5 +57,31 @@ describe('simulateOdds', () => {
       () => (t += 1000),
     );
     expect(sims).toBe(ODDS.minSims);
+  });
+});
+
+describe('blendHistory', () => {
+  it('is 0.7·p_sim + 0.3·p_hist, with p_hist pulled toward the field share', () => {
+    // No history: p_hist = (0 + 5·0.25) / 5 = 0.25
+    expect(blendHistory(0.5, 0, 0, 0.25)).toBeCloseTo(0.7 * 0.5 + 0.3 * 0.25);
+    // 10 wins in 10 races: p_hist = (10 + 1.25) / 15 = 0.75
+    expect(blendHistory(0.5, 10, 10, 0.25)).toBeCloseTo(0.7 * 0.5 + 0.3 * 0.75);
+  });
+});
+
+describe('simulateOdds with history', () => {
+  it('shortens a habitual winner and lengthens a habitual loser, same simulations', () => {
+    const race = { horses: ids(4), bought: {}, length: 'short' as const };
+    const plain = simulateOdds(race, createSeededRng(7), frozenClock);
+    const hist = {
+      h0: { races: 20, wins: 20, top3: 20 },
+      h1: { races: 20, wins: 0, top3: 0 },
+    };
+    const blended = simulateOdds(race, createSeededRng(7), frozenClock, hist);
+    expect(blended.sims).toBe(plain.sims);
+    expect(blended.odds.h0!.win).toBeLessThan(plain.odds.h0!.win);
+    expect(blended.odds.h1!.win).toBeGreaterThan(plain.odds.h1!.win);
+    // A horse with no history entry blends toward the field share (25%), not toward 0.
+    expect(Math.abs(blended.odds.h2!.win - plain.odds.h2!.win)).toBeLessThan(0.5);
   });
 });

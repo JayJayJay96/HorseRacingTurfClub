@@ -3,6 +3,7 @@ import { ODDS } from '../../src/sim/odds.ts';
 import type { PackedTimeline } from '../../src/sim/pack.ts';
 import { playbackSeconds } from '../../src/sim/playback.ts';
 import { anonClient, failsInvoke, guestClient, invoke, ok } from './helpers.ts';
+import { adminPassword, member, officeRoom } from './officeFixtures.ts';
 import { balance, shopRoom } from './raceFixtures.ts';
 
 type Bet = { horse_id: string; kind: string; stake: number; odds: number; payout: number };
@@ -77,5 +78,45 @@ describe('lock-odds and start-race', () => {
     const other = await anonClient();
     const lobby = await ok(other.rpc('create_room', {}));
     expect(await failsInvoke(other, 'lock-odds', { room: lobby.id })).toBe('wrong_phase');
+  });
+});
+
+describe('admin function', () => {
+  it('needs the password', { timeout: 30_000 }, async () => {
+    const phone = await anonClient();
+    expect(await failsInvoke(phone, 'admin', { password: 'nope', action: 'overview' })).toBe(
+      'bad_password',
+    );
+  });
+
+  it(
+    'runs actions and unlocks the big screen for the calling device',
+    { timeout: 30_000 },
+    async () => {
+      const { room } = await officeRoom();
+      const m = await member('F');
+      const screen = await anonClient();
+      const password = adminPassword();
+      const o = await invoke<{ members: { id: string }[] }>(screen, 'admin', {
+        password,
+        action: 'overview',
+      });
+      expect(o.members.map((x) => x.id)).toContain(m.player.id);
+      await invoke(screen, 'admin', { password, action: 'claim_host' });
+      expect(await ok(screen.from('rooms').select('id').eq('id', room.id))).toHaveLength(1);
+      expect(await failsInvoke(screen, 'admin', { password, action: 'fly' })).toBe('bad_action');
+    },
+  );
+
+  it('lock-odds prices an office race (with history)', { timeout: 60_000 }, async () => {
+    const { host, room } = await officeRoom();
+    const a = await member('A');
+    const b = await member('B');
+    for (const p of [a, b])
+      await ok(host.rpc('set_ticked', { p_player: p.player.id, p_ticked: true }));
+    const shop = await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
+    await invoke(host, 'lock-odds', { room: room.id });
+    const [race] = await ok(host.from('races').select('odds').eq('id', shop.race_id));
+    expect(Object.keys(race.odds)).toEqual(expect.arrayContaining([a.player.id, b.player.id]));
   });
 });

@@ -10,7 +10,6 @@ export type RoomPlayer = Tables['room_players']['Row'];
 export type Race = Tables['races']['Row'];
 export type Purchase = Tables['purchases']['Row'];
 export type Bet = Tables['bets']['Row'];
-export type LedgerRow = Tables['coin_ledger']['Row'];
 export type BetKind = 'win' | 'place';
 export type RoomState = {
   room: Room;
@@ -19,7 +18,7 @@ export type RoomState = {
   race: Race | null;
   purchases: Purchase[];
   bets: Bet[];
-  ledger: LedgerRow[];
+  balances: Record<string, number>;
 };
 
 type Res<T> = PromiseLike<{ data: T; error: { message: string } | null }>;
@@ -60,31 +59,79 @@ export const cancelBet = (betId: string) => call(supabase.rpc('cancel_bet', { p_
 export const finishRace = (roomId: string) => call(supabase.rpc('finish_race', { p_room: roomId }));
 
 /** Edge Functions answer errors as 400 `{ error: code }`, the same codes RPCs raise. */
-async function invoke(name: 'lock-odds' | 'start-race', roomId: string): Promise<void> {
-  const { error } = await supabase.functions.invoke(name, { body: { room: roomId } });
-  if (!error) return;
+async function callFunction<T>(
+  name: 'lock-odds' | 'start-race' | 'admin',
+  body: Record<string, unknown>,
+): Promise<T> {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (!error) return data as T;
   if (error instanceof FunctionsHttpError) {
-    const body = (await error.context.json().catch(() => null)) as { error?: string } | null;
-    if (body?.error) throw new Error(body.error);
+    const payload = (await error.context.json().catch(() => null)) as { error?: string } | null;
+    if (payload?.error) throw new Error(payload.error);
   }
   throw new Error(error.message);
 }
-export const lockOdds = (roomId: string) => invoke('lock-odds', roomId);
-export const startRace = (roomId: string) => invoke('start-race', roomId);
+export const lockOdds = (roomId: string) => callFunction('lock-odds', { room: roomId });
+export const startRace = (roomId: string) => callFunction('start-race', { room: roomId });
+export const adminAction = <T = unknown>(
+  password: string,
+  action: string,
+  args: Record<string, unknown> = {},
+) => callFunction<T>('admin', { ...args, password, action });
+
+export const officeRoster = () => call(supabase.rpc('office_roster'));
+/** Null from the server means a wrong PIN (the fail count must commit, so it doesn't raise). */
+export async function officeLogin(playerId: string, pin: string): Promise<RoomPlayer> {
+  const player = await call(supabase.rpc('office_login', { p_player: playerId, p_pin: pin }));
+  if (!player) throw new Error('wrong_pin');
+  // office_login returns jsonb (not a row type) so a wrong PIN can return a real null.
+  return player as unknown as RoomPlayer;
+}
+export const officeLogout = (roomId: string) =>
+  call(supabase.rpc('office_logout', { p_room: roomId }));
+type SetMyHorseArgs = {
+  p_room: string;
+  p_coat: number | null;
+  p_silk: number | null;
+  p_horse_name: string;
+};
+export const setMyHorse = (
+  roomId: string,
+  coat: number | null,
+  silk: number | null,
+  horseName: string,
+) =>
+  call(
+    // The SQL accepts null coat/silk (= lane default); the generated Args say number, so only the
+    // checked object is cast.
+    supabase.rpc('set_my_horse', {
+      p_room: roomId,
+      p_coat: coat,
+      p_silk: silk,
+      p_horse_name: horseName,
+    } satisfies SetMyHorseArgs as never),
+  );
 
 /** Null when the room doesn't exist or this device isn't in it (RLS hides it). */
 export async function fetchRoom(code: string): Promise<RoomState | null> {
   const room = await call(supabase.from('rooms').select('*').eq('code', code).maybeSingle());
   if (!room) return null;
   const raceId = room.race_id;
-  const [players, race, purchases, bets, ledger] = await Promise.all([
-    call(supabase.from('room_players').select('*').eq('room_id', room.id).order('joined_at')),
+  const [players, race, purchases, bets, balances] = await Promise.all([
+    call(
+      supabase
+        .from('room_players')
+        .select('*')
+        .eq('room_id', room.id)
+        .is('archived_at', null)
+        .order('joined_at'),
+    ),
     raceId ? call(supabase.from('races').select('*').eq('id', raceId).maybeSingle()) : null,
     raceId
       ? call(supabase.from('purchases').select('*').eq('race_id', raceId).order('created_at'))
       : [],
     raceId ? call(supabase.from('bets').select('*').eq('race_id', raceId).order('created_at')) : [],
-    raceId ? call(supabase.from('coin_ledger').select('*').eq('race_id', raceId).order('id')) : [],
+    call(supabase.rpc('room_balances', { p_room: room.id })),
   ]);
   return {
     room,
@@ -92,7 +139,7 @@ export async function fetchRoom(code: string): Promise<RoomState | null> {
     race,
     purchases: purchases ?? [],
     bets: bets ?? [],
-    ledger: ledger ?? [],
+    balances: Object.fromEntries((balances ?? []).map((r) => [r.player_id, r.balance])),
   };
 }
 
@@ -133,6 +180,20 @@ const ERROR_TEXT: Record<string, string> = {
   race_not_found: 'That race no longer exists.',
   bad_odds: 'Odds calculation failed. Try again.',
   bad_result: 'Race calculation failed. Try again.',
+  office_room: 'This is the office race: pick your name and enter your PIN.',
+  wrong_pin: 'Wrong PIN.',
+  pin_locked: 'Too many wrong PINs. Try again in 5 minutes.',
+  bad_pin: 'PINs are 4 digits.',
+  admin_only: 'People are managed in /admin.',
+  office_only: 'Only office horses can be customised.',
+  bad_horse: 'Pick a coat and silk from the list; horse names are up to 24 characters.',
+  bad_password: 'Wrong admin password.',
+  admin_locked: 'Too many wrong admin passwords. Try again in 10 minutes.',
+  admin_not_configured: 'The admin password is not set on the server.',
+  bad_action: 'Unknown admin action.',
+  bad_amount: 'Amount must be a whole number, not 0.',
+  bad_reason: 'Give a reason (up to 100 characters).',
+  race_in_use: "Can't delete the race in progress.",
 };
 
 export function errorText(e: unknown): string {

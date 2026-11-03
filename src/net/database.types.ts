@@ -98,7 +98,8 @@ export type Database = {
           created_at: string;
           id: number;
           player_id: string;
-          race_id: string;
+          race_id: string | null;
+          reason: string | null;
           room_id: string;
           type: string;
         };
@@ -108,7 +109,8 @@ export type Database = {
           created_at?: string;
           id?: never;
           player_id: string;
-          race_id: string;
+          race_id?: string | null;
+          reason?: string | null;
           room_id: string;
           type: string;
         };
@@ -117,7 +119,8 @@ export type Database = {
           created_at?: string;
           id?: never;
           player_id?: string;
-          race_id?: string;
+          race_id?: string | null;
+          reason?: string | null;
           room_id?: string;
           type?: string;
         };
@@ -282,30 +285,42 @@ export type Database = {
       };
       room_players: {
         Row: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
           id: string;
           joined_at: string;
           name: string;
           ready: boolean;
           room_id: string;
+          silk: number | null;
           ticked: boolean;
           uid: string | null;
         };
         ComputedFields: never;
         Insert: {
+          archived_at?: string | null;
+          coat?: number | null;
+          horse_name?: string | null;
           id?: string;
           joined_at?: string;
           name: string;
           ready?: boolean;
           room_id: string;
+          silk?: number | null;
           ticked?: boolean;
           uid?: string | null;
         };
         Update: {
+          archived_at?: string | null;
+          coat?: number | null;
+          horse_name?: string | null;
           id?: string;
           joined_at?: string;
           name?: string;
           ready?: boolean;
           room_id?: string;
+          silk?: number | null;
           ticked?: boolean;
           uid?: string | null;
         };
@@ -323,8 +338,9 @@ export type Database = {
         Row: {
           code: string;
           created_at: string;
-          host_uid: string;
+          host_uid: string | null;
           id: string;
+          kind: string;
           last_activity_at: string;
           phase: string;
           prize: string;
@@ -335,8 +351,9 @@ export type Database = {
         Insert: {
           code: string;
           created_at?: string;
-          host_uid: string;
+          host_uid?: string | null;
           id?: string;
+          kind?: string;
           last_activity_at?: string;
           phase?: string;
           prize?: string;
@@ -346,8 +363,9 @@ export type Database = {
         Update: {
           code?: string;
           created_at?: string;
-          host_uid?: string;
+          host_uid?: string | null;
           id?: string;
+          kind?: string;
           last_activity_at?: string;
           phase?: string;
           prize?: string;
@@ -372,11 +390,15 @@ export type Database = {
       add_player: {
         Args: { p_name: string; p_room: string };
         Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
           id: string;
           joined_at: string;
           name: string;
           ready: boolean;
           room_id: string;
+          silk: number | null;
           ticked: boolean;
           uid: string | null;
         };
@@ -387,6 +409,59 @@ export type Database = {
           isSetofReturn: false;
         };
       };
+      admin_add_member: {
+        Args: { p_name: string };
+        Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
+          id: string;
+          joined_at: string;
+          name: string;
+          ready: boolean;
+          room_id: string;
+          silk: number | null;
+          ticked: boolean;
+          uid: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'room_players';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      admin_adjust: {
+        Args: { p_amount: number; p_player: string; p_reason: string };
+        Returns: undefined;
+      };
+      admin_archive: { Args: { p_player: string }; Returns: undefined };
+      admin_claim_host: { Args: { p_uid: string }; Returns: undefined };
+      admin_delete_race: { Args: { p_race: string }; Returns: undefined };
+      admin_overview: { Args: Record<PropertyKey, never>; Returns: Json };
+      admin_rename: {
+        Args: { p_name: string; p_player: string };
+        Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
+          id: string;
+          joined_at: string;
+          name: string;
+          ready: boolean;
+          room_id: string;
+          silk: number | null;
+          ticked: boolean;
+          uid: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'room_players';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      admin_reset_pin: { Args: { p_player: string }; Returns: undefined };
       buy_box: {
         Args: { p_box: string; p_room: string };
         Returns: {
@@ -412,8 +487,9 @@ export type Database = {
         Returns: {
           code: string;
           created_at: string;
-          host_uid: string;
+          host_uid: string | null;
           id: string;
+          kind: string;
           last_activity_at: string;
           phase: string;
           prize: string;
@@ -432,8 +508,9 @@ export type Database = {
         Returns: {
           code: string;
           created_at: string;
-          host_uid: string;
+          host_uid: string | null;
           id: string;
+          kind: string;
           last_activity_at: string;
           phase: string;
           prize: string;
@@ -450,11 +527,15 @@ export type Database = {
       join_room: {
         Args: { p_code: string; p_name: string };
         Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
           id: string;
           joined_at: string;
           name: string;
           ready: boolean;
           room_id: string;
+          silk: number | null;
           ticked: boolean;
           uid: string | null;
         };
@@ -467,6 +548,16 @@ export type Database = {
       };
       lock_odds_begin: { Args: { p_room: string }; Returns: Json };
       lock_odds_finish: { Args: { p_odds: Json; p_race: string }; Returns: undefined };
+      office_login: { Args: { p_pin: string; p_player: string }; Returns: Json };
+      office_logout: { Args: { p_room: string }; Returns: undefined };
+      office_roster: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          has_pin: boolean;
+          id: string;
+          name: string;
+        }[];
+      };
       place_bet: {
         Args: { p_horse: string; p_kind: string; p_room: string; p_stake: number };
         Returns: {
@@ -489,13 +580,43 @@ export type Database = {
         };
       };
       remove_player: { Args: { p_player: string }; Returns: undefined };
+      room_balances: {
+        Args: { p_room: string };
+        Returns: {
+          balance: number;
+          player_id: string;
+        }[];
+      };
+      set_my_horse: {
+        Args: { p_coat: number; p_horse_name: string; p_room: string; p_silk: number };
+        Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
+          id: string;
+          joined_at: string;
+          name: string;
+          ready: boolean;
+          room_id: string;
+          silk: number | null;
+          ticked: boolean;
+          uid: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'room_players';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       set_phase: {
         Args: { p_phase: string; p_room: string };
         Returns: {
           code: string;
           created_at: string;
-          host_uid: string;
+          host_uid: string | null;
           id: string;
+          kind: string;
           last_activity_at: string;
           phase: string;
           prize: string;
@@ -521,8 +642,9 @@ export type Database = {
         Returns: {
           code: string;
           created_at: string;
-          host_uid: string;
+          host_uid: string | null;
           id: string;
+          kind: string;
           last_activity_at: string;
           phase: string;
           prize: string;

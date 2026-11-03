@@ -1,14 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
-import { colorsOf } from './palette.ts';
-import { Pixel2DRenderer, VIEW } from './Pixel2DRenderer.ts';
+import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
 import { TRACK } from './track.ts';
 import { useRaceTime } from './useRaceTime.ts';
 
-/** A lane's silk colour as a small square. */
-export function Silk({ lane }: { lane: number }) {
-  return <span className="silk" style={{ background: colorsOf(lane).silk }} />;
+/** A horse's silk colour as a small square. */
+export function Silk({ color }: { color: string }) {
+  return <span className="silk" style={{ background: color }} />;
 }
 
 type Props = {
@@ -16,15 +15,22 @@ type Props = {
   /** Epoch ms of the gun (`gunMs(race.started_at)`). */
   startAtMs: number;
   names: Readonly<Record<HorseId, string>>;
+  /** Per-horse colours (Office); lane colours by default. */
+  colors?: ColorsOf;
 };
 
 /** Big-screen race: the pixel track plus live standings. */
-export function RaceView({ timeline, startAtMs, names }: Props) {
+export function RaceView({ timeline, startAtMs, names, colors }: Props) {
   const canvas = useRef<HTMLCanvasElement>(null);
+  // A ref, so a room refetch (new colours function) doesn't restart the race.
+  const colorsRef = useRef(colors ?? defaultColors);
+  useEffect(() => {
+    colorsRef.current = colors ?? defaultColors;
+  });
   useEffect(() => {
     const el = canvas.current;
     if (!el) return;
-    const renderer = new Pixel2DRenderer(el);
+    const renderer = new Pixel2DRenderer(el, (h, lane) => colorsRef.current(h, lane));
     renderer.play(timeline, TRACK, startAtMs);
     return () => renderer.stop();
   }, [timeline, startAtMs]);
@@ -44,7 +50,8 @@ export function RaceView({ timeline, startAtMs, names }: Props) {
           const time = timeline.finishTimes[h]!;
           return (
             <li key={h}>
-              <Silk lane={timeline.horses.indexOf(h)} /> {names[h] ?? '?'}
+              <Silk color={(colors ?? defaultColors)(h, timeline.horses.indexOf(h)).silk} />{' '}
+              {names[h] ?? '?'}
               {time <= t && ` · ${time.toFixed(2)} s`}
             </li>
           );

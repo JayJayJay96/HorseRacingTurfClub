@@ -1,0 +1,275 @@
+/*
+ * Theme (docs/superpowers/specs/2026-11-04-ui-theme-design.md): tokens, pixel font, page
+ * background, element base styles and shared classes. Screen layout stays in app.css.
+ * Every text/background pair here is 4.5:1 or better; the pixel font is never below 16px.
+ */
+@font-face {
+  font-family: 'Pixelify Sans';
+  src: url('../assets/fonts/PixelifySans.ttf') format('truetype');
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  --bg: #141b2d;
+  --panel: rgba(20, 27, 45, 0.88);
+  --raised: #2a3858;
+  --edge: #0a0e18;
+  --ink: #f4f1e8;
+  --muted: #a9b4cc;
+  --gold: #ffcc33;
+  --gold-dim: #b8912a;
+  --turf: #3d7a3a;
+  --danger: #ff6b6b;
+  --silver: #c9d1dc;
+  --bronze: #cd7f32;
+  --font-pixel: 'Pixelify Sans', system-ui, sans-serif;
+  --font-body: system-ui, sans-serif;
+  /* Double trim: 1px gold outside, 1px dark gap, 1px dim gold inside. */
+  --trim: 0 0 0 1px var(--gold-dim), 0 0 0 2px var(--edge), 0 0 0 3px var(--gold);
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-body);
+  color: var(--ink);
+  accent-color: var(--gold);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: var(--bg);
+  /* Vignette over navy-to-turf; the turf end is mixed dark so plain text on it stays 4.5:1. */
+  background-image:
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.45) 100%),
+    linear-gradient(180deg, var(--bg) 0%, color-mix(in srgb, var(--turf) 30%, var(--bg)) 100%);
+  background-attachment: fixed;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  line-height: 1.2;
+  text-shadow: 0 1px 0 var(--edge);
+}
+
+a {
+  color: var(--gold);
+}
+
+small,
+legend {
+  color: var(--muted);
+}
+
+[role='alert'] {
+  color: var(--danger);
+}
+
+button,
+a.button {
+  font-family: var(--font-pixel);
+  font-size: max(1rem, 1em);
+  line-height: 1.2;
+  color: var(--ink);
+  background: var(--panel);
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px var(--gold);
+  padding: 8px 16px;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.05s;
+}
+button:hover,
+a.button:hover {
+  background: var(--raised);
+}
+button:active:not(:disabled),
+a.button:active {
+  transform: translateY(1px);
+  filter: brightness(0.85);
+}
+button.primary,
+a.button.primary {
+  color: var(--bg);
+  background: linear-gradient(180deg, var(--gold), var(--gold-dim));
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+button.primary:not(:disabled):hover,
+button.primary:focus-visible,
+a.button.primary:hover,
+a.button.primary:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--edge),
+    0 0 12px rgba(255, 204, 51, 0.55);
+}
+button:disabled {
+  color: var(--muted);
+  background: var(--raised);
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: none;
+}
+
+input:not([type='checkbox'], [type='radio'], [type='range']),
+select,
+textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--raised);
+  border: 1px solid var(--gold-dim);
+  border-radius: 0;
+  padding: 6px 8px;
+}
+input:not([type='checkbox'], [type='radio'], [type='range']):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--gold);
+}
+::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+fieldset {
+  border: 1px solid var(--gold-dim);
+  margin: 0 0 8px;
+}
+
+table {
+  border-collapse: collapse;
+}
+th {
+  font-family: var(--font-pixel);
+  font-weight: 600;
+  color: var(--gold);
+  text-align: left;
+}
+tbody tr:nth-child(odd) {
+  background: var(--raised);
+}
+
+/* Never remove this ring; it is the only focus cue for keyboard users. */
+:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.pixel {
+  font-family: var(--font-pixel);
+}
+
+/* A window: see-through navy, double gold trim, gold corner marks, soft shadow. */
+.panel {
+  position: relative;
+  margin: 0 0 16px;
+  padding: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.12)), var(--panel);
+  box-shadow: var(--trim), var(--shadow);
+}
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--gold), var(--gold)) top left / 6px 6px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) top right / 6px 6px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom left / 6px 6px no-repeat,
+    linear-gradient(var(--gold), var(--gold)) bottom right / 6px 6px no-repeat;
+}
+
+/* A tappable choice: a real <button>, or a <label> around a radio or checkbox. */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
+}
+.card:hover {
+  background: var(--raised);
+}
+.card:has(input:checked),
+.card[aria-pressed='true'] {
+  background: var(--raised);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+.card:disabled {
+  color: var(--muted);
+  background: var(--raised);
+  box-shadow: none;
+}
+label.card {
+  cursor: pointer;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: var(--font-pixel);
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--ink);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
+  white-space: nowrap;
+}
+.chip.on,
+.chip.win {
+  background: var(--turf);
+}
+.chip.loss {
+  color: var(--danger);
+  background: var(--edge);
+}
+
+/* Static warm light behind the room code, the countdown and the winner. */
+.glow {
+  background: radial-gradient(closest-side, rgba(255, 204, 51, 0.18), transparent);
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background: var(--panel);
+  box-shadow:
+    0 1px 0 var(--gold-dim),
+    0 2px 0 var(--edge),
+    0 3px 0 var(--gold);
+}
+.topbar .brand {
+  font-family: var(--font-pixel);
+  font-size: 1.25rem;
+  color: var(--gold);
+  text-decoration: none;
+  text-shadow: 0 1px 0 var(--edge);
+}
+.topbar-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button,
+  a.button {
+    transition: none;
+  }
+  button:active:not(:disabled),
+  a.button:active {
+    transform: none;
+  }
+}

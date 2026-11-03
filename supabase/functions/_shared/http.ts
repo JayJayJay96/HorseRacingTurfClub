@@ -38,7 +38,7 @@ export function serve(
     const admin = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth });
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     try {
-      const body = await req.json().catch(() => ({}));
+      const body = (await req.json().catch(() => ({}))) ?? {};
       return Response.json((await handler(body, user, admin, token)) ?? {}, { headers: CORS });
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);

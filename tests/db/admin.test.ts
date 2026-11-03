@@ -27,9 +27,27 @@ describe('admin RPCs', () => {
       phone.rpc('admin_archive', { p_player: zero }),
       phone.rpc('admin_reset_pin', { p_player: zero }),
       phone.rpc('admin_delete_race', { p_race: zero }),
+      phone.rpc('admin_gate', { p_ok: true }),
+      phone.rpc('admin_gate_reset'),
     ]) {
       expect(await fails(call)).toMatch(/permission denied/);
     }
+  });
+
+  it('admin_gate locks after 10 wrong passwords, even for the right one', async () => {
+    const admin = adminClient();
+    const gate = (p_ok: boolean) => ok(admin.rpc('admin_gate', { p_ok }));
+    await ok(admin.rpc('admin_gate_reset'));
+    try {
+      for (let i = 0; i < 9; i++) expect(await gate(false)).toBe('bad_password');
+      expect(await gate(true)).toBe('ok'); // resets the count
+      for (let i = 0; i < 10; i++) expect(await gate(false)).toBe('bad_password');
+      expect(await gate(true)).toBe('admin_locked');
+      expect(await gate(false)).toBe('admin_locked');
+    } finally {
+      await ok(admin.rpc('admin_gate_reset')); // the admin function tests use the real password
+    }
+    expect(await gate(true)).toBe('ok');
   });
 
   it('overview lists members with balance, PIN and phone status', async () => {

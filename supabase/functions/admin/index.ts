@@ -1,3 +1,4 @@
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { rpc, serve, type Body } from '../_shared/http.ts';
 
 const RPC: Record<string, (b: Body) => [string, Record<string, unknown>]> = {
@@ -10,23 +11,25 @@ const RPC: Record<string, (b: Body) => [string, Record<string, unknown>]> = {
   delete_race: (b) => ['admin_delete_race', { p_race: b.race }],
 };
 
-/** Constant-time compare; a wrong password waits 1 s to slow guessing. */
-async function checkPassword(given: unknown) {
+/**
+ * Constant-time compare, then the DB lockout (10 misses lock /admin for 10 minutes, even for the
+ * right password). A wrong password also waits 1 s.
+ */
+async function checkPassword(admin: SupabaseClient, given: unknown) {
   const expected = Deno.env.get('ADMIN_PASSWORD');
   if (!expected) throw new Error('admin_not_configured');
   const a = new TextEncoder().encode(typeof given === 'string' ? given : '');
   const b = new TextEncoder().encode(expected);
   let diff = a.length ^ b.length;
   for (let i = 0; i < b.length; i++) diff |= (a[i] ?? 0) ^ b[i]!;
-  if (diff !== 0) {
-    await new Promise((r) => setTimeout(r, 1000));
-    throw new Error('bad_password');
-  }
+  const gate = await rpc<string>(admin, 'admin_gate', { p_ok: diff === 0 });
+  if (diff !== 0) await new Promise((r) => setTimeout(r, 1000));
+  if (gate !== 'ok') throw new Error(gate);
 }
 
 // /admin (spec §10): every action needs ADMIN_PASSWORD; claim_host makes the calling device the office host.
 serve(async (body, _user, admin, token) => {
-  await checkPassword(body.password);
+  await checkPassword(admin, body.password);
   if (body.action === 'claim_host') {
     const { data, error } = await admin.auth.getUser(token);
     if (error || !data.user) throw new Error('not_signed_in');

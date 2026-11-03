@@ -1,5 +1,53 @@
 -- /admin actions (spec §10). Service role only: the admin Edge Function checks the password first.
 
+-- Lockout for the admin password: the Edge Function's 1 s delay does not slow parallel guesses.
+create table private.admin_guard (
+  id boolean primary key default true check (id),
+  fails integer not null default 0,
+  locked_until timestamptz
+);
+insert into private.admin_guard default values;
+revoke all on private.admin_guard from public, anon, authenticated;
+alter table private.admin_guard enable row level security;
+
+-- Called by the admin function with the password result. Returns instead of raising so a
+-- failure's count is committed: 'ok' | 'bad_password' | 'admin_locked' (10 misses -> 10 minutes).
+create function public.admin_gate(p_ok boolean)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_guard private.admin_guard;
+begin
+  select * into v_guard from private.admin_guard where id for update;
+  if v_guard.locked_until > now() then
+    return 'admin_locked';
+  end if;
+  if p_ok then
+    update private.admin_guard set fails = 0, locked_until = null where id;
+    return 'ok';
+  end if;
+  if v_guard.fails + 1 >= 10 then
+    update private.admin_guard set fails = 0, locked_until = now() + interval '10 minutes' where id;
+  else
+    update private.admin_guard set fails = v_guard.fails + 1 where id;
+  end if;
+  return 'bad_password';
+end;
+$$;
+
+-- Clears the lockout (tests/ops).
+create function public.admin_gate_reset()
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update private.admin_guard set fails = 0, locked_until = null where id;
+$$;
+
 -- Locks the office room, then the member (room before player, like every lock path).
 -- p_active = false also finds archived ones.
 create function private.office_member(p_player uuid, p_active boolean default true)
@@ -157,7 +205,8 @@ declare
 begin
   foreach f in array array[
     'public.admin_overview()', 'public.admin_rename(uuid, text)', 'public.admin_archive(uuid)',
-    'public.admin_reset_pin(uuid)', 'public.admin_adjust(uuid, integer, text)', 'public.admin_delete_race(uuid)'
+    'public.admin_reset_pin(uuid)', 'public.admin_adjust(uuid, integer, text)', 'public.admin_delete_race(uuid)',
+    'public.admin_gate(boolean)', 'public.admin_gate_reset()'
   ] loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
     execute format('grant execute on function %s to service_role', f);

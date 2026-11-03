@@ -13,6 +13,7 @@ import {
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
+import { formatForm } from '../history/badges.ts';
 import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
   addPlayer,
@@ -28,6 +29,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { useOfficeStats } from '../net/stats.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { colorsByPlayer } from '../render/palette.ts';
@@ -131,6 +133,16 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
           />
         </label>
 
+        {office && players.length > 0 && (
+          <p>
+            💰 Richest:{' '}
+            {[...players]
+              .sort((a, b) => (balances[b.id] ?? 0) - (balances[a.id] ?? 0))
+              .slice(0, 3)
+              .map((p) => `${p.name} ${balances[p.id] ?? 0}`)
+              .join(' · ')}
+          </p>
+        )}
         <h2>
           Roster ({ticked}/{MAX_HORSES} racing)
         </h2>
@@ -161,7 +173,8 @@ function LobbyBoard({ room, players, balances, online, act }: BoardProps) {
         </ul>
         {office ? (
           <p>
-            People, PINs and coins are managed at <a href="/admin">/admin</a>.
+            People, PINs and coins are managed at <a href="/admin">/admin</a>. History:{' '}
+            <a href="/stats">Stats</a>.
           </p>
         ) : (
           <form onSubmit={add}>
@@ -259,6 +272,8 @@ function OddsLockedBoard({ room, act, busy }: BoardProps) {
 function BettingBoard({ room, players, race, purchases, bets, act, busy }: BoardProps) {
   const odds = oddsOf(race);
   const horses = race?.horses ?? [];
+  const office = room.kind === 'office';
+  const { stats } = useOfficeStats(room.race_id, office);
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
@@ -266,6 +281,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
         <thead>
           <tr>
             <th>Horse</th>
+            {office && <th>Form</th>}
             <th>Boxes</th>
             <th>Win</th>
             {canPlace(horses) && <th>Place</th>}
@@ -275,6 +291,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
           {horses.map((id) => (
             <tr key={id}>
               <td>{horseNameOf(players, id)}</td>
+              {office && <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>}
               <td>{boxIcons(purchases, id)}</td>
               <td>{formatOdds(odds[id]?.win)}</td>
               {canPlace(horses) && <td>{formatOdds(odds[id]?.place)}</td>}

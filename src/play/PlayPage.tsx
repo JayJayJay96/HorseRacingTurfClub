@@ -10,6 +10,7 @@ import {
   oddsOf,
   ordinal,
 } from '../betting/betting.ts';
+import { BADGES, formatForm } from '../history/badges.ts';
 import { normalizeCode } from '../lobby/lobby.ts';
 import {
   buyBox,
@@ -24,6 +25,7 @@ import {
   type RoomPlayer,
   type RoomState,
 } from '../net/rooms.ts';
+import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
@@ -136,6 +138,8 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inflight = useRef(false);
+  // Before the early returns: hooks run every render; it only fetches in the office.
+  const { stats } = useOfficeStats(state?.room.phase, state?.room.kind === 'office');
 
   if (error) {
     return (
@@ -200,6 +204,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       {room.kind === 'office' && room.phase === 'LOBBY' && (
         <>
           <p>💰 {props.balance} coins</p>
+          <MyRecord stats={stats} id={mine.id} />
           <HorsePanel roomId={room.id} mine={mine} act={act} busy={busy} />
           <p>
             <button
@@ -230,6 +235,29 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       )}
       {actionError && <p role="alert">{actionError}</p>}
     </main>
+  );
+}
+
+function MyRecord({ stats, id }: { stats: OfficeStats | null; id: string }) {
+  const record = stats?.horses.find((h) => h.id === id);
+  const badges = stats?.badges.filter((b) => b.id === id) ?? [];
+  return (
+    <>
+      {record && (
+        <p>
+          Your record: {record.races} races · {record.wins} wins · form {formatForm(record.last5)}
+        </p>
+      )}
+      {badges.length > 0 && (
+        <ul className="badges">
+          {badges.map((b) => (
+            <li key={b.badge} title={BADGES[b.badge].description}>
+              {BADGES[b.badge].icon} {BADGES[b.badge].name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
 

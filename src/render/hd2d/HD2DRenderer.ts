@@ -1,9 +1,19 @@
 import * as THREE from 'three';
-import { progressAt } from '../../sim/playback.ts';
-import type { HorseId, Timeline } from '../../sim/types.ts';
-import { COAST_SPEED, defaultColors, type ColorsOf } from '../Pixel2DRenderer.ts';
+import { eventsBetween, progressAt } from '../../sim/playback.ts';
+import type { BoxSpot, HorseId, RaceEvent, Timeline } from '../../sim/types.ts';
+import { ITEM_INFO, popupOf } from '../items.ts';
+import { BOX_COLOR } from '../palette.ts';
+import {
+  BOX_REVEAL,
+  COAST_SPEED,
+  ITEM_HOLD_SECONDS,
+  POPUP_SECONDS,
+  TRAIL,
+  defaultColors,
+  type ColorsOf,
+} from '../Pixel2DRenderer.ts';
 import type { RaceRenderer } from '../renderer.ts';
-import { poseOf } from '../sprites.ts';
+import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
 import { EASE, FOV_DEG, PIXEL_M, TILT_BLUR_PX } from './look.ts';
@@ -45,6 +55,26 @@ export class HD2DRenderer implements RaceRenderer {
   private readonly p = new THREE.Vector3();
   private readonly q = new THREE.Vector3();
   private shot: Shot | null = null;
+  private boxes: (readonly BoxSpot[])[] = [];
+  private grabs: number[][] = [];
+  private boxAt: number[][] = [];
+  private held: Extract<RaceEvent, { type: 'pickup' }>[] = [];
+  private boxMesh: THREE.InstancedMesh | null = null;
+  private badges: THREE.Sprite[] = [];
+  private labels: THREE.Sprite[] = [];
+  private readonly textCache = new Map<string, THREE.CanvasTexture>();
+  private trails: { dust: THREE.Points; sparkle: THREE.Points } | null = null;
+  private hud: {
+    scene: THREE.Scene;
+    camera: THREE.OrthographicCamera;
+    sprite: THREE.Sprite;
+  } | null = null;
+  private readonly where = new Map<HorseId, THREE.Vector3>();
+  private readonly mtx = new THREE.Matrix4();
+  private readonly rot = new THREE.Quaternion();
+  private readonly one = new THREE.Vector3(1, 1, 1);
+  private readonly up = new THREE.Vector3(0, 1, 0);
+  private readonly col = new THREE.Color();
   private motion = true;
   private lastW = 0;
   private lastH = 0;
@@ -128,6 +158,89 @@ export class HD2DRenderer implements RaceRenderer {
       return { horse, lane, mesh, map };
     });
 
+    // Boxes: glowing cubes (colour x 2 so bloom catches them).
+    this.cacheBoxes(timeline);
+    const boxCount = Math.max(
+      1,
+      this.boxes.reduce((n, b) => n + b.length, 0),
+    );
+    const boxMesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.6, 0.6, 0.6),
+      new THREE.MeshBasicMaterial(),
+      boxCount,
+    );
+    boxMesh.count = 0;
+    scene.add(boxMesh);
+    this.boxMesh = boxMesh;
+
+    // Number badges (lane + 1, saddle-cloth style) drawn with the 2D code.
+    this.badges = timeline.horses.map((h, lane) => {
+      const n = String(lane + 1);
+      const c = document.createElement('canvas');
+      c.width = n.length * 4 + 3;
+      c.height = 9;
+      drawNumber(
+        c.getContext('2d')!,
+        Math.ceil((n.length * 4 + 1) / 2) + 1,
+        8,
+        lane + 1,
+        this.colors(h, lane).silk,
+      );
+      const tex = new THREE.CanvasTexture(c);
+      tex.magFilter = tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+      sprite.scale.set(c.width * PIXEL_M, c.height * PIXEL_M, 1);
+      sprite.center.set(0.5, 0);
+      scene.add(sprite);
+      return sprite;
+    });
+
+    // A pool of text sprites for held items and popups, always on top.
+    this.labels = Array.from({ length: 48 }, () => {
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+      s.renderOrder = 10;
+      s.center.set(0.5, 0);
+      s.visible = false;
+      scene.add(s);
+      return s;
+    });
+
+    // Trails: past positions from the timeline itself (no ring buffer needed).
+    const trailGeo = () => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(lanes * TRAIL * 3), 3));
+      return g;
+    };
+    this.trails = {
+      dust: new THREE.Points(
+        trailGeo(),
+        new THREE.PointsMaterial({ color: '#a39382', size: 0.35, transparent: true, opacity: 0.6 }),
+      ),
+      sparkle: new THREE.Points(
+        trailGeo(),
+        new THREE.PointsMaterial({
+          color: new THREE.Color('#ffd54f').multiplyScalar(2),
+          size: 0.25,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      ),
+    };
+    scene.add(this.trails.dust, this.trails.sparkle);
+
+    // Countdown / GO! in a screen-space overlay drawn after the post stack.
+    const hudScene = new THREE.Scene();
+    const hudSprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+    hudSprite.scale.set(8, 2, 1);
+    hudScene.add(hudSprite);
+    this.hud = {
+      scene: hudScene,
+      camera: new THREE.OrthographicCamera(-8, 8, 4.5, -4.5, 0, 10),
+      sprite: hudSprite,
+    };
+
     const camera = new THREE.PerspectiveCamera(FOV_DEG, 16 / 9, 1, 3000);
     this.camera = camera;
     this.post = buildPost(renderer, scene, camera, preset);
@@ -173,6 +286,49 @@ export class HD2DRenderer implements RaceRenderer {
       this.raf = requestAnimationFrame(frame);
     };
     frame();
+  }
+
+  /** A cached canvas texture of outlined white text (popups, icons, countdown). */
+  private text(label: string): THREE.CanvasTexture {
+    let tex = this.textCache.get(label);
+    if (tex) return tex;
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 64;
+    const ctx = c.getContext('2d')!;
+    ctx.font = '40px "Pixelify Sans", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 8;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#000';
+    ctx.strokeText(label, 128, 34);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, 128, 34);
+    tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    this.textCache.set(label, tex);
+    return tex;
+  }
+
+  /** Box display rules, the same as the 2D renderer's play(). */
+  private cacheBoxes(timeline: Timeline) {
+    this.boxes = timeline.horses.map((h) =>
+      [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
+    );
+    this.held = timeline.events.filter((e) => e.type === 'pickup');
+    this.grabs = timeline.horses.map((h) =>
+      this.held
+        .filter((e) => e.horse === h)
+        .map((e) => e.t - ITEM_HOLD_SECONDS)
+        .sort((a, b) => a - b),
+    );
+    this.boxAt = this.boxes.map((boxes, lane) =>
+      boxes.map((box, i) => {
+        const grab = this.grabs[lane]![i];
+        return grab === undefined ? box.at : progressAt(timeline, timeline.horses[lane]!, grab);
+      }),
+    );
   }
 
   /** Metres along the race, coasting past the line after the finish (display only). */
@@ -228,12 +384,15 @@ export class HD2DRenderer implements RaceRenderer {
     for (const o of world.billboards) o.rotation.y = yaw;
 
     // Horses: position, facing, pose and gallop frame.
-    const { p, q } = this;
+    const { p, q, where } = this;
+    where.clear();
     for (const v of this.horses) {
       const m = this.metres(timeline, v.horse, t);
       const here = horsePoint(track, d, m, v.lane);
       const ahead = horsePoint(track, d, m + 1, v.lane);
       v.mesh.position.set(here.x, 0, here.y);
+      where.set(v.horse, v.mesh.position);
+      this.badges[v.lane]?.position.set(here.x, 20 * PIXEL_M, here.y);
       v.mesh.rotation.y = yaw;
       p.set(here.x, 0, here.y).project(camera);
       q.set(ahead.x, 0, ahead.y).project(camera);
@@ -243,7 +402,87 @@ export class HD2DRenderer implements RaceRenderer {
       v.map.repeat.set(uv.repeatX, uv.repeatY);
     }
 
+    // Unopened boxes: only near their own horse, at the spot the horse grabs them.
+    const box = this.boxMesh!;
+    const { mtx, one, col } = this;
+    const rot = this.rot.setFromAxisAngle(this.up, t * 2);
+    let n = 0;
+    timeline.horses.forEach((horse, lane) => {
+      const boxes = this.boxes[lane] ?? [];
+      const reach = progressAt(timeline, horse, t) + d * BOX_REVEAL;
+      const grabs = this.grabs[lane] ?? [];
+      for (let i = grabs.filter((g) => g <= t).length; i < boxes.length; i++) {
+        const at = this.boxAt[lane]![i]!;
+        if (at > reach) break;
+        const bp = horsePoint(track, d, at, lane);
+        const bob = this.motion ? Math.sin(t * 3 + i) * 0.15 : 0;
+        mtx.compose(p.set(bp.x, 0.7 + bob, bp.y), rot, one);
+        box.setMatrixAt(n, mtx);
+        box.setColorAt(n, col.set(BOX_COLOR[boxes[i]!.kind]).multiplyScalar(2));
+        n++;
+      }
+    });
+    box.count = n;
+    box.instanceMatrix.needsUpdate = true;
+    if (box.instanceColor) box.instanceColor.needsUpdate = true;
+
+    // Held items spin over their horse; popups float up.
+    let used = 0;
+    const show = (label: string, x: number, y: number, z: number, spin: number) => {
+      const s = this.labels[used++];
+      if (!s) return;
+      s.material.map = this.text(label);
+      s.material.needsUpdate = true;
+      s.position.set(x, y, z);
+      s.scale.set(256 * PIXEL_M * 0.25 * spin, 64 * PIXEL_M * 0.25, 1);
+      s.visible = true;
+    };
+    for (const e of this.held) {
+      if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
+      const at = where.get(e.horse);
+      if (!at) continue;
+      const icon = e.item ? ITEM_INFO[e.item].icon : '\u{1F4A8}';
+      const spin = this.motion ? Math.abs(Math.cos(t * 2 * Math.PI * 1.5)) || 0.05 : 1;
+      show(icon, at.x, 4.2 + (this.motion ? Math.sin(t * 8) * 0.2 : 0), at.z, spin);
+    }
+    for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
+      const at = where.get(e.horse);
+      if (at) show(popupOf(e), at.x, 5 + (t - e.t) * 1.2, at.z, 1);
+    }
+    for (let i = used; i < this.labels.length; i++) this.labels[i]!.visible = false;
+
+    // Trails from the horse's own past positions.
+    if (this.trails) {
+      const fill = (points: THREE.Points, kind: string, lift: (i: number) => number) => {
+        const arr = points.geometry.getAttribute('position') as THREE.BufferAttribute;
+        let k = 0;
+        timeline.horses.forEach((horse, lane) => {
+          if (this.colors(horse, lane).trail !== kind) return;
+          const finished = timeline.finishTimes[horse] ?? Infinity;
+          if (t <= 0 || t >= finished) return;
+          for (let i = 1; i <= TRAIL; i++) {
+            const m = progressAt(timeline, horse, Math.max(0, t - i * 0.08));
+            const tp = horsePoint(track, d, m, lane);
+            arr.setXYZ(k++, tp.x, lift(i), tp.y);
+          }
+        });
+        points.geometry.setDrawRange(0, k);
+        arr.needsUpdate = true;
+      };
+      fill(this.trails.dust, 'trail:dust', () => 0.15);
+      fill(this.trails.sparkle, 'trail:sparkle', (i) => 1.5 + (i % 3) * 0.3);
+    }
+
     post.composer.render();
+    // Countdown, then GO!, over the post stack.
+    if (t < 1 && this.hud && this.renderer) {
+      this.hud.sprite.material.map = this.text(t < 0 ? String(Math.ceil(-t)) : 'GO!');
+      this.hud.sprite.material.needsUpdate = true;
+      this.renderer.autoClear = false;
+      this.renderer.clearDepth();
+      this.renderer.render(this.hud.scene, this.hud.camera);
+      this.renderer.autoClear = true;
+    }
   }
 
   stop() {
@@ -251,6 +490,14 @@ export class HD2DRenderer implements RaceRenderer {
     this.resize?.disconnect();
     this.resize = null;
     this.canvas.removeEventListener('webglcontextlost', this.lost);
+    for (const tex of this.textCache.values()) tex.dispose();
+    this.textCache.clear();
+    if (this.hud) disposeTree(this.hud.scene);
+    this.hud = null;
+    this.boxMesh = null;
+    this.trails = null;
+    this.badges = [];
+    this.labels = [];
     if (this.scene) disposeTree(this.scene);
     this.world?.sky.dispose();
     this.sheet?.dispose();

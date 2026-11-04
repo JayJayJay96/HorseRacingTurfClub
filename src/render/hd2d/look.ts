@@ -21,6 +21,11 @@ export const FINISH_DISTANCE_SCALE = 1.3;
 export const TILT_BLUR_PX = { wide: 4, chase: 2, finish: 2 } as const;
 /** Where the sharp band sits, as a share of the screen height from the bottom. */
 export const TILT_FOCUS = 0.45;
+/**
+ * Chase and finish shots aim this far past the pack, away from the camera, so the horses sit in
+ * the lower part of the frame and the stands fill the backdrop.
+ */
+export const LOOK_PAST_M = 12;
 /** Per-frame ease toward the shot target (same as the 2D camera). */
 export const EASE = 0.06;
 

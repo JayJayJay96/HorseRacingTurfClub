@@ -6,7 +6,7 @@ import type { RaceRenderer } from '../renderer.ts';
 import { poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
-import { FOV_DEG, PIXEL_M, TILT_BLUR_PX, distanceForScale } from './look.ts';
+import { FOV_DEG, LOOK_PAST_M, PIXEL_M, TILT_BLUR_PX, distanceForScale } from './look.ts';
 import { buildPost, type Post } from './post.ts';
 import { buildWorld, cutoutMaterials, disposeTree, type World } from './scene.ts';
 import { CELL, cellOf, cellUv, drawSheet, sheetSize } from './sheet.ts';
@@ -169,12 +169,12 @@ export class HD2DRenderer implements RaceRenderer {
     const pack = order
       .slice(0, 3)
       .map((h) => horsePoint(track, d, this.metres(timeline, h, t), timeline.horses.indexOf(h)));
-    const tx = pack.reduce((s, p) => s + p.x, 0) / pack.length;
-    const ty = pack.reduce((s, p) => s + p.y, 0) / pack.length;
     const lead = this.metres(timeline, order[0]!, t);
     const a = horsePoint(track, d, lead, 0);
     const b = horsePoint(track, d, lead, 1);
     const yaw = Math.atan2(-(b.x - a.x), -(b.y - a.y)); // inward normal: infield side
+    const tx = pack.reduce((s, p) => s + p.x, 0) / pack.length - Math.sin(yaw) * LOOK_PAST_M;
+    const ty = pack.reduce((s, p) => s + p.y, 0) / pack.length - Math.cos(yaw) * LOOK_PAST_M;
     const dist = distanceForScale();
     camera.position.set(
       tx + Math.sin(yaw) * Math.cos(CHASE_PITCH) * dist,

@@ -1,5 +1,6 @@
 import { eventsBetween } from '../sim/playback.ts';
 import type { RaceEvent, Timeline } from '../sim/types.ts';
+import { cutinsOf } from '../render/cutins.ts';
 
 export type SfxName =
   | 'count'
@@ -13,7 +14,8 @@ export type SfxName =
   | 'dud'
   | 'fizzle'
   | 'coin'
-  | 'cheer';
+  | 'cheer'
+  | 'cutin';
 
 function cueOf(e: RaceEvent): SfxName | null {
   switch (e.type) {
@@ -42,10 +44,11 @@ export function raceCues(timeline: Timeline, from: number, to: number): SfxName[
     const cue = cueOf(e);
     if (cue && out.at(-1) !== cue) out.push(cue);
   }
+  if (cutinsOf(timeline).some((c) => from < c.t && c.t <= to)) out.push('cutin');
   return out;
 }
 
-const PRIORITY: readonly SfxName[] = ['go', 'bell', 'count'];
+const PRIORITY: readonly SfxName[] = ['go', 'bell', 'cutin', 'count'];
 
 /** At most `max` cues, race-structure cues (go/bell/count) first so a pile-up can't drop them. */
 export function prioritise(cues: readonly SfxName[], max: number): SfxName[] {

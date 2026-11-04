@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { raceAnnouncement } from '../app/announce.ts';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
+import { CutInOverlay } from './CutInOverlay.tsx';
+import { cutinAt, cutinsOf } from './cutins.ts';
 import type { HD2DOptions } from './hd2d/HD2DRenderer.ts';
 import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
 import type { RaceRenderer } from './renderer.ts';
@@ -105,14 +107,20 @@ export function RaceView({
     };
   }, [active]);
 
-  const t = useRaceTime(startAtMs);
+  const clock = useRaceTime(startAtMs);
+  // Sandbox freezes HD at freezeT; the overlay and standings freeze with it (2D ignores it).
+  const frozen = active === 'hd' ? look?.freezeT : undefined;
+  const t = frozen ?? clock;
   const toggleMode = () => {
     const next: RenderMode = mode === 'hd' ? '2d' : 'hd';
     setMode(next);
     saveRenderMode(next);
   };
   return (
-    <div className="race" ref={box}>
+    <div
+      className={`race${cutinAt(cutinsOf(timeline), t) ? ' cutin-on' : ''}${frozen === undefined ? '' : ' frozen'}`}
+      ref={box}
+    >
       <div className="race-buttons">
         {document.fullscreenEnabled && (
           <button type="button" className="chip" aria-pressed={full} onClick={toggleFull}>
@@ -142,6 +150,7 @@ export function RaceView({
           role="img"
           aria-label={`${track.name} race, ${timeline.horses.length} horses (standings listed alongside)`}
         />
+        <CutInOverlay timeline={timeline} t={t} names={names} colors={colors ?? defaultColors} />
       </div>
       <p className="visually-hidden" role="status" aria-live="polite">
         {raceAnnouncement(timeline, t, names)}

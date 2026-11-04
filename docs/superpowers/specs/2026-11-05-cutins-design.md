@@ -50,7 +50,7 @@ start.
 - `aria-hidden` (the live standings announcement already covers the race); the
   Fullscreen/HD chips fade while a band shows.
 - **Thunderclap flash:** every Thunderclap pickup (cut-in or not) also flashes the whole race view
-  white for 0.25 s in this overlay (both renderers). Reduced motion: a softer, shorter flash.
+  white for 0.5 s (fading from 85 %) in this overlay (both renderers). Reduced motion: a softer, shorter flash.
 
 ### Sound
 

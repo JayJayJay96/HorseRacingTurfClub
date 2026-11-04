@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { cutinsOf } from '../render/cutins.ts';
 import { RaceView } from '../render/RaceView.tsx';
 import type { PresetId } from '../render/hd2d/lighting.ts';
 import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
@@ -18,12 +19,19 @@ const SAMPLE_HORSES = [
   'Satay Sprinter',
   'Durian Dasher',
 ];
+const MOMENTS = [
+  { item: 'attack:all', label: 'Thunderclap' },
+  { item: 'attack:leader', label: 'Golden Lasso' },
+  { item: 'speed:pass3', label: 'Stampede' },
+  { item: 'attack:top3', label: 'Hornet Swarm' },
+] as const;
 /** A full 22-horse field for the performance target (spec §4). */
 const FULL_FIELD = [...SAMPLE_HORSES, ...Array.from({ length: 16 }, (_, i) => `Extra ${i + 1}`)];
 
 /** Runs the engine locally with a crypto seed and plays it back; no Supabase needed. */
 export function Sandbox() {
-  const [run, setRun] = useState<{ timeline: Timeline; gun: number } | null>(null);
+  const [run, setRun] = useState<{ timeline: Timeline; gun: number; at?: number } | null>(null);
+  const [freeze, setFreeze] = useState<'' | 'band' | 'effect'>('');
   const [trackId, setTrackId] = useState<TrackId>('oval');
   const [looks, setLooks] = useState<Record<CosmeticSlot, string>>({ pattern: '', trail: '' });
   const [field, setField] = useState<6 | 22>(6);
@@ -43,10 +51,16 @@ export function Sandbox() {
     const speeds = Object.fromEntries(SAMPLE_HORSES.map((h, i) => [h, 10 - i * 0.03] as const));
     return { timeline: fakeTimeline(speeds, 1800), gun: 0 };
   }, []);
-  const look = useMemo(
-    () => ({ ...(lookTest ? { freezeT: 170 } : {}), ...(preset ? { preset } : {}) }),
-    [lookTest, preset],
-  );
+  // Freeze a Moment mid-band (0.6 s in) or on its in-race effect (1.6 s in).
+  const momentAt = run?.at;
+  const look = useMemo(() => {
+    const frozen = lookTest
+      ? 170
+      : freeze && momentAt !== undefined
+        ? momentAt + (freeze === 'band' ? 0.6 : 1.6)
+        : undefined;
+    return { ...(frozen === undefined ? {} : { freezeT: frozen }), ...(preset ? { preset } : {}) };
+  }, [lookTest, preset, freeze, momentAt]);
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     const id = setInterval(
@@ -65,6 +79,20 @@ export function Sandbox() {
       }),
       gun: Date.now() + COUNTDOWN_SECONDS * 1000,
     });
+  // Jump to 4 s before a special moment (spec 2026-11-05): the first seed that has one.
+  const moment = (item: (typeof MOMENTS)[number]['item']) => {
+    for (let seed = 1; seed <= 5000; seed++) {
+      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short' });
+      const at =
+        item === 'attack:top3'
+          ? timeline.events.find((e) => e.type === 'pickup' && e.item === item && e.t > 6)?.t
+          : cutinsOf(timeline).find((c) => c.item === item && c.t > 6)?.t;
+      if (at !== undefined) {
+        setRun({ timeline, gun: Date.now() - (at - 4) * 1000, at });
+        return;
+      }
+    }
+  };
   const shown = lookTest ? lookRun : run;
 
   return (
@@ -125,7 +153,22 @@ export function Sandbox() {
         </label>{' '}
         <button type="button" aria-pressed={lookTest} onClick={() => setLookTest(!lookTest)}>
           Look test
-        </button>
+        </button>{' '}
+        Moment:{' '}
+        <select
+          aria-label="Freeze moment"
+          value={freeze}
+          onChange={(e) => setFreeze(e.target.value as '' | 'band' | 'effect')}
+        >
+          <option value="">Play</option>
+          <option value="band">Freeze on band</option>
+          <option value="effect">Freeze on effect</option>
+        </select>{' '}
+        {MOMENTS.map((m) => (
+          <button key={m.item} type="button" onClick={() => moment(m.item)}>
+            {m.label}
+          </button>
+        ))}
         {run && !lookTest && ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events`}
         {import.meta.env.DEV && frameMs > 0 && ` · ${frameMs.toFixed(1)} ms/frame`}
       </p>

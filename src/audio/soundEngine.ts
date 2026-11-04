@@ -312,6 +312,12 @@ export function createSoundEngine(
       case 'cheer': // crowd swell
         noiseHit(c, bus, now, 0.7, 0.35, 'bandpass', 900);
         break;
+      case 'cutin': // rising arpeggio and a sweep under the cut-in band
+        [523, 659, 784, 1046].forEach((f, i) =>
+          osc(c, bus, 'square', f, f, now + i * 0.06, 0.12, 0.22),
+        );
+        noiseHit(c, bus, now, 0.4, 0.25, 'highpass', 2000);
+        break;
     }
   }
 

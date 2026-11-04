@@ -16,7 +16,16 @@ import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
 import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
-import { PARTICLES, activeAt, effectsOf, particlesOf, type Effect } from './effects.ts';
+import {
+  PARTICLES,
+  SPECIAL_KINDS,
+  SPECIAL_PARTICLES,
+  activeAt,
+  durationOf,
+  effectsOf,
+  particlesOf,
+  type Effect,
+} from './effects.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
 import { FOV_DEG, RENDER_MAX_WIDTH, easeFor, PIXEL_M, TILT_BLUR_PX } from './look.ts';
 import { buildPost, type Post } from './post.ts';
@@ -40,8 +49,12 @@ interface HorseView {
   readonly map: THREE.Texture;
 }
 
-/** At most this many effects draw at once (12 particles each). */
-const MAX_FX = 64;
+/** At most this many effects draw at once (12 particles each); room for a 22-horse Thunderclap. */
+const MAX_FX = 96;
+/** Stampede ghost horses: this many behind each stampeding horse, for up to 2 at once. */
+const GHOSTS_EACH = 3;
+const GHOST_GAP_M = 3;
+const GHOST_POOL = 2 * GHOSTS_EACH;
 
 export class HD2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -57,6 +70,10 @@ export class HD2DRenderer implements RaceRenderer {
   private world: World | null = null;
   private sheet: THREE.CanvasTexture | null = null;
   private horses: HorseView[] = [];
+  private ghosts: {
+    mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+    map: THREE.Texture;
+  }[] = [];
   private sun: THREE.DirectionalLight | null = null;
   private fog: THREE.Fog | null = null;
   private readonly p = new THREE.Vector3();
@@ -75,6 +92,7 @@ export class HD2DRenderer implements RaceRenderer {
   private trails: { dust: THREE.Points; sparkle: THREE.Points } | null = null;
   private effects: Effect[] = [];
   private fxPoints: THREE.Points | null = null;
+  private fxBig: THREE.Points | null = null;
   private readonly fxCol = new THREE.Color();
   private readonly tint = new THREE.Color();
   private motes: THREE.Points | null = null;
@@ -172,6 +190,26 @@ export class HD2DRenderer implements RaceRenderer {
       scene.add(mesh);
       return { horse, lane, mesh, map };
     });
+    // Faded copies that run behind a Stampede (no shadow, no depth write).
+    this.ghosts = Array.from({ length: GHOST_POOL }, () => {
+      const map = sheet.clone();
+      const mesh = new THREE.Mesh(
+        geo,
+        new THREE.MeshBasicMaterial({
+          map,
+          color: '#fff3c4',
+          transparent: true,
+          opacity: 0.35,
+          // alphaTest compares texel alpha x opacity: keep it under the ghosts' faded opacity.
+          alphaTest: 0.02,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+      );
+      mesh.visible = false;
+      scene.add(mesh);
+      return { mesh, map };
+    });
 
     // Boxes: glowing cubes (colour x 2 so bloom catches them).
     this.cacheBoxes(timeline);
@@ -251,21 +289,26 @@ export class HD2DRenderer implements RaceRenderer {
     scene.add(this.trails.dust, this.trails.sparkle);
 
     this.effects = effectsOf(timeline.events);
-    const fxGeo = new THREE.BufferGeometry();
-    const fxN = MAX_FX * PARTICLES;
-    fxGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fxN * 3), 3));
-    fxGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(fxN * 3), 3));
-    this.fxPoints = new THREE.Points(
-      fxGeo,
-      new THREE.PointsMaterial({
-        size: 0.6,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-      }),
-    );
-    this.fxPoints.frustumCulled = false;
-    scene.add(this.fxPoints);
+    // Two clouds: ordinary effects, and the special items drawn bigger (spec 2026-11-05).
+    const cloud = (n: number, size: number) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      const pts = new THREE.Points(
+        g,
+        new THREE.PointsMaterial({
+          size,
+          vertexColors: true,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+        }),
+      );
+      pts.frustumCulled = false;
+      scene.add(pts);
+      return pts;
+    };
+    this.fxPoints = cloud(MAX_FX * PARTICLES, 0.6);
+    this.fxBig = cloud(MAX_FX * SPECIAL_PARTICLES, 1.1);
 
     const pointsOf = (n: number, material: THREE.PointsMaterial) => {
       const g = new THREE.BufferGeometry();
@@ -492,6 +535,29 @@ export class HD2DRenderer implements RaceRenderer {
       v.map.repeat.set(uv.repeatX, uv.repeatY);
     }
 
+    // Effects live this frame, shared by the ghosts and the particle clouds.
+    const live = activeAt(this.effects, t);
+    // Stampede ghosts trail the horse in its own lane, wearing its current frame.
+    let g = 0;
+    for (const { effect, age } of live) {
+      if (effect.kind !== 'stampede' || g + GHOSTS_EACH > this.ghosts.length) continue;
+      const v = this.horses.find((h) => h.horse === effect.horse);
+      if (!v) continue;
+      const fade = Math.min(1, age / 0.3, (durationOf(effect) - age) / 0.5);
+      const m = this.metres(timeline, v.horse, t);
+      for (let k = 1; k <= GHOSTS_EACH; k++) {
+        const ghost = this.ghosts[g++]!;
+        const at = horsePoint(track, d, Math.max(0, m - k * GHOST_GAP_M), v.lane);
+        ghost.mesh.position.set(at.x, 0, at.y);
+        ghost.mesh.rotation.y = yaw;
+        ghost.map.offset.copy(v.map.offset);
+        ghost.map.repeat.copy(v.map.repeat);
+        ghost.mesh.material.opacity = 0.4 * (1 - (k - 1) * 0.25) * fade;
+        ghost.mesh.visible = true;
+      }
+    }
+    for (; g < this.ghosts.length; g++) this.ghosts[g]!.mesh.visible = false;
+
     // Unopened boxes: only near their own horse, at the spot the horse grabs them.
     const box = this.boxMesh!;
     const { mtx, one, col } = this;
@@ -566,14 +632,20 @@ export class HD2DRenderer implements RaceRenderer {
     }
 
     // Item effects: pure particles in each horse's running frame.
-    if (this.fxPoints) {
-      const pos = this.fxPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
-      const colAttr = this.fxPoints.geometry.getAttribute('color') as THREE.BufferAttribute;
+    if (this.fxPoints && this.fxBig) {
+      const clouds = [this.fxPoints, this.fxBig].map((points) => ({
+        points,
+        pos: points.geometry.getAttribute('position') as THREE.BufferAttribute,
+        col: points.geometry.getAttribute('color') as THREE.BufferAttribute,
+        k: 0,
+      }));
       const c = this.fxCol;
-      let k = 0;
-      for (const { effect, age } of activeAt(this.effects, t).slice(0, MAX_FX)) {
+      for (const { effect, age } of live) {
         const lane = timeline.horses.indexOf(effect.horse);
         if (lane < 0) continue;
+        const out = clouds[SPECIAL_KINDS.has(effect.kind) ? 1 : 0]!;
+        const pts = particlesOf(effect.kind, age, durationOf(effect));
+        if (out.k + pts.length > out.pos.count) continue; // cap: MAX_FX effects per cloud
         // The box puff stays where the box was grabbed; others ride with the horse.
         const m =
           effect.kind === 'box'
@@ -584,21 +656,23 @@ export class HD2DRenderer implements RaceRenderer {
         const len = Math.hypot(next.x - here.x, next.y - here.y) || 1;
         const ax = (next.x - here.x) / len;
         const az = (next.y - here.y) / len;
-        for (const pt of particlesOf(effect.kind, age)) {
-          pos.setXYZ(
-            k,
+        for (const pt of pts) {
+          out.pos.setXYZ(
+            out.k,
             here.x + ax * pt.ahead - az * pt.side,
             pt.up,
             here.y + az * pt.ahead + ax * pt.side,
           );
           c.set(pt.color).multiplyScalar(pt.alpha * 2.5);
-          colAttr.setXYZ(k, c.r, c.g, c.b);
-          k++;
+          out.col.setXYZ(out.k, c.r, c.g, c.b);
+          out.k++;
         }
       }
-      this.fxPoints.geometry.setDrawRange(0, k);
-      pos.needsUpdate = true;
-      colAttr.needsUpdate = true;
+      for (const cl of clouds) {
+        cl.points.geometry.setDrawRange(0, cl.k);
+        cl.pos.needsUpdate = true;
+        cl.col.needsUpdate = true;
+      }
     }
 
     // Crowd bob in whole texels; motes near the action; confetti after the first finish.
@@ -671,6 +745,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.boxMesh = null;
     this.trails = null;
     this.fxPoints = null;
+    this.fxBig = null;
     this.motes = null;
     this.confetti = null;
     this.effects = [];
@@ -680,6 +755,8 @@ export class HD2DRenderer implements RaceRenderer {
     this.world?.sky.dispose();
     this.sheet?.dispose();
     for (const v of this.horses) v.map.dispose();
+    for (const gh of this.ghosts) gh.map.dispose();
+    this.ghosts = [];
     this.post?.dispose();
     this.renderer?.dispose();
     this.renderer = null;

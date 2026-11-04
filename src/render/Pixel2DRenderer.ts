@@ -1,6 +1,14 @@
 import { eventsBetween, progressAt } from '../sim/playback.ts';
 import type { BoxSpot, HorseId, RaceEvent, Timeline } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
+import {
+  SPECIAL_KINDS,
+  activeAt,
+  durationOf,
+  effectsOf,
+  particlesOf,
+  type Effect,
+} from './hd2d/effects.ts';
 import { ITEM_INFO, popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse, drawNumber, poseOf } from './sprites.ts';
@@ -63,6 +71,8 @@ export class Pixel2DRenderer implements RaceRenderer {
   /** Per lane: where each box is drawn, in metres. */
   private boxAt: number[][] = [];
   private held: Extract<RaceEvent, { type: 'pickup' }>[] = [];
+  /** Special-item animations only; the 2D view keeps its popups for the rest. */
+  private effects: Effect[] = [];
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
   private halfWidth = 1;
@@ -89,6 +99,7 @@ export class Pixel2DRenderer implements RaceRenderer {
       [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
     );
     this.held = timeline.events.filter((e) => e.type === 'pickup');
+    this.effects = effectsOf(timeline.events).filter((e) => SPECIAL_KINDS.has(e.kind));
     this.grabs = timeline.horses.map((h) =>
       this.held
         .filter((e) => e.horse === h)
@@ -257,9 +268,43 @@ export class Pixel2DRenderer implements RaceRenderer {
       }
       ctx.globalAlpha = 1;
     }
+    const fx = activeAt(this.effects, t);
+    // Stampede: faded copies running behind, about 10 px apart at any zoom.
+    for (const { effect, age } of fx) {
+      if (effect.kind !== 'stampede') continue;
+      const h = drawn.find((d) => d.horse === effect.horse);
+      if (!h) continue;
+      const fade = Math.min(1, age / 0.3, (durationOf(effect) - age) / 0.5);
+      for (let k = 3; k >= 1; k--) {
+        const gm = Math.max(0, h.m - (k * 10 * size) / scale);
+        const gp = screen(horsePoint(track, timeline.distance, gm, h.lane));
+        ctx.globalAlpha = 0.4 * (1 - (k - 1) * 0.25) * fade;
+        drawHorse(ctx, gp.x, gp.y, h.colors, Math.floor(gm / 1.5), h.pose, size);
+      }
+      ctx.globalAlpha = 1;
+    }
     for (const h of drawn) {
       drawHorse(ctx, h.p.x, h.p.y, h.colors, Math.floor(h.m / 1.5), h.pose, size);
     }
+    // Special-item particles (the HD recipes), in sprite-relative units: ~5 px per metre at size 1.
+    const unit = 5 * size;
+    for (const { effect, age } of fx) {
+      const h = drawn.find((d) => d.horse === effect.horse);
+      if (!h) continue;
+      const next = screen(horsePoint(track, timeline.distance, h.m + 1, h.lane));
+      const len = Math.hypot(next.x - h.p.x, next.y - h.p.y) || 1;
+      const dx = (next.x - h.p.x) / len;
+      const dy = (next.y - h.p.y) / len;
+      for (const pt of particlesOf(effect.kind, age, durationOf(effect))) {
+        if (pt.alpha <= 0) continue;
+        ctx.globalAlpha = pt.alpha;
+        ctx.fillStyle = pt.color;
+        const x = h.p.x + (dx * pt.ahead - dy * pt.side * VIEW.tilt) * unit;
+        const y = h.p.y + (dy * pt.ahead + dx * pt.side * VIEW.tilt) * unit - pt.up * unit;
+        ctx.fillRect(Math.round(x) - size, Math.round(y) - size, 2 * size, 2 * size);
+      }
+    }
+    ctx.globalAlpha = 1;
     // Badges after every horse so a horse behind never covers a number.
     for (const h of drawn)
       drawNumber(ctx, h.p.x, h.p.y - 17 * size - 2, h.lane + 1, h.colors.silk, size);

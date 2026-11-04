@@ -1,8 +1,28 @@
-import type { HorseId, RaceEvent } from '../../sim/types.ts';
+import { EFFECTS } from '../../sim/config.ts';
+import type { HorseId, ItemCode, RaceEvent } from '../../sim/types.ts';
 import { ITEM_HOLD_SECONDS } from '../Pixel2DRenderer.ts';
 
-export type EffectKind = 'speed' | 'hit' | 'shield' | 'reflect' | 'dud' | 'box';
+export type EffectKind =
+  | 'speed'
+  | 'hit'
+  | 'shield'
+  | 'reflect'
+  | 'dud'
+  | 'box'
+  | 'stampede'
+  | 'thunder'
+  | 'lasso'
+  | 'swarm';
 
+/** The four special-item animations (spec 2026-11-05); the 2D view draws these too. */
+export const SPECIAL_KINDS: ReadonlySet<EffectKind> = new Set([
+  'stampede',
+  'thunder',
+  'lasso',
+  'swarm',
+]);
+
+/** Full durations; a blocked or reflected special attack plays only MISS_SECONDS of it. */
 export const EFFECT_SECONDS: Readonly<Record<EffectKind, number>> = {
   speed: 1.2,
   hit: 0.8,
@@ -10,6 +30,19 @@ export const EFFECT_SECONDS: Readonly<Record<EffectKind, number>> = {
   reflect: 0.6,
   dud: 1.5,
   box: 0.5,
+  stampede: EFFECTS['speed:pass3'].seconds,
+  thunder: EFFECTS['attack:all'].seconds,
+  lasso: EFFECTS['attack:leader'].seconds + 0.4,
+  swarm: EFFECTS['attack:top3'].seconds,
+};
+const MISS_SECONDS = { thunder: 0.5, lasso: 0.5, swarm: 0.6 } as const;
+/** The lasso rope and the swarm fly in for this long before they wrap the horse. */
+export const INCOMING_SECONDS = 0.4;
+
+const SPECIAL_ATTACK: Partial<Record<ItemCode, keyof typeof MISS_SECONDS>> = {
+  'attack:all': 'thunder',
+  'attack:leader': 'lasso',
+  'attack:top3': 'swarm',
 };
 
 export interface Effect {
@@ -17,7 +50,11 @@ export interface Effect {
   readonly horse: HorseId;
   /** Race time it starts. */
   readonly t0: number;
+  /** Overrides EFFECT_SECONDS[kind] (a special attack that was blocked). */
+  readonly seconds?: number;
 }
+
+export const durationOf = (e: Effect) => e.seconds ?? EFFECT_SECONDS[e.kind];
 
 /** Built once per race. A box opens when it is grabbed on screen (ITEM_HOLD_SECONDS early). */
 export function effectsOf(events: readonly RaceEvent[]): Effect[] {
@@ -26,10 +63,19 @@ export function effectsOf(events: readonly RaceEvent[]): Effect[] {
     if (e.type === 'pickup') {
       out.push({ kind: 'box', horse: e.horse, t0: e.t - ITEM_HOLD_SECONDS });
       if (e.item?.startsWith('speed:')) out.push({ kind: 'speed', horse: e.horse, t0: e.t });
+      if (e.item === 'speed:pass3') out.push({ kind: 'stampede', horse: e.horse, t0: e.t });
       if (e.item?.startsWith('dud:')) out.push({ kind: 'dud', horse: e.horse, t0: e.t });
-    } else if (e.type === 'hit') out.push({ kind: 'hit', horse: e.horse, t0: e.t });
+      continue;
+    }
+    if (e.type === 'finish') continue;
+    const special = SPECIAL_ATTACK[e.item];
+    if (special) {
+      const miss = e.type === 'hit' ? {} : { seconds: MISS_SECONDS[special] };
+      out.push({ kind: special, horse: e.horse, t0: e.t, ...miss });
+    }
+    if (e.type === 'hit') out.push({ kind: 'hit', horse: e.horse, t0: e.t });
     else if (e.type === 'blocked') out.push({ kind: 'shield', horse: e.horse, t0: e.t });
-    else if (e.type === 'reflected') out.push({ kind: 'reflect', horse: e.horse, t0: e.t });
+    else out.push({ kind: 'reflect', horse: e.horse, t0: e.t });
   }
   return out;
 }
@@ -37,7 +83,7 @@ export function effectsOf(events: readonly RaceEvent[]): Effect[] {
 export function activeAt(effects: readonly Effect[], t: number) {
   return effects
     .map((effect) => ({ effect, age: t - effect.t0 }))
-    .filter(({ effect, age }) => age >= 0 && age < EFFECT_SECONDS[effect.kind]);
+    .filter(({ effect, age }) => age >= 0 && age < durationOf(effect));
 }
 
 /**
@@ -53,6 +99,12 @@ export interface Particle {
 }
 
 export const PARTICLES = 12;
+/** Special effects are drawn bigger and denser so they read from the follow camera. */
+export const SPECIAL_PARTICLES = 24;
+export const countOf = (kind: EffectKind) =>
+  SPECIAL_KINDS.has(kind) ? SPECIAL_PARTICLES : PARTICLES;
+/** Radius of the lasso loop round the horse, metres. */
+export const LASSO_R = 2.4;
 
 /** Deterministic 0..1 noise per particle index. */
 const hash = (i: number, salt: number) => {
@@ -60,13 +112,21 @@ const hash = (i: number, salt: number) => {
   return x - Math.floor(x);
 };
 
-export function particlesOf(kind: EffectKind, age: number): Particle[] {
-  const u = Math.min(1, Math.max(0, age / EFFECT_SECONDS[kind]));
+/** `seconds` is the effect's own duration (durationOf), for the fade-out of a cut-short effect. */
+export function particlesOf(
+  kind: EffectKind,
+  age: number,
+  seconds = EFFECT_SECONDS[kind],
+): Particle[] {
+  const u = Math.min(1, Math.max(0, age / seconds));
   const fade = 1 - u;
-  return Array.from({ length: PARTICLES }, (_, i): Particle => {
+  // Special effects hold full strength and fade over their last 0.3 s.
+  const tail = Math.min(1, Math.max(0, (seconds - age) / 0.3));
+  const n = countOf(kind);
+  return Array.from({ length: n }, (_, i): Particle => {
     const h1 = hash(i, 1);
     const h2 = hash(i, 2);
-    const ang = (i / PARTICLES) * 2 * Math.PI;
+    const ang = (i / n) * 2 * Math.PI;
     switch (kind) {
       case 'speed': // streaks and dust flying back
         return {
@@ -116,6 +176,76 @@ export function particlesOf(kind: EffectKind, age: number): Particle[] {
           color: '#ffffff',
           alpha: fade,
         };
+      case 'stampede': {
+        // A dust storm rolling back from the hooves for the whole boost.
+        const back = (h1 * 9 + age * 7) % 9;
+        return {
+          ahead: -(1 + back),
+          up: 0.2 + h2 * 0.9 + back * 0.08,
+          side: (hash(i, 3) - 0.5) * (1 + back * 0.25),
+          color: i % 3 ? '#d7b98e' : '#fff3c4',
+          alpha: tail * (1 - back / 9) * 0.8,
+        };
+      }
+      case 'thunder': {
+        // A bolt drops from the sky in 0.15 s, zigzagging, then sparks scatter off the horse.
+        const strike = 0.15;
+        if (age < strike + 0.25) {
+          const up = 16 - (i / (n - 1)) * 15;
+          const reached = up >= 16 - (age / strike) * 16;
+          return {
+            ahead: (i % 2 ? 0.5 : -0.5) * (0.5 + h1),
+            up,
+            side: 0,
+            color: i % 3 ? '#fff9c4' : '#ffffff',
+            alpha: reached ? tail : 0,
+          };
+        }
+        const s = Math.min(1, (age - strike) / 0.8);
+        return {
+          ahead: Math.cos(ang) * s * 1.6,
+          up: 1.6 + Math.sin(ang) * s * 1.6,
+          side: (h1 - 0.5) * 0.6,
+          color: i % 2 ? '#fff176' : '#ffffff',
+          alpha: tail * (1 - s * 0.6),
+        };
+      }
+      case 'lasso': {
+        if (age < INCOMING_SECONDS) {
+          // The rope flies in from behind: the leading part of an arc onto the horse's head.
+          const s = age / INCOMING_SECONDS;
+          const along = (i / (n - 1)) * s;
+          return {
+            ahead: -12 + along * 12,
+            up: 2.4 + Math.sin(along * Math.PI) * 3,
+            side: 0,
+            color: i % 2 ? '#ffd54f' : '#ffb300',
+            alpha: tail,
+          };
+        }
+        // The loop spins round the horse while it is held.
+        const spin = ang + age * 6;
+        return {
+          ahead: Math.cos(spin) * LASSO_R,
+          up: 1.6 + Math.sin(2 * spin) * 0.15,
+          side: Math.sin(spin) * LASSO_R,
+          color: i % 2 ? '#ffd54f' : '#ffb300',
+          alpha: tail,
+        };
+      }
+      case 'swarm': {
+        // Hornets fly in from behind, then buzz round the head.
+        const s = Math.min(1, age / INCOMING_SECONDS);
+        const spin = ang * 1.3 + age * (9 + h1 * 4);
+        const r = 0.8 + h2 * 0.8;
+        return {
+          ahead: (1 - s) * -(8 + h1 * 4) + Math.cos(spin) * r * s,
+          up: 2.3 + Math.sin(age * 20 + i) * 0.25 + (1 - s) * h2 * 2,
+          side: Math.sin(spin) * r * s + (1 - s) * (h2 - 0.5) * 2,
+          color: i % 3 ? '#ffeb3b' : '#ff9800',
+          alpha: tail,
+        };
+      }
     }
   });
 }

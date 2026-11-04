@@ -364,3 +364,13 @@
 - Deploy: `functions deploy lock-odds start-race` (both bundle `src/sim`), then push `master`. No migration.
 
 Next: owner review of Phase 8 on a real TV.
+
+## Cut-ins and special-item animations (master, 2026-11-05)
+
+Spec: `docs/superpowers/specs/2026-11-05-cutins-design.md` (sub-project A of the race-core expansion: next B weather, C random events, D horse traits, E new items).
+
+- Cut-in band across the top of the big screen (both renderers) for 🌩️ Thunderclap, 🪢 Golden Lasso and 🐎 Stampede: the horse's outlined portrait, name and the move, 1.3 s, with a rising sting. Priority in that order, at most one every 12 s; a rarer item within 1 s takes the slot. The race keeps running underneath. Thunderclap also flashes the view. Phones unchanged (mini oval, no cut-in sound).
+- In-race animations in HD-2D and 2D: Stampede dust plus 3 ghost horses, Thunderclap bolts onto every target, Lasso rope then a spinning loop on the leader, Hornet Swarm round the top 3 (no cut-in). A blocked or reflected one plays only its incoming part, then the shield/mirror effect.
+- Derived from the stored timeline at playback: no sim, Edge Function or database change; old replays get it too. Box counts unchanged (8 short / 12 long).
+- Sandbox: Moment buttons jump to 4 s before each moment; "Freeze on band / effect" holds HD there for screenshots.
+- `npm test` 223 pass; E2E 5/6 in the full run, the a11y track-lobby test is the known flake and passes alone (4/4).

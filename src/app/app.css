@@ -260,8 +260,124 @@ button.primary {
 }
 /* The frame hugs the canvas: no padding, so fullscreen sizing below stays exact. */
 .race-frame {
+  position: relative;
+  overflow: hidden;
   margin: 0;
   padding: 0;
+}
+/* Cut-ins (spec 2026-11-05): a band over the top strip, above either renderer. */
+.cutin-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.cutin {
+  position: absolute;
+  top: 3%;
+  left: -4%;
+  width: 108%;
+  height: 20%;
+  display: flex;
+  align-items: center;
+  gap: 2%;
+  padding-left: 10%;
+  box-sizing: border-box;
+  clip-path: polygon(0 18%, 100% 0, 100% 82%, 0 100%);
+  background:
+    repeating-linear-gradient(
+      100deg,
+      transparent 0 34px,
+      color-mix(in srgb, #fff 28%, transparent) 34px 38px
+    ),
+    linear-gradient(90deg, color-mix(in srgb, var(--silk) 70%, #000), var(--silk) 45%, #111);
+  animation: cutin-band 1.3s linear both;
+}
+.race .cutin-portrait {
+  /* Not the race canvas: undo .race canvas (full width, turf background). */
+  flex: none;
+  background: none;
+  height: 90%;
+  width: auto;
+  aspect-ratio: 24 / 22;
+  image-rendering: pixelated;
+  filter: drop-shadow(4px 4px 0 #0008);
+  animation: cutin-portrait 1.3s ease-out both;
+}
+.cutin-text {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-pixel);
+  color: #fff;
+  line-height: 1.05;
+  text-shadow:
+    3px 3px 0 #000,
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000;
+}
+.cutin-name {
+  font-size: clamp(0.8rem, 2.2vw, 1.8rem);
+}
+.cutin-move {
+  font-size: clamp(1.1rem, 3.6vw, 3rem);
+  color: #ffe066;
+}
+.cutin-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: cutin-flash 0.5s ease-out both;
+}
+.race .race-buttons {
+  transition: opacity 0.2s;
+}
+.race.cutin-on .race-buttons {
+  opacity: 0.15;
+}
+/* Sandbox freeze: hold the band where its lag put it. */
+.race.frozen .cutin,
+.race.frozen .cutin-portrait,
+.race.frozen .cutin-flash {
+  animation-play-state: paused;
+}
+@keyframes cutin-band {
+  0% {
+    transform: translateX(-100%);
+  }
+  15%,
+  85% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes cutin-portrait {
+  0% {
+    transform: translateX(-60%);
+  }
+  40%,
+  100% {
+    transform: translateX(0);
+  }
+}
+@keyframes cutin-flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cutin,
+  .cutin-portrait {
+    animation: none;
+  }
+  .cutin-flash {
+    animation-duration: 0.25s;
+    background: #fff8;
+  }
 }
 .race:fullscreen {
   padding: 16px;

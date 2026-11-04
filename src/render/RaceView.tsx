@@ -91,11 +91,18 @@ export function RaceView({
       r?.stop();
     };
   }, [timeline, startAtMs, track, active, look]);
-  // Release the GL context of a canvas the view stops using (hd -> 2d swap or unmount).
+  // Release the GL context of a canvas the view stops using (hd -> 2d swap or unmount). Only once
+  // it has left the page: StrictMode's simulated unmount keeps the same canvas and reuses it.
   useEffect(() => {
     if (active !== 'hd') return;
     const el = canvas.current;
-    return () => el?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+    return () => {
+      setTimeout(() => {
+        if (el && !el.isConnected) {
+          el.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+        }
+      });
+    };
   }, [active]);
 
   const t = useRaceTime(startAtMs);

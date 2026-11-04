@@ -4,6 +4,7 @@ import { FINISH_SHOT_METRES } from '../camera.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from '../track.ts';
 import {
   FINISH_DISTANCE_SCALE,
+  FOLLOW_DISTANCE_SCALE,
   FOV_DEG,
   LOOK_PAST_M,
   PITCH_DEG,
@@ -46,7 +47,7 @@ function wideShot(track: Track, lanes: number): Shot {
   return { kind: 'wide', x: 0, y: 0, yaw: Math.PI, pitch, distance };
 }
 
-/** Aim LOOK_PAST_M beyond `p`, away from the camera, so the pack sits in the lower frame. */
+/** Aim LOOK_PAST_M beyond `p`, away from the camera, so the line sits in the lower frame. */
 function aimPast(p: Point, yaw: number) {
   return { x: p.x - Math.sin(yaw) * LOOK_PAST_M, y: p.y - Math.cos(yaw) * LOOK_PAST_M };
 }
@@ -72,13 +73,14 @@ export function shotAt(track: Track, timeline: Timeline, t: number, motion = tru
     .slice(0, 3)
     .map((h) => horsePoint(track, distance, progressAt(timeline, h, t), horses.indexOf(h)));
   const mean = (f: (p: Point) => number) => pack.reduce((sum, p) => sum + f(p), 0) / pack.length;
-  const yaw = infieldYaw(track, finishS(track) - distance + lead);
+  // Fixed orientation like the 2D view: always from the north, so the oval reads as an oval.
   return {
     kind: 'chase',
-    ...aimPast({ x: mean((p) => p.x), y: mean((p) => p.y) }, yaw),
-    yaw,
+    x: mean((p) => p.x),
+    y: mean((p) => p.y),
+    yaw: Math.PI,
     pitch: rad(PITCH_DEG.chase),
-    distance: distanceForScale(),
+    distance: distanceForScale() * FOLLOW_DISTANCE_SCALE,
   };
 }
 

@@ -24,7 +24,7 @@ The owner wants the race to read as "HD-2D, like Octopath Traveler" at a glance:
 4. **Sprites take the scene's light.** Horse and scenery billboards use a lit material, so sunset and floodlights colour them. The sun casts real, soft, low-resolution shadows (one shadow map) for horses and scenery; the blob shadow is the fallback when shadows are off.
 5. **Full post stack.** Tilt-shift blur, bloom, a strong vignette and a per-preset colour grade (warm by default); floating dust motes by day, fireflies at night; sunset light shafts faked with additive glow sprites.
 6. **Look test first.** Before shots, effects and the other presets are built, `/sandbox` shows one still frame: the home straight with 6 horses, in Afternoon and Night. The owner approves it, and the values it settles (FOV, pitch, blur band, bloom, vignette, grade, texel size) are written into this spec and frozen.
-   Approved 2026-11-04 (owner, from `docs/hd2d-screens/look-*.png`): PIXEL_M 0.15, PIXEL_SCALE 4.5, FOV_DEG 25, PITCH_DEG wide 50 / chase 35 / finish 28, TILT_BLUR_PX wide 4 / chase 2 / finish 2, TILT_FOCUS 0.45, LOOK_PAST_M 12 (chase and finish aim 12 m past the pack, away from the camera); every sun comes from the infield (camera) side; presets as in `src/render/hd2d/lighting.ts` at commit 51bd953.
+   Approved 2026-11-04 (owner, from `docs/hd2d-screens/look-*.png`): PIXEL_M 0.15, PIXEL_SCALE 4.5, FOV_DEG 25, PITCH_DEG wide 50 / chase 50 / finish 28, FOLLOW_DISTANCE_SCALE 1.6 (chase sits 1.6 × the pixel-target distance), TILT_BLUR_PX wide 4 / chase 2 / finish 2, TILT_FOCUS 0.45, LOOK_PAST_M 12 (the finish shot aims 12 m past the line, away from the camera; the chase has no offset); the chase is fixed-orientation from the north; every sun comes from the infield (camera) side; presets as in `src/render/hd2d/lighting.ts` at commit 51bd953.
 
 ## 1. Architecture
 
@@ -61,13 +61,15 @@ The owner wants the race to read as "HD-2D, like Octopath Traveler" at a glance:
 
 Same timing as today's `cameraAt`:
 
-| Race time | Shot |
-|---|---|
-| first 2 s | **Wide:** high diorama over the whole track |
-| until the leader is 60 m from the finish | **Chase:** a following diorama shot pitched down ~35°, beside the top 3; its distance is fitted to Look target 2 (~80 m at a 25° FOV); eases within the shot (never at ground level) |
-| from then on | **Finish:** side-on at the finish line, looking across the track at the stands |
+| Race time                                | Shot                                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| first 2 s                                | **Wide:** high diorama over the whole track                                                                                                                                                                                                                                                                                              |
+| until the leader is 60 m from the finish | **Chase:** a fixed-orientation follow shot like the 2D view: always from the north (yaw π, toward −y), pitched down 50°, aimed at the plain centroid of the top 3 (no LOOK_PAST offset) from 1.6 × the Look target 2 distance; it never rotates, so the horses visibly go around the oval; eases within the shot (never at ground level) |
+| from then on                             | **Finish:** side-on at the finish line, looking across the track at the stands, aimed LOOK_PAST_M past the line; its yaw is also π, so the orientation never flips at the cut                                                                                                                                                            |
 
-Every shot sits on the infield side looking outward, so the stands, crowd and scenery are the backdrop. Cuts between shots are hard. Reduced motion holds the wide shot (no cuts, no crowd bob).
+Owner 2026-11-04: wanted to see horses go around the track like the 2D view.
+
+Every shot looks from the north (the infield side of the home straight), so the stands, crowd and scenery are the backdrop. Cuts between shots are hard. Reduced motion holds the wide shot (no cuts, no crowd bob).
 
 ### Post-processing
 
@@ -77,11 +79,11 @@ Render pass → tilt-shift blur on the top and bottom bands (strong on wide, lig
 
 `timeline.seed % 3` picks the preset, so the big screen and replays agree:
 
-| # | Preset | Look |
-|---|---|---|
-| 0 | Afternoon | warm gold sun, soft blue sky |
-| 1 | Sunset | low orange-pink sun, long warm light |
-| 2 | Night | dark blue sky, four glowing floodlight towers plus a few point lights |
+| #   | Preset    | Look                                                                  |
+| --- | --------- | --------------------------------------------------------------------- |
+| 0   | Afternoon | warm gold sun, soft blue sky                                          |
+| 1   | Sunset    | low orange-pink sun, long warm light                                  |
+| 2   | Night     | dark blue sky, four glowing floodlight towers plus a few point lights |
 
 Each preset sets sky gradient, sun colour and direction, ambient (hemisphere) light, fog colour and bloom strength.
 
@@ -89,14 +91,14 @@ Each preset sets sky gradient, sun colour and direction, ambient (hemisphere) li
 
 Six effects from small pixel particles. Each is a pure function of `(event, t − event.t)`, with no simulated state, so a reload or replay shows the same frame.
 
-| Effect | Trigger |
-|---|---|
-| Speed: streaks and dust | `pickup` of a `speed:*` item |
-| Hit: flash and stars | `hit` |
-| Shield: bubble | `blocked` |
-| Reflect: spark | `reflected` |
-| Dud: dizzy swirl | `pickup` of a `dud:*` item |
-| Box open: puff | any `pickup` (shown at the box) |
+| Effect                  | Trigger                         |
+| ----------------------- | ------------------------------- |
+| Speed: streaks and dust | `pickup` of a `speed:*` item    |
+| Hit: flash and stars    | `hit`                           |
+| Shield: bubble          | `blocked`                       |
+| Reflect: spark          | `reflected`                     |
+| Dud: dizzy swirl        | `pickup` of a `dud:*` item      |
+| Box open: puff          | any `pickup` (shown at the box) |
 
 Popup labels (`popupOf`) stay, as sprites.
 

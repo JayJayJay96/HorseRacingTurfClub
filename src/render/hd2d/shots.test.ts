@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fakeTimeline } from '../../sim/testTimeline.ts';
 import { FINISH_SHOT_METRES } from '../camera.ts';
 import { TRACK, horsePoint } from '../track.ts';
-import { LOOK_PAST_M, PITCH_DEG, distanceForScale } from './look.ts';
+import { FOLLOW_DISTANCE_SCALE, LOOK_PAST_M, PITCH_DEG, distanceForScale } from './look.ts';
 import { WIDE_SECONDS, cameraPosition, shotAt } from './shots.ts';
 
 describe('shotAt', () => {
@@ -15,19 +15,38 @@ describe('shotAt', () => {
     expect(shotAt(TRACK, tl, 30, false).kind).toBe('wide');
   });
 
-  it('chases the top 3, aimed past the pack, at the pixel-target distance', () => {
+  it('chases the plain top-3 centroid from the follow distance and pitch', () => {
     const t = 30;
     const shot = shotAt(TRACK, tl, t);
     const pts = [speeds.a, speeds.b, speeds.c].map((v, lane) =>
       horsePoint(TRACK, 1000, v * t, lane),
     );
-    const cx = (pts[0]!.x + pts[1]!.x + pts[2]!.x) / 3;
-    const cy = (pts[0]!.y + pts[1]!.y + pts[2]!.y) / 3;
     expect(shot.kind).toBe('chase');
-    expect(shot.x).toBeCloseTo(cx - Math.sin(shot.yaw) * LOOK_PAST_M);
-    expect(shot.y).toBeCloseTo(cy - Math.cos(shot.yaw) * LOOK_PAST_M);
-    expect(shot.distance).toBeCloseTo(distanceForScale());
+    expect(shot.x).toBeCloseTo((pts[0]!.x + pts[1]!.x + pts[2]!.x) / 3);
+    expect(shot.y).toBeCloseTo((pts[0]!.y + pts[1]!.y + pts[2]!.y) / 3);
+    expect(shot.distance).toBeCloseTo(distanceForScale() * FOLLOW_DISTANCE_SCALE);
+    expect(PITCH_DEG.chase).toBe(50);
     expect(shot.pitch).toBeCloseTo((PITCH_DEG.chase * Math.PI) / 180);
+  });
+
+  it('never turns the chase camera: yaw is pi on the home and the far straight alike', () => {
+    // 1800 m starts on the far straight and passes the home straight once before the finish.
+    const long = fakeTimeline(speeds, 1800);
+    let home = false;
+    let far = false;
+    for (let t = WIDE_SECONDS; t < (1800 - FINISH_SHOT_METRES) / 10; t += 0.5) {
+      const shot = shotAt(TRACK, long, t);
+      expect(shot.kind).toBe('chase');
+      expect(shot.yaw).toBe(Math.PI);
+      // Straights are |x| < 150 on the oval; home is +y (finish side), far is -y.
+      if (Math.abs(shot.x) < 100) {
+        if (shot.y > 0) home = true;
+        else far = true;
+      }
+    }
+    expect(home).toBe(true);
+    expect(far).toBe(true);
+    expect(shotAt(TRACK, tl, 30).yaw).toBe(Math.PI);
   });
 
   it('cuts to the finish shot once the leader is close', () => {

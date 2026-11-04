@@ -14,16 +14,18 @@ export const FOV_DEG = 25;
 export const TILE_PX = 32;
 export const TILE_M = TILE_PX * PIXEL_M;
 /** Camera pitch below horizontal per shot, degrees (Look target 3). */
-export const PITCH_DEG = { wide: 50, chase: 35, finish: 28 } as const;
-/** Finish shot sits this much farther than the chase shot. */
+export const PITCH_DEG = { wide: 50, chase: 50, finish: 28 } as const;
+/** The chase (follow) shot sits this much farther than the pixel-target distance. */
+export const FOLLOW_DISTANCE_SCALE = 1.6;
+/** Finish shot sits this much farther than the pixel-target distance. */
 export const FINISH_DISTANCE_SCALE = 1.3;
 /** Tilt-shift blur per shot, in screen pixels at the band edges. */
 export const TILT_BLUR_PX = { wide: 4, chase: 2, finish: 2 } as const;
 /** Where the sharp band sits, as a share of the screen height from the bottom. */
 export const TILT_FOCUS = 0.45;
 /**
- * Chase and finish shots aim this far past the pack, away from the camera, so the horses sit in
- * the lower part of the frame and the stands fill the backdrop.
+ * The finish shot aims this far past the line, away from the camera, so the horses sit in the
+ * lower part of the frame and the stands fill the backdrop.
  */
 export const LOOK_PAST_M = 12;
 /** Per-frame ease toward the shot target (same as the 2D camera). */

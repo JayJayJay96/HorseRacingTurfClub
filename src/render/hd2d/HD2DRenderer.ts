@@ -6,10 +6,11 @@ import type { RaceRenderer } from '../renderer.ts';
 import { poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
-import { FOV_DEG, LOOK_PAST_M, PIXEL_M, TILT_BLUR_PX, distanceForScale } from './look.ts';
+import { EASE, FOV_DEG, PIXEL_M, TILT_BLUR_PX } from './look.ts';
 import { buildPost, type Post } from './post.ts';
 import { buildWorld, cutoutMaterials, disposeTree, type World } from './scene.ts';
 import { CELL, cellOf, cellUv, drawSheet, sheetSize } from './sheet.ts';
+import { cameraPosition, shotAt, type Shot } from './shots.ts';
 
 export interface HD2DOptions {
   /** Called once if the WebGL context is lost or a frame failed; RaceView swaps to 2D. */
@@ -27,8 +28,6 @@ interface HorseView {
   readonly map: THREE.Texture;
 }
 
-const CHASE_PITCH = (35 * Math.PI) / 180;
-
 export class HD2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly colors: ColorsOf;
@@ -45,6 +44,8 @@ export class HD2DRenderer implements RaceRenderer {
   private fog: THREE.Fog | null = null;
   private readonly p = new THREE.Vector3();
   private readonly q = new THREE.Vector3();
+  private shot: Shot | null = null;
+  private motion = true;
   private lastW = 0;
   private lastH = 0;
   private preset: Preset | null = null;
@@ -94,11 +95,7 @@ export class HD2DRenderer implements RaceRenderer {
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.bias = -0.0005;
     const cam = sun.shadow.camera;
-    cam.left = cam.bottom = -60;
-    cam.right = cam.top = 60;
-    cam.near = 1;
-    cam.far = 500;
-    cam.updateProjectionMatrix();
+    cam.near = 1; // the frustum is sized per shot kind in draw()
     scene.add(sun, sun.target);
     this.sun = sun;
 
@@ -134,7 +131,6 @@ export class HD2DRenderer implements RaceRenderer {
     const camera = new THREE.PerspectiveCamera(FOV_DEG, 16 / 9, 1, 3000);
     this.camera = camera;
     this.post = buildPost(renderer, scene, camera, preset);
-    this.post.setTilt(TILT_BLUR_PX.chase);
 
     const fit = () => {
       const w = Math.min(1920, Math.max(1, this.canvas.clientWidth));
@@ -150,6 +146,11 @@ export class HD2DRenderer implements RaceRenderer {
     fit();
     this.resize = new ResizeObserver(fit);
     this.resize.observe(this.canvas);
+
+    this.shot = null;
+    this.motion = !(
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
 
     let last = performance.now();
     const frame = () => {
@@ -185,28 +186,39 @@ export class HD2DRenderer implements RaceRenderer {
     if (!camera || !post || !sun || !world || !preset || !fog) return;
     const d = timeline.distance;
 
-    // Look-test camera: chase-style, centred on the top 3, from the infield side.
-    const order = [...timeline.horses].sort(
-      (a, b) => this.metres(timeline, b, t) - this.metres(timeline, a, t),
-    );
-    const pack = order
-      .slice(0, 3)
-      .map((h) => horsePoint(track, d, this.metres(timeline, h, t), timeline.horses.indexOf(h)));
-    const lead = this.metres(timeline, order[0]!, t);
-    const a = horsePoint(track, d, lead, 0);
-    const b = horsePoint(track, d, lead, 1);
-    const yaw = Math.atan2(-(b.x - a.x), -(b.y - a.y)); // inward normal: infield side
-    const tx = pack.reduce((s, p) => s + p.x, 0) / pack.length - Math.sin(yaw) * LOOK_PAST_M;
-    const ty = pack.reduce((s, p) => s + p.y, 0) / pack.length - Math.cos(yaw) * LOOK_PAST_M;
-    const dist = distanceForScale();
-    camera.position.set(
-      tx + Math.sin(yaw) * Math.cos(CHASE_PITCH) * dist,
-      Math.sin(CHASE_PITCH) * dist,
-      ty + Math.cos(yaw) * Math.cos(CHASE_PITCH) * dist,
-    );
-    camera.lookAt(tx, 0, ty);
-    fog.near = dist * 1.2;
-    fog.far = dist * 4;
+    // Hard cut when the shot kind changes; ease toward the target within a shot.
+    const want = shotAt(track, timeline, t, this.motion);
+    const prev = this.shot;
+    const k = this.motion ? EASE : 1;
+    const shot: Shot =
+      !prev || prev.kind !== want.kind
+        ? want
+        : {
+            ...want,
+            x: prev.x + (want.x - prev.x) * k,
+            y: prev.y + (want.y - prev.y) * k,
+            yaw:
+              prev.yaw +
+              Math.atan2(Math.sin(want.yaw - prev.yaw), Math.cos(want.yaw - prev.yaw)) * k,
+          };
+    this.shot = shot;
+    const pos = cameraPosition(shot);
+    camera.position.set(pos.x, pos.y, pos.z);
+    camera.lookAt(shot.x, 0, shot.y);
+    post.setTilt(TILT_BLUR_PX[shot.kind]);
+    fog.near = shot.distance * 1.2;
+    fog.far = shot.distance * 4;
+    const tx = shot.x;
+    const ty = shot.y;
+    const yaw = shot.yaw;
+    if (shot.kind !== prev?.kind) {
+      const half = shot.kind === 'wide' ? 450 : 60;
+      const cam = sun.shadow.camera;
+      cam.left = cam.bottom = -half;
+      cam.right = cam.top = half;
+      cam.far = shot.kind === 'wide' ? 1200 : 500;
+      cam.updateProjectionMatrix();
+    }
 
     // Sun shadows follow the camera target.
     const [fx, fy, fz] = preset.sun.from;
@@ -254,6 +266,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.sun?.dispose();
     this.sun = null;
     this.fog = null;
+    this.shot = null;
     this.lastW = this.lastH = 0;
     this.preset = null;
     this.horses = [];

@@ -16,6 +16,8 @@ export const ODDS = {
   payoutRate: 0.9,
   win: { min: 1.2, max: 20 },
   place: { min: 1.05, max: 6 },
+  /** Odd/Even/Low/High bets on the winner's number. */
+  group: { min: 1.05, max: 20 },
   maxSims: 500,
   /** Always run this many, even past the budget. */
   minSims: 50,
@@ -86,16 +88,47 @@ export function simulateShares(
   return { wins, top3, sims };
 }
 
+/** Roulette-style bets on the winner's number (#1 = first lane). */
+export const GROUP_KINDS = ['odd', 'even', 'low', 'high'] as const;
+export type GroupKind = (typeof GROUP_KINDS)[number];
+
+/** Group bets need 4+ horses; with fewer, a group is just one or two horses. */
+export const canGroup = (horses: number) => horses >= 4;
+
 /**
- * Win/Place odds from `simulateShares`. Office races pass `history` (spec §7): horses missing
- * from it count as having no past races.
+ * The numbers (1-based) a group covers in an `n`-horse race. Low is the first half rounded down,
+ * High the rest. Mirrored in SQL (start_race_finish payouts, migration 0018).
+ */
+export function groupLanes(kind: GroupKind, n: number): number[] {
+  const lanes = Array.from({ length: n }, (_, i) => i + 1);
+  const half = Math.floor(n / 2);
+  switch (kind) {
+    case 'odd':
+      return lanes.filter((l) => l % 2 === 1);
+    case 'even':
+      return lanes.filter((l) => l % 2 === 0);
+    case 'low':
+      return lanes.filter((l) => l <= half);
+    case 'high':
+      return lanes.filter((l) => l > half);
+  }
+}
+
+/**
+ * Win/Place odds from `simulateShares`, plus group odds (4+ horses) priced from the summed win
+ * chances of the group's horses. Office races pass `history` (spec §7): horses missing from it
+ * count as having no past races.
  */
 export function simulateOdds(
   race: Omit<RaceInput, 'seed'>,
   rng: Rng,
   now: () => number = () => performance.now(),
   history?: Readonly<Record<HorseId, HorseHistory>>,
-): { odds: Record<HorseId, OddsLine>; sims: number } {
+): {
+  odds: Record<HorseId, OddsLine>;
+  groups: Partial<Record<GroupKind, number>>;
+  sims: number;
+} {
   const { wins, top3, sims } = simulateShares(race, rng, now);
   const n = race.horses.length;
   const blend = (h: HorseId, p: number, hits: (s: HorseHistory) => number, share: number) => {
@@ -103,14 +136,12 @@ export function simulateOdds(
     const s = history[h] ?? EMPTY;
     return blendHistory(p, hits(s), s.races, share);
   };
+  const pWin = race.horses.map((h) => blend(h, wins.get(h)! / sims, (s) => s.wins, 1 / n));
   const odds = Object.fromEntries(
-    race.horses.map((h) => [
+    race.horses.map((h, i) => [
       h,
       {
-        win: priceOdds(
-          blend(h, wins.get(h)! / sims, (s) => s.wins, 1 / n),
-          ODDS.win,
-        ),
+        win: priceOdds(pWin[i]!, ODDS.win),
         place: priceOdds(
           blend(h, top3.get(h)! / sims, (s) => s.top3, Math.min(3, n) / n),
           ODDS.place,
@@ -118,5 +149,16 @@ export function simulateOdds(
       },
     ]),
   );
-  return { odds, sims };
+  const groups = canGroup(n)
+    ? Object.fromEntries(
+        GROUP_KINDS.map((k) => [
+          k,
+          priceOdds(
+            groupLanes(k, n).reduce((sum, lane) => sum + pWin[lane - 1]!, 0),
+            ODDS.group,
+          ),
+        ]),
+      )
+    : {};
+  return { odds, groups, sims };
 }

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  betOn,
+  betWinning,
   boxesOf,
   canPlace,
   formatOdds,
@@ -58,5 +60,26 @@ describe('betting helpers', () => {
     [22, '22nd'],
   ])('ordinal(%i) = %s', (n, s) => {
     expect(ordinal(n)).toBe(s);
+  });
+});
+
+describe('group bets', () => {
+  const horses = ['a', 'b', 'c', 'd', 'e']; // #1..#5
+  const bet = (kind: string, horse_id: string | null = null) => ({ kind, horse_id });
+
+  it('labels horse and group bets', () => {
+    const players = [{ id: 'a', name: 'Ann' }];
+    expect(betOn(bet('win', 'a'), players)).toBe('Ann to win');
+    expect(betOn(bet('odd'), players)).toBe('Odd numbers');
+  });
+
+  it("judges group bets on the winner's number", () => {
+    const order = ['d', 'a', 'b', 'c', 'e']; // #4 leads
+    expect(betWinning(bet('even'), order, horses)).toBe(true);
+    expect(betWinning(bet('odd'), order, horses)).toBe(false);
+    expect(betWinning(bet('high'), order, horses)).toBe(true); // 5 horses: low #1-#2, high #3-#5
+    expect(betWinning(bet('low'), order, horses)).toBe(false);
+    expect(betWinning(bet('place', 'b'), order, horses)).toBe(true);
+    expect(betWinning(bet('win', 'a'), order, horses)).toBe(false);
   });
 });

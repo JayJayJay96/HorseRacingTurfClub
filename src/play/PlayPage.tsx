@@ -4,12 +4,18 @@ import {
   BOX_NAME,
   BOX_TYPES,
   boxesOf,
+  betOn,
+  betWinning,
   canPlace,
   formatOdds,
+  GROUP_NAME,
+  groupOddsOf,
   horseNameOf,
+  isGroup,
   oddsOf,
   ordinal,
 } from '../betting/betting.ts';
+import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
 import { TopBar } from '../app/TopBar.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
@@ -337,9 +343,17 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   const odds = oddsOf(race);
   const horses = race?.horses ?? [];
   const [pick, setPick] = useState('');
-  const horse = horses.includes(pick) ? pick : (horses[0] ?? '');
+  // Until they pick, a player's own horse is preselected.
+  const horse = horses.includes(pick)
+    ? pick
+    : horses.includes(mine.id)
+      ? mine.id
+      : (horses[0] ?? '');
+  const groupOdds = groupOddsOf(race);
+  // A group (Odd/Even/Low/High) replaces the horse when picked; it bets on the winner's number.
+  const group = isGroup(pick) && groupOdds[pick] !== undefined ? pick : null;
   const [choice, setChoice] = useState<BetKind>('win');
-  const kind = canPlace(horses) ? choice : 'win';
+  const kind = group ?? (canPlace(horses) ? choice : 'win');
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
   const colors = colorsByPlayer(players);
@@ -347,7 +361,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    act(() => placeBet(room.id, horse, kind, amount).then(playCoin));
+    act(() => placeBet(room.id, group ? null : horse, kind, amount).then(playCoin));
   };
 
   return (
@@ -362,7 +376,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 type="radio"
                 name="horse"
                 value={id}
-                checked={horse === id}
+                checked={!group && horse === id}
                 onChange={() => setPick(id)}
               />
               <Silk color={colors(id, lane).silk} />
@@ -375,33 +389,59 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
             </label>
           ))}
         </fieldset>
-        <fieldset className="segmented">
-          <legend>Bet</legend>
-          <label htmlFor="kind-win">
-            <input
-              id="kind-win"
-              type="radio"
-              name="kind"
-              value="win"
-              checked={kind === 'win'}
-              onChange={() => setChoice('win')}
-            />
-            Win (1st)
-          </label>
-          {canPlace(horses) && (
-            <label htmlFor="kind-place">
+        {GROUP_KINDS.some((g) => groupOdds[g] !== undefined) && (
+          <fieldset className="horse-pick">
+            <legend>Or the winner's number</legend>
+            {GROUP_KINDS.map((g) => (
+              <label key={g} className="card" htmlFor={`group-${g}`}>
+                <input
+                  id={`group-${g}`}
+                  type="radio"
+                  name="horse"
+                  value={g}
+                  checked={group === g}
+                  onChange={() => setPick(g)}
+                />
+                <span>{GROUP_NAME[g]}</span>
+                <span className="pixel">
+                  {groupLanes(g, horses.length)
+                    .map((l) => `#${l}`)
+                    .join(' ')}
+                </span>
+                <span className="pixel odds-line">{formatOdds(groupOdds[g])}</span>
+              </label>
+            ))}
+          </fieldset>
+        )}
+        {!group && (
+          <fieldset className="segmented">
+            <legend>Bet</legend>
+            <label htmlFor="kind-win">
               <input
-                id="kind-place"
+                id="kind-win"
                 type="radio"
                 name="kind"
-                value="place"
-                checked={kind === 'place'}
-                onChange={() => setChoice('place')}
+                value="win"
+                checked={kind === 'win'}
+                onChange={() => setChoice('win')}
               />
-              Place (top 3)
+              Win (1st)
             </label>
-          )}
-        </fieldset>
+            {canPlace(horses) && (
+              <label htmlFor="kind-place">
+                <input
+                  id="kind-place"
+                  type="radio"
+                  name="kind"
+                  value="place"
+                  checked={kind === 'place'}
+                  onChange={() => setChoice('place')}
+                />
+                Place (top 3)
+              </label>
+            )}
+          </fieldset>
+        )}
         <label>
           Stake{' '}
           <input
@@ -429,10 +469,10 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
         <ul>
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind} @ {formatOdds(b.odds)}{' '}
+              {b.stake} on {betOn(b, players)} @ {formatOdds(b.odds)}{' '}
               <button
                 type="button"
-                aria-label={`Cancel ${b.stake} bet on ${horseNameOf(players, b.horse_id)}`}
+                aria-label={`Cancel ${b.stake} bet on ${betOn(b, players)}`}
                 disabled={busy}
                 onClick={() => act(() => cancelBet(b.id))}
               >
@@ -515,12 +555,13 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
       {t >= 0 && myBets.length > 0 && (
         <ul>
           {myBets.map((b) => {
-            const place = order.indexOf(b.horse_id);
-            const winning = place >= 0 && (b.kind === 'win' ? place === 0 : place < 3);
+            const now = b.horse_id
+              ? `${ordinal(order.indexOf(b.horse_id) + 1)} now`
+              : `#${timeline.horses.indexOf(order[0] ?? '') + 1} leads`;
             return (
               <li key={b.id}>
-                {winning ? '✅' : '⏳'} {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}:{' '}
-                {ordinal(place + 1)} now
+                {betWinning(b, order, timeline.horses) ? '✅' : '⏳'} {b.stake} on{' '}
+                {betOn(b, players)}: {now}
               </li>
             );
           })}
@@ -544,7 +585,7 @@ function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
         <ul className="my-bets">
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}{' '}
+              {b.stake} on {betOn(b, players)}{' '}
               <span className={b.payout ? 'chip win' : 'chip loss'}>
                 {b.payout ? `won ${b.payout}` : 'lost'}
               </span>

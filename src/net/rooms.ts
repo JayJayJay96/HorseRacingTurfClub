@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { unpackTimeline, type PackedTimeline } from '../sim/pack.ts';
+import type { GroupKind } from '../sim/odds.ts';
 import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
 import type { TrackId } from '../render/track.ts';
 import type { CosmeticSlot } from '../shop/cosmetics.ts';
@@ -12,7 +13,7 @@ export type RoomPlayer = Tables['room_players']['Row'];
 export type Race = Tables['races']['Row'];
 export type Purchase = Tables['purchases']['Row'];
 export type Bet = Tables['bets']['Row'];
-export type BetKind = 'win' | 'place';
+export type BetKind = 'win' | 'place' | GroupKind;
 export type RoomState = {
   room: Room;
   players: RoomPlayer[];
@@ -55,9 +56,22 @@ export const setReady = (roomId: string, ready: boolean) =>
 
 export const buyBox = (roomId: string, box: BoxType) =>
   call(supabase.rpc('buy_box', { p_room: roomId, p_box: box }));
-export const placeBet = (roomId: string, horseId: string, kind: BetKind, stake: number) =>
+/** `horseId` is null for a group bet (Odd/Even/Low/High on the winner's number). */
+export const placeBet = (roomId: string, horseId: string | null, kind: BetKind, stake: number) =>
   call(
-    supabase.rpc('place_bet', { p_room: roomId, p_horse: horseId, p_kind: kind, p_stake: stake }),
+    // The SQL takes a null horse for group bets; the generated Args say string, so only the
+    // checked object is cast.
+    supabase.rpc('place_bet', {
+      p_room: roomId,
+      p_horse: horseId,
+      p_kind: kind,
+      p_stake: stake,
+    } satisfies {
+      p_room: string;
+      p_horse: string | null;
+      p_kind: string;
+      p_stake: number;
+    } as never),
   );
 export const cancelBet = (betId: string) => call(supabase.rpc('cancel_bet', { p_bet: betId }));
 export const finishRace = (roomId: string) => call(supabase.rpc('finish_race', { p_room: roomId }));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blendHistory, ODDS, priceOdds, simulateOdds, simulateShares } from './odds.ts';
+import { blendHistory, groupLanes, ODDS, priceOdds, simulateOdds, simulateShares } from './odds.ts';
 import { createSeededRng } from './rng.ts';
 
 const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `h${i}`);
@@ -43,6 +43,23 @@ describe('simulateShares', () => {
     }
     const { odds } = simulateOdds(race, createSeededRng(4), frozenClock);
     for (const h of horses.slice(2)) expect(odds[h]).toEqual(odds.h1);
+  });
+});
+
+describe('group bets', () => {
+  it('splits the numbers: odd/even, low = first half rounded down', () => {
+    expect(groupLanes('odd', 5)).toEqual([1, 3, 5]);
+    expect(groupLanes('even', 5)).toEqual([2, 4]);
+    expect(groupLanes('low', 5)).toEqual([1, 2]);
+    expect(groupLanes('high', 5)).toEqual([3, 4, 5]);
+  });
+
+  it('prices groups from summed win chances, only with 4+ horses', () => {
+    const race = (n: number) => ({ horses: ids(n), bought: {}, length: 'short' as const });
+    const { groups } = simulateOdds(race(6), createSeededRng(5), frozenClock);
+    // Six equal horses: each half wins half the time, so 0.9 / 0.5 = 1.8x.
+    for (const g of ['odd', 'even', 'low', 'high'] as const) expect(groups[g]).toBe(1.8);
+    expect(simulateOdds(race(3), createSeededRng(5), frozenClock).groups).toEqual({});
   });
 });
 

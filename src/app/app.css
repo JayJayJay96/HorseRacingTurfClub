@@ -424,8 +424,18 @@ a.button.primary {
     transform: translateY(-80px);
   }
 }
+/* Ready horses gallop in place (still facing right). */
+.gallop {
+  animation: gallop 0.4s steps(2) infinite;
+}
+@keyframes gallop {
+  50% {
+    transform: scaleX(-1) translateY(-3px);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .cheers li {
+  .cheers li,
+  .gallop {
     animation: none;
   }
 }

@@ -76,7 +76,7 @@ export type Database = {
       bets: {
         Row: {
           created_at: string;
-          horse_id: string;
+          horse_id: string | null;
           id: string;
           kind: string;
           odds: number;
@@ -89,7 +89,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           created_at?: string;
-          horse_id: string;
+          horse_id?: string | null;
           id?: string;
           kind: string;
           odds: number;
@@ -101,7 +101,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
-          horse_id?: string;
+          horse_id?: string | null;
           id?: string;
           kind?: string;
           odds?: number;
@@ -689,7 +689,7 @@ export type Database = {
         Args: { p_horse: string; p_kind: string; p_room: string; p_stake: number };
         Returns: {
           created_at: string;
-          horse_id: string;
+          horse_id: string | null;
           id: string;
           kind: string;
           odds: number;

@@ -3,9 +3,12 @@ import {
   BOX_ICON,
   BOX_NAME,
   BOX_TYPES,
+  betOn,
   boxesOf,
   canPlace,
   formatOdds,
+  GROUP_NAME,
+  groupOddsOf,
   horseName,
   horseNameOf,
   nameOf,
@@ -48,6 +51,7 @@ import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
 import { useChances } from './useChances.ts';
+import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 
 type Act = (fn: () => Promise<unknown>) => void;
 type BoardProps = RoomState & { online: ReadonlySet<string>; act: Act; busy: boolean };
@@ -272,6 +276,22 @@ function ReadyLine({ players }: { players: RoomPlayer[] }) {
   );
 }
 
+/** A resting horse, or a galloping one once that phone has pressed Ready. */
+function HorseMark({ ready }: { ready: boolean }) {
+  return ready ? (
+    <>
+      <span className="face-right gallop" aria-hidden="true">
+        🏇
+      </span>
+      <span className="visually-hidden">(ready)</span>
+    </>
+  ) : (
+    <span className="face-right" aria-hidden="true">
+      🐎
+    </span>
+  );
+}
+
 const percent = (p: number | undefined) => (p === undefined ? '…' : `${Math.round(p * 100)}%`);
 
 function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) {
@@ -307,10 +327,7 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
             {racing.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <span className="face-right" aria-hidden="true">
-                    🐎
-                  </span>{' '}
-                  {horseName(p)}
+                  <HorseMark ready={p.ready} /> {horseName(p)}
                   {p.uid && !online.has(p.id) && ' (offline)'}
                 </td>
                 <td>{boxIcons(purchases, p.id)}</td>
@@ -363,6 +380,7 @@ function OddsLockedBoard({ room, act, busy }: BoardProps) {
 
 function BettingBoard({ room, players, race, purchases, bets, act, busy }: BoardProps) {
   const odds = oddsOf(race);
+  const groupOdds = groupOddsOf(race);
   const horses = race?.horses ?? [];
   const office = room.kind === 'office';
   const { stats } = useOfficeStats(room.race_id, office);
@@ -387,6 +405,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
               <tr key={id}>
                 <td className="pixel">#{lane + 1}</td>
                 <td>
+                  <HorseMark ready={players.find((p) => p.id === id)?.ready ?? false} />{' '}
                   <Silk color={colors(id, lane).silk} /> {horseNameOf(players, id)}
                 </td>
                 {office && (
@@ -400,6 +419,17 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
           </tbody>
         </table>
       </div>
+      {GROUP_KINDS.some((g) => groupOdds[g] !== undefined) && (
+        <p className="pixel">
+          Winner's number:{' '}
+          {GROUP_KINDS.map(
+            (g) =>
+              `${GROUP_NAME[g]} (${groupLanes(g, horses.length)
+                .map((l) => `#${l}`)
+                .join(' ')}) ${formatOdds(groupOdds[g])}`,
+          ).join(' · ')}
+        </p>
+      )}
       <p>
         Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length}{' '}
         {bets.length === 1 ? 'bet' : 'bets'}.
@@ -554,7 +584,7 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
         {best && (
           <p>
             🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
-            {horseNameOf(players, best.horse_id)}
+            {betOn(best, players)}
           </p>
         )}
         {winners.length === 0 ? (
@@ -563,8 +593,7 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
           <ul>
             {winners.map((b) => (
               <li key={b.id}>
-                {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)}{' '}
-                ({b.kind})
+                {nameOf(players, b.player_id)} won {b.payout} on {betOn(b, players)}
               </li>
             ))}
           </ul>

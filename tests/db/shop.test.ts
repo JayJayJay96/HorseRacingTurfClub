@@ -225,3 +225,67 @@ describe('back to the shop', () => {
     );
   });
 });
+
+describe('group bets', () => {
+  const groups = { odd: 1.8, even: 1.9, low: 1.7, high: 2.1 };
+  async function groupRoom() {
+    const r = await shopRoom();
+    await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+    await ok(
+      adminClient().rpc('lock_odds_finish', {
+        p_race: r.raceId,
+        p_odds: { ...fixtureOdds(r), groups },
+      }),
+    );
+    return r;
+  }
+  const bet = (
+    r: Awaited<ReturnType<typeof shopRoom>>,
+    kind: string,
+    horse: string | null = null,
+  ) =>
+    r.cal.client.rpc('place_bet', { p_room: r.room.id, p_horse: horse, p_kind: kind, p_stake: 10 });
+
+  it('takes group bets at the frozen group odds and pays them on the winner number', async () => {
+    const r = await groupRoom();
+    expect(await ok(bet(r, 'odd'))).toMatchObject({ kind: 'odd', horse_id: null, odds: 1.8 });
+    await ok(bet(r, 'high'));
+    expect(await fails(bet(r, 'odd', r.ali.player.id))).toBe('bad_bet');
+    expect(await fails(bet(r, 'win'))).toBe('not_in_race');
+
+    // Lane order: Ali #1, Bea #2, Siti #3, Dan #4. Dan wins: even and high pay, odd loses.
+    await ok(r.host.rpc('start_race_begin', { p_room: r.room.id }));
+    await ok(
+      adminClient().rpc('start_race_finish', {
+        p_race: r.raceId,
+        p_timeline: {},
+        p_finish: [r.dan.id, r.ali.player.id, r.bea.player.id, r.siti.id],
+        p_seconds: 60,
+        p_awards: {},
+      }),
+    );
+    const paid = await ok(
+      adminClient().from('bets').select('kind, payout').eq('race_id', r.raceId).order('kind'),
+    );
+    expect(paid).toEqual([
+      { kind: 'high', payout: 21 },
+      { kind: 'odd', payout: 0 },
+    ]);
+  });
+
+  it('refuses group bets when the race has no group odds, and out-of-range group odds', async () => {
+    const r = await bettingRoom(); // fixture odds without groups
+    expect(await fails(bet(r, 'even'))).toBe('bad_bet');
+
+    const s = await shopRoom();
+    await ok(s.host.rpc('lock_odds_begin', { p_room: s.room.id }));
+    expect(
+      await fails(
+        adminClient().rpc('lock_odds_finish', {
+          p_race: s.raceId,
+          p_odds: { ...fixtureOdds(s), groups: { ...groups, low: 50 } },
+        }),
+      ),
+    ).toBe('bad_odds');
+  });
+});

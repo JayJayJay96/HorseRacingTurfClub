@@ -17,7 +17,7 @@ import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
 import { PARTICLES, activeAt, effectsOf, particlesOf, type Effect } from './effects.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
-import { EASE, FOV_DEG, PIXEL_M, TILT_BLUR_PX } from './look.ts';
+import { FOV_DEG, easeFor, PIXEL_M, TILT_BLUR_PX } from './look.ts';
 import { buildPost, type Post } from './post.ts';
 import { buildWorld, cutoutMaterials, disposeTree, type World } from './scene.ts';
 import { CELL, cellOf, cellUv, drawSheet, sheetSize } from './sheet.ts';
@@ -296,10 +296,11 @@ export class HD2DRenderer implements RaceRenderer {
         const g = globalThis as { hd2dFrameMs?: number };
         g.hd2dFrameMs = (g.hd2dFrameMs ?? 16) * 0.9 + (now - last) * 0.1;
       }
+      const dt = Math.min(0.25, Math.max(0, (now - last) / 1000));
       last = now;
       const t = this.opts.freezeT ?? (Date.now() - startAtMs) / 1000;
       try {
-        this.draw(timeline, track, t);
+        this.draw(timeline, track, t, dt);
       } catch (e) {
         console.error(e);
         this.stop();
@@ -362,7 +363,7 @@ export class HD2DRenderer implements RaceRenderer {
     return progressAt(timeline, horse, t) + Math.max(0, t - finished) * COAST_SPEED;
   }
 
-  private draw(timeline: Timeline, track: Track, t: number) {
+  private draw(timeline: Timeline, track: Track, t: number, dt: number) {
     const { camera, post, sun, world, preset, fog } = this;
     if (!camera || !post || !sun || !world || !preset || !fog) return;
     const d = timeline.distance;
@@ -370,7 +371,7 @@ export class HD2DRenderer implements RaceRenderer {
     // Hard cut when the shot kind changes; ease toward the target within a shot.
     const want = shotAt(track, timeline, t, this.motion);
     const prev = this.shot;
-    const k = this.motion ? EASE : 1;
+    const k = this.motion ? easeFor(dt) : 1;
     const shot: Shot =
       !prev || prev.kind !== want.kind
         ? want

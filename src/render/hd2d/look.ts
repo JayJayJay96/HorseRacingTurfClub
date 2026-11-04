@@ -29,6 +29,11 @@ export const LOOK_PAST_M = 12;
 /** Per-frame ease toward the shot target (same as the 2D camera). */
 export const EASE = 0.06;
 
+/** Ease factor for a frame of `dt` seconds; equals EASE at 60 fps. */
+export function easeFor(dt: number): number {
+  return 1 - Math.pow(1 - EASE, Math.min(0.25, Math.max(0, dt)) * 60);
+}
+
 /** Camera distance at which one PIXEL_M covers `pixelScale` screen px at `viewH`. */
 export function distanceForScale(
   pixelScale: number = PIXEL_SCALE,

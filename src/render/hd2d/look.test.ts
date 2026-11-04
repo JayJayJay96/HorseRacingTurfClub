@@ -1,7 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { FOV_DEG, PIXEL_M, PIXEL_SCALE, REFERENCE_HEIGHT, distanceForScale } from './look.ts';
+import {
+  EASE,
+  FOV_DEG,
+  PIXEL_M,
+  PIXEL_SCALE,
+  REFERENCE_HEIGHT,
+  distanceForScale,
+  easeFor,
+} from './look.ts';
 
 describe('look', () => {
+  it('eases the same per second at any frame rate', () => {
+    expect(easeFor(1 / 60)).toBeCloseTo(EASE, 10);
+    expect(easeFor(0)).toBe(0);
+    expect(easeFor(1 / 10)).toBeGreaterThan(easeFor(1 / 60));
+    expect(easeFor(5)).toBe(easeFor(0.25));
+  });
+
   it('fits the chase distance to the pixel target', () => {
     const d = distanceForScale();
     expect(d).toBeGreaterThan(70);

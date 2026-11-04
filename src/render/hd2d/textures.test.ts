@@ -44,7 +44,7 @@ describe('textures', () => {
   it('gradients store the bottom colour in the first row', () => {
     // gradient(top, bottom, height)
     const g = gradient('#000000', '#ffffff', 4);
-    expect([...g.data.slice(0, 3)]).toEqual([255, 255, 255]);
-    expect([...g.data.slice(12, 15)]).toEqual([0, 0, 0]);
+    expect(Array.from(g.data.subarray(0, 3))).toEqual([255, 255, 255]);
+    expect(Array.from(g.data.subarray(12, 15))).toEqual([0, 0, 0]);
   });
 });

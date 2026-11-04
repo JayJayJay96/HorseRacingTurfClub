@@ -293,18 +293,20 @@ export class HD2DRenderer implements RaceRenderer {
     let tex = this.textCache.get(label);
     if (tex) return tex;
     const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 64;
     const ctx = c.getContext('2d')!;
-    ctx.font = '40px "Pixelify Sans", sans-serif';
+    const font = '40px "Pixelify Sans", sans-serif';
+    ctx.font = font;
+    c.width = Math.ceil(ctx.measureText(label).width) + 24; // resets the context state
+    c.height = 64;
+    ctx.font = font;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 8;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#000';
-    ctx.strokeText(label, 128, 34);
+    ctx.strokeText(label, c.width / 2, 34);
     ctx.fillStyle = '#fff';
-    ctx.fillText(label, 128, 34);
+    ctx.fillText(label, c.width / 2, 34);
     tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
     this.textCache.set(label, tex);
@@ -431,10 +433,12 @@ export class HD2DRenderer implements RaceRenderer {
     const show = (label: string, x: number, y: number, z: number, spin: number) => {
       const s = this.labels[used++];
       if (!s) return;
-      s.material.map = this.text(label);
+      const tex = this.text(label);
+      s.material.map = tex;
       s.material.needsUpdate = true;
       s.position.set(x, y, z);
-      s.scale.set(256 * PIXEL_M * 0.25 * spin, 64 * PIXEL_M * 0.25, 1);
+      const w = (tex.image as HTMLCanvasElement).width;
+      s.scale.set(w * PIXEL_M * 0.25 * spin, 64 * PIXEL_M * 0.25, 1);
       s.visible = true;
     };
     for (const e of this.held) {
@@ -476,8 +480,11 @@ export class HD2DRenderer implements RaceRenderer {
     post.composer.render();
     // Countdown, then GO!, over the post stack.
     if (t < 1 && this.hud && this.renderer) {
-      this.hud.sprite.material.map = this.text(t < 0 ? String(Math.ceil(-t)) : 'GO!');
+      const tex = this.text(t < 0 ? String(Math.ceil(-t)) : 'GO!');
+      this.hud.sprite.material.map = tex;
       this.hud.sprite.material.needsUpdate = true;
+      // 8 world units per 256 px, as before the canvas became variable.
+      this.hud.sprite.scale.set(((tex.image as HTMLCanvasElement).width * 8) / 256, 2, 1);
       this.renderer.autoClear = false;
       this.renderer.clearDepth();
       this.renderer.render(this.hud.scene, this.hud.camera);

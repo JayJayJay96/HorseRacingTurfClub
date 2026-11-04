@@ -18,7 +18,7 @@ export const FOLLOW_PACK = 5;
 /** Camera pitch below horizontal per shot, degrees (Look target 3). */
 export const PITCH_DEG = { wide: 50, chase: 50, finish: 28 } as const;
 /** The chase (follow) shot sits this much farther than the pixel-target distance. */
-export const FOLLOW_DISTANCE_SCALE = 1.6;
+export const FOLLOW_DISTANCE_SCALE = 1.3;
 /** Finish shot sits this much farther than the pixel-target distance. */
 export const FINISH_DISTANCE_SCALE = 1.3;
 /** Tilt-shift blur per shot, in screen pixels at the band edges. */

@@ -11,6 +11,7 @@ import {
   ordinal,
 } from '../betting/betting.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
+import { TopBar } from '../app/TopBar.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -34,7 +35,8 @@ import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
-import { colorsByPlayer } from '../render/palette.ts';
+import { BOX_COLOR, colorsByPlayer } from '../render/palette.ts';
+import { Silk } from '../render/RaceView.tsx';
 import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
@@ -108,39 +110,41 @@ export function PlayPage() {
   };
 
   return (
-    <main className="play">
-      <h1>Room {code}</h1>
-      {roster.length > 0 && (
-        <>
-          <h2>Pre-entered by the host</h2>
-          <ul className="pick">
-            {roster.map((p) => (
-              <li key={p.name}>
-                <button type="button" className="primary" onClick={() => claim(p.name)}>
-                  I'm {p.name}
-                  {p.ticked && ' 🐎 racing'}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <h2>Or join with a new name</h2>
-        </>
-      )}
-      <form onSubmit={join}>
-        <label>
-          Your name{' '}
-          <input
-            value={name}
-            maxLength={24}
-            autoComplete="nickname"
-            onChange={(e) => setName(e.target.value)}
-          />
-        </label>{' '}
-        <button type="submit" className="primary" disabled={!name.trim()}>
-          Join
-        </button>
-      </form>
-      {error && <p role="alert">{error}</p>}
+    <main className="play center">
+      <section className="panel">
+        <h1>Room {code}</h1>
+        {roster.length > 0 && (
+          <>
+            <h2>Pre-entered by the host</h2>
+            <ul className="pick">
+              {roster.map((p) => (
+                <li key={p.name}>
+                  <button type="button" className="primary" onClick={() => claim(p.name)}>
+                    I'm {p.name}
+                    {p.ticked && ' 🐎 racing'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <h2>Or join with a new name</h2>
+          </>
+        )}
+        <form onSubmit={join}>
+          <label>
+            Your name{' '}
+            <input
+              value={name}
+              maxLength={24}
+              autoComplete="nickname"
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>{' '}
+          <button type="submit" className="primary" disabled={!name.trim()}>
+            Join
+          </button>
+        </form>
+        {error && <p role="alert">{error}</p>}
+      </section>
     </main>
   );
 }
@@ -222,7 +226,9 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       <p className="visually-hidden" role="status" aria-live="polite">
         {announcement}
       </p>
-      <SoundToggle settings={settings} update={update} />
+      <TopBar code={room.code} coins={props.balance}>
+        <SoundToggle settings={settings} update={update} />
+      </TopBar>
       <h1>{mine.name}</h1>
       <p>
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
@@ -301,19 +307,24 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
   return (
     <>
       <p>
-        💰 {balance} coins · your boxes:{' '}
-        {boxes.length ? boxes.map((b) => BOX_ICON[b]).join(' ') : 'none'} ({boxes.length}/
-        {MAX_BOUGHT})
+        Your boxes: {boxes.length ? boxes.map((b) => BOX_ICON[b]).join(' ') : 'none'}{' '}
+        <span className="chip">
+          {boxes.length}/{MAX_BOUGHT} boxes
+        </span>
       </p>
-      <div className="shop">
+      <div className="box-cards">
         {BOX_TYPES.map((box) => (
           <button
             key={box}
             type="button"
+            className="card box-card"
+            style={{ borderTopColor: BOX_COLOR[box] }}
             disabled={busy || boxes.length >= MAX_BOUGHT || balance < PRICES[box]}
             onClick={() => act(() => buyBox(room.id, box).then(playCoin))}
           >
-            {BOX_ICON[box]} {BOX_NAME[box]} · {PRICES[box]}
+            <span className="box-icon">{BOX_ICON[box]}</span>
+            <span>{BOX_NAME[box]}</span>
+            <span className="chip">{PRICES[box]} coins</span>
           </button>
         ))}
       </div>
@@ -331,6 +342,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
   const kind = canPlace(horses) ? choice : 'win';
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
+  const colors = colorsByPlayer(players);
   const myBets = bets.filter((b) => b.player_id === mine.id);
 
   const submit = (e: FormEvent) => {
@@ -340,20 +352,30 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   return (
     <>
-      <p>💰 {balance} coins</p>
       <form className="shop" onSubmit={submit}>
-        <label>
-          Horse{' '}
-          <select value={horse} onChange={(e) => setPick(e.target.value)}>
-            {horses.map((id) => (
-              <option key={id} value={id}>
-                {horseNameOf(players, id)} — Win {formatOdds(odds[id]?.win)}
+        <fieldset className="horse-pick">
+          <legend>Horse</legend>
+          {horses.map((id, lane) => (
+            <label key={id} className="card" htmlFor={`horse-${id}`}>
+              <input
+                id={`horse-${id}`}
+                type="radio"
+                name="horse"
+                value={id}
+                checked={horse === id}
+                onChange={() => setPick(id)}
+              />
+              <Silk color={colors(id, lane).silk} />
+              <span className="pixel">#{lane + 1}</span>
+              <span>{horseNameOf(players, id)}</span>
+              <span className="pixel odds-line">
+                Win {formatOdds(odds[id]?.win)}
                 {canPlace(horses) && ` · Place ${formatOdds(odds[id]?.place)}`}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="segmented">
           <legend>Bet</legend>
           <label htmlFor="kind-win">
             <input
@@ -363,9 +385,9 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
               value="win"
               checked={kind === 'win'}
               onChange={() => setChoice('win')}
-            />{' '}
+            />
             Win (1st)
-          </label>{' '}
+          </label>
           {canPlace(horses) && (
             <label htmlFor="kind-place">
               <input
@@ -375,7 +397,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 value="place"
                 checked={kind === 'place'}
                 onChange={() => setChoice('place')}
-              />{' '}
+              />
               Place (top 3)
             </label>
           )}
@@ -442,23 +464,31 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
     setCooling(true);
     coolTimer.current = window.setTimeout(() => setCooling(false), CHEER_GAP_MS);
   };
+  const lane = timeline.horses.indexOf(mine.id);
   return (
     <>
-      <p>
+      <p className={t < 0 ? 'race-status glow' : 'race-status'}>
         {t < 0
           ? `🏁 Starting in ${Math.ceil(-t)}…`
           : t > last
             ? 'All home! Results in a moment…'
             : "🏇 And they're off!"}
-        {timeline.horses.includes(mine.id) && ` You're #${timeline.horses.indexOf(mine.id) + 1}.`}
       </p>
-      <MiniOval
-        timeline={timeline}
-        t={t}
-        mine={mine.id}
-        colors={colorsByPlayer(players)}
-        track={trackById(race.track)}
-      />
+      {lane >= 0 && (
+        <p className="you">
+          You're #{lane + 1}
+          {t >= 0 && ` · ${ordinal(order.indexOf(mine.id) + 1)}`}
+        </p>
+      )}
+      <div className="panel">
+        <MiniOval
+          timeline={timeline}
+          t={t}
+          mine={mine.id}
+          colors={colorsByPlayer(players)}
+          track={trackById(race.track)}
+        />
+      </div>
       {shown.length > 0 && (
         <p aria-hidden="true">
           {shown
@@ -481,9 +511,6 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
             </button>
           ))}
         </p>
-      )}
-      {t >= 0 && timeline.horses.includes(mine.id) && (
-        <p>You: {ordinal(order.indexOf(mine.id) + 1)}</p>
       )}
       {t >= 0 && myBets.length > 0 && (
         <ul>
@@ -508,13 +535,19 @@ function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
   const myBets = bets.filter((b) => b.player_id === mine.id);
   return (
     <>
-      {place >= 0 && <p>Your horse finished {ordinal(place + 1)}.</p>}
+      {place >= 0 && (
+        <p className="panel place-card">
+          Your horse finished <strong>{ordinal(place + 1)}.</strong>
+        </p>
+      )}
       {myBets.length > 0 && (
-        <ul>
+        <ul className="my-bets">
           {myBets.map((b) => (
             <li key={b.id}>
-              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}:{' '}
-              {b.payout ? `won ${b.payout}` : 'lost'}
+              {b.stake} on {horseNameOf(players, b.horse_id)} to {b.kind}{' '}
+              <span className={b.payout ? 'chip win' : 'chip loss'}>
+                {b.payout ? `won ${b.payout}` : 'lost'}
+              </span>
             </li>
           ))}
         </ul>

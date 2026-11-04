@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import { createRoom, errorText } from '../net/rooms.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
+import { TopBar } from './TopBar.tsx';
 
 export function Home() {
   const [code, setCode] = useState('');
@@ -31,40 +32,47 @@ export function Home() {
 
   return (
     <main className="home">
+      <TopBar />
       <h1>Horse Racing Turf Club</h1>
-      <section>
-        <h2>Private race</h2>
-        <button type="button" className="primary" onClick={host} disabled={busy}>
-          Host a race (big screen)
-        </button>
-        <form onSubmit={join}>
-          <label>
-            Room code{' '}
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              maxLength={4}
-              autoCapitalize="characters"
-              autoComplete="off"
-            />
-          </label>{' '}
-          <button type="submit">Join</button>
-        </form>
-      </section>
-      <section>
-        <h2>Office</h2>
-        <p>
-          <a className="button primary" href={`/track?code=${OFFICE_CODE}`}>
-            Office big screen
-          </a>{' '}
-          <a className="button" href={`/play?code=${OFFICE_CODE}`}>
-            Join the office race (phone)
-          </a>
-        </p>
-        <p>
-          <a href="/stats">Stats</a> · <a href="/admin">Admin</a>
-        </p>
-      </section>
+      <div className="home-cards">
+        <section className="panel">
+          <h2>Private race</h2>
+          <p>
+            <button type="button" className="primary" onClick={host} disabled={busy}>
+              Host a race (big screen)
+            </button>
+          </p>
+          <form onSubmit={join}>
+            <label>
+              Room code{' '}
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                maxLength={4}
+                autoCapitalize="characters"
+                autoComplete="off"
+              />
+            </label>{' '}
+            <button type="submit">Join</button>
+          </form>
+        </section>
+        <section className="panel">
+          <h2>Office</h2>
+          <p>
+            <a className="button primary" href={`/track?code=${OFFICE_CODE}`}>
+              Office big screen
+            </a>
+          </p>
+          <p>
+            <a className="button" href={`/play?code=${OFFICE_CODE}`}>
+              Join the office race (phone)
+            </a>
+          </p>
+          <p>
+            <a href="/stats">Stats</a> · <a href="/admin">Admin</a>
+          </p>
+        </section>
+      </div>
       {error && <p role="alert">{error}</p>}
     </main>
   );

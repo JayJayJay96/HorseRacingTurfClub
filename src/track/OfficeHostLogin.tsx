@@ -22,24 +22,26 @@ export function OfficeHostLogin() {
       );
   };
   return (
-    <main className="track">
-      <h1>Office race · big screen</h1>
-      <form onSubmit={submit}>
-        <label>
-          Admin password{' '}
-          <input
-            type="password"
-            value={password}
-            autoComplete="current-password"
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>{' '}
-        <button type="submit" className="primary" disabled={busy || !password}>
-          Unlock
-        </button>
-      </form>
-      <p>Opening the big screen here takes it over from any other screen.</p>
-      {error && <p role="alert">{error}</p>}
+    <main className="track center">
+      <section className="panel">
+        <h1>Office race · big screen</h1>
+        <form onSubmit={submit}>
+          <label>
+            Admin password{' '}
+            <input
+              type="password"
+              value={password}
+              autoComplete="current-password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>{' '}
+          <button type="submit" className="primary" disabled={busy || !password}>
+            Unlock
+          </button>
+        </form>
+        <p>Opening the big screen here takes it over from any other screen.</p>
+        {error && <p role="alert">{error}</p>}
+      </section>
     </main>
   );
 }

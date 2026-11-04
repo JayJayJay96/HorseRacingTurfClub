@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { TopBar } from '../app/TopBar.tsx';
 import { useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
@@ -50,6 +51,7 @@ export function StatsPage() {
   }
   return (
     <main className="stats">
+      <TopBar />
       <h1>Office stats</h1>
       {replay ? (
         <Replay key={replay.n} stats={stats} race={replay.race} onClose={() => setReplay(null)} />
@@ -68,7 +70,7 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
     return m ? horseName(m) : '?';
   };
   const board = (title: string, rows: Ranked[]) => (
-    <section>
+    <section className="panel">
       <h2>{title}</h2>
       {rows.length === 0 ? (
         <p>Nobody yet.</p>
@@ -96,31 +98,33 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
       {stats.horses.length === 0 ? (
         <p>No races yet.</p>
       ) : (
-        <div className="scroll-x">
-          <table className="odds">
-            <thead>
-              <tr>
-                <th>Horse</th>
-                <th>Races</th>
-                <th>Wins</th>
-                <th>Places</th>
-                <th>Win %</th>
-                <th>Form</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.horses.map((h) => (
-                <tr key={h.id}>
-                  <td>{horse(h.id)}</td>
-                  <td>{h.races}</td>
-                  <td>{h.wins}</td>
-                  <td>{h.places}</td>
-                  <td>{Math.round((100 * h.wins) / h.races)}%</td>
-                  <td>{formatForm(h.last5)}</td>
+        <div className="panel">
+          <div className="scroll-x">
+            <table className="odds">
+              <thead>
+                <tr>
+                  <th>Horse</th>
+                  <th>Races</th>
+                  <th>Wins</th>
+                  <th>Places</th>
+                  <th>Win %</th>
+                  <th>Form</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stats.horses.map((h) => (
+                  <tr key={h.id}>
+                    <td>{horse(h.id)}</td>
+                    <td>{h.races}</td>
+                    <td>{h.wins}</td>
+                    <td>{h.places}</td>
+                    <td>{Math.round((100 * h.wins) / h.races)}%</td>
+                    <td>{formatForm(h.last5)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -142,19 +146,38 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
       {stats.recent.length === 0 ? (
         <p>No races yet.</p>
       ) : (
-        <ul>
-          {stats.recent.map((r) => (
-            <li key={r.race}>
-              {new Date(r.at).toLocaleString()} · {r.podium.map(horse).join(', ')}
-              {r.prize && ` · ${r.prize}`}{' '}
-              {r.replay && (
-                <button type="button" onClick={() => onReplay(r.race)}>
-                  Replay
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <div className="panel">
+          <div className="scroll-x">
+            <table className="odds">
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Podium</th>
+                  <th>Prize</th>
+                  <th>
+                    <span className="visually-hidden">Replay</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.recent.map((r) => (
+                  <tr key={r.race}>
+                    <td>{new Date(r.at).toLocaleString()}</td>
+                    <td>{r.podium.map(horse).join(', ')}</td>
+                    <td>{r.prize}</td>
+                    <td>
+                      {r.replay && (
+                        <button type="button" onClick={() => onReplay(r.race)}>
+                          Replay
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </>
   );

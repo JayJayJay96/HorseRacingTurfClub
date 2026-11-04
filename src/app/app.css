@@ -1,10 +1,3 @@
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
-}
-body {
-  margin: 0;
-}
 main {
   max-width: 960px;
   margin: 0 auto;
@@ -23,40 +16,63 @@ main {
   gap: 32px;
 }
 .code {
+  font-family: var(--font-pixel);
   font-size: 4rem;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.2em;
   text-align: center;
   margin: 8px 0;
+  color: var(--gold);
+  text-shadow: 0 2px 0 var(--edge);
+}
+.join {
+  align-self: start;
+  text-align: center;
+}
+.join img {
+  display: block;
+  margin: 0 auto;
+}
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+}
+.settings fieldset {
+  margin: 0;
 }
 .roster {
   list-style: none;
   padding: 0;
-  columns: 2;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
 }
 .roster li {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-  break-inside: avoid;
+}
+.roster .remove {
+  margin-left: auto;
+  color: var(--danger);
+}
+/* Danger red is 4.2:1 on --raised; the darker hover keeps it above 4.5:1. */
+.roster .remove:hover {
+  background: var(--edge);
+}
+.open-shop {
+  text-align: right;
+}
+.open-shop button.primary {
+  font-size: 1.5rem;
+  padding: 16px 32px;
 }
 button.primary {
   font-size: 1.25rem;
   padding: 12px 24px;
-}
-[role='alert'] {
-  color: #c62828;
-}
-/* #c62828 is only 3.3:1 on a dark canvas; this is 8.2:1. */
-@media (prefers-color-scheme: dark) {
-  [role='alert'] {
-    color: #ff8a80;
-  }
-}
-/* Never remove this ring; it is the only focus cue for keyboard users. */
-:focus-visible {
-  outline: 3px solid Highlight;
-  outline-offset: 2px;
 }
 .visually-hidden {
   position: absolute;
@@ -84,15 +100,128 @@ button.primary {
   padding: 4px 16px;
   text-align: left;
 }
-.odds tbody tr:nth-child(odd) {
-  background: color-mix(in srgb, currentColor 6%, transparent);
+.board {
+  width: 100%;
+}
+.board td.pixel {
+  font-size: 1.25em;
 }
 .shop {
   display: grid;
   gap: 8px;
 }
+.box-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.box-card {
+  flex-direction: column;
+  justify-content: center;
+  min-height: 140px;
+  border-top: 8px solid;
+  text-align: center;
+}
+.box-icon {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.horse-pick {
+  display: grid;
+  gap: 8px;
+}
+.horse-pick .card {
+  flex-wrap: wrap;
+}
+.horse-pick .odds-line {
+  margin-left: auto;
+}
+/* Win/Place: native radios (arrow keys still work) drawn as a two-part toggle. */
+.segmented {
+  display: flex;
+  border: 0;
+  padding: 0;
+}
+.segmented label {
+  position: relative;
+  flex: 1;
+  padding: 12px;
+  text-align: center;
+  font-family: var(--font-pixel);
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
+  cursor: pointer;
+}
+.segmented input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segmented label:has(input:checked) {
+  color: var(--bg);
+  background: var(--gold);
+}
+.segmented label:has(input:focus-visible) {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+/* DOM order stays 1st, 2nd, 3rd; `order` shows the steps as 2nd, 1st, 3rd. */
 .podium {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 16px;
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 0;
+  list-style: none;
   font-size: 2rem;
+}
+.podium li {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  color: var(--bg);
+  text-align: center;
+  box-shadow:
+    inset 0 0 0 2px var(--edge),
+    var(--shadow);
+}
+.podium li::before {
+  font-family: var(--font-pixel);
+  font-size: 2.5rem;
+}
+.podium li:nth-child(1) {
+  order: 2;
+  min-height: 260px;
+  background: var(--gold);
+  /* The glow behind the winner. */
+  box-shadow:
+    inset 0 0 0 2px var(--edge),
+    0 0 48px rgba(255, 204, 51, 0.45);
+}
+.podium li:nth-child(1)::before {
+  content: '1st';
+}
+.podium li:nth-child(2) {
+  order: 1;
+  min-height: 200px;
+  background: var(--silver);
+}
+.podium li:nth-child(2)::before {
+  content: '2nd';
+}
+.podium li:nth-child(3) {
+  order: 3;
+  min-height: 160px;
+  background: var(--bronze);
+}
+.podium li:nth-child(3)::before {
+  content: '3rd';
 }
 .race {
   position: relative;
@@ -103,14 +232,19 @@ button.primary {
 }
 .race .fullscreen {
   position: absolute;
-  top: 8px;
-  left: 8px;
+  top: 12px;
+  left: 12px;
   z-index: 1;
+}
+/* The frame hugs the canvas: no padding, so fullscreen sizing below stays exact. */
+.race-frame {
+  margin: 0;
+  padding: 0;
 }
 .race:fullscreen {
   padding: 16px;
   align-content: center;
-  background: Canvas;
+  background: var(--bg);
 }
 .race:fullscreen canvas {
   max-height: calc(100vh - 32px);
@@ -120,14 +254,19 @@ button.primary {
   font-size: 1.5rem;
 }
 .race canvas {
+  display: block;
   width: 100%;
   image-rendering: pixelated;
-  background: #3d7a3a;
+  background: var(--turf);
 }
 .standings {
   margin: 0;
-  padding-left: 1.5em;
+  padding: 12px 12px 12px 2.5em;
   font-size: 1rem;
+}
+.standings li::marker {
+  font-family: var(--font-pixel);
+  color: var(--gold);
 }
 .silk {
   display: inline-block;
@@ -159,10 +298,6 @@ button.primary {
 a.button {
   display: inline-block;
   padding: 8px 16px;
-  border: 1px solid currentColor;
-  border-radius: 4px;
-  text-decoration: none;
-  color: inherit;
 }
 a.button.primary {
   font-size: 1.25rem;
@@ -186,6 +321,29 @@ a.button.primary {
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
 }
+.boards .panel {
+  margin: 0;
+}
+/* Top three rows: gold, silver, bronze (all 4.9:1 or better on the panel). */
+.boards li:nth-child(1) {
+  color: var(--gold);
+}
+.boards li:nth-child(2) {
+  color: var(--silver);
+}
+.boards li:nth-child(3) {
+  color: var(--bronze);
+}
+.home h1 {
+  font-size: 2.5rem;
+  text-align: center;
+  color: var(--gold);
+}
+.home-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
 .badges {
   list-style: none;
   padding: 0;
@@ -193,44 +351,45 @@ a.button.primary {
   flex-wrap: wrap;
   gap: 8px;
 }
+/* Badges are chips; body font because the descriptions are small text. */
 .badges li {
-  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  border-radius: 999px;
   padding: 4px 10px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--gold-dim);
 }
 
+/* The toggle sits in the top bar; the volume panel drops down over the page. */
 .sound {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-}
-/* Phones: keep the toggle in the page flow so it doesn't cover the heading. */
-.play .sound {
-  position: static;
-  text-align: right;
+  position: relative;
 }
 .sound-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
   display: grid;
   gap: 4px;
-  margin-top: 4px;
-  padding: 8px;
-  background: Canvas;
-  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  border-radius: 6px;
+  width: max-content;
+  padding: 12px;
+  background: var(--bg);
+  box-shadow: var(--trim);
 }
 
 .cheers {
   position: absolute;
-  left: 8px;
-  bottom: 8px;
+  left: 12px;
+  bottom: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
   pointer-events: none;
-  font-size: 1.5rem;
-  color: #fff;
-  text-shadow: 0 1px 3px #000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.cheers .chip {
+  font-size: 1.25rem;
 }
 .cheers li {
   animation: cheer-float 3s ease-out forwards;
@@ -250,7 +409,58 @@ a.button.primary {
     animation: none;
   }
 }
+.cheer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+/* Square cheer tiles, big enough for a thumb. */
 .cheer-row button {
+  width: 56px;
+  height: 56px;
+  padding: 0;
   font-size: 1.5rem;
-  min-width: 48px;
+}
+.race-status {
+  font-family: var(--font-pixel);
+  font-size: 1.25rem;
+  text-align: center;
+  padding: 8px;
+}
+.you {
+  font-family: var(--font-pixel);
+  font-size: 2rem;
+  text-align: center;
+  color: var(--gold);
+  margin: 8px 0;
+}
+.place-card {
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
+  text-align: center;
+  padding: 24px 16px;
+}
+.place-card strong {
+  display: block;
+  font-size: 4rem;
+  color: var(--gold);
+}
+.my-bets {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+/* Sign-in and join screens: one panel in the middle of the screen. */
+.center {
+  display: grid;
+  align-content: center;
+  min-height: calc(100vh - 32px);
+}
+.center > .panel {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
 }

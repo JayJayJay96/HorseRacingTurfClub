@@ -13,6 +13,7 @@ import {
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
+import { TopBar } from '../app/TopBar.tsx';
 import { formatForm } from '../history/badges.ts';
 import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
@@ -93,7 +94,9 @@ export function TrackPage() {
 
   return (
     <main className="track">
-      <SoundToggle settings={settings} update={update} full />
+      <TopBar code={state.room.code}>
+        <SoundToggle settings={settings} update={update} full />
+      </TopBar>
       {state.race && <p>Track: {trackById(state.race.track).name}</p>}
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />
@@ -123,54 +126,56 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
   return (
     <div className="lobby">
       <h1 className="visually-hidden">Lobby · room {room.code}</h1>
-      <section>
+      <section className="panel join">
+        <p className="code glow">{room.code}</p>
         <JoinQr url={joinUrl(window.location.origin, room.code)} />
-        <p className="code">{room.code}</p>
         <p>Scan, or open {window.location.host}/play and enter the code.</p>
       </section>
       <section>
-        <fieldset>
-          <legend>Race length</legend>
-          {(['short', 'long'] as const).map((l) => (
-            <label key={l} htmlFor={`length-${l}`}>
-              <input
-                id={`length-${l}`}
-                type="radio"
-                name="length"
-                value={l}
-                checked={length === l}
-                onChange={() => act(() => setRaceLength(room.id, l))}
-              />{' '}
-              {LENGTH_LABEL[l]}{' '}
-            </label>
-          ))}
-        </fieldset>
-        <fieldset>
-          <legend>Track</legend>
-          {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
-            <label key={id} htmlFor={`track-${id}`}>
-              <input
-                id={`track-${id}`}
-                type="radio"
-                name="track"
-                value={id}
-                checked={room.track === id}
-                onChange={() => act(() => setTrack(room.id, id))}
-              />{' '}
-              {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
-            </label>
-          ))}
-        </fieldset>
-        <label>
-          Prize{' '}
-          <input
-            value={prize}
-            maxLength={60}
-            placeholder="e.g. Winner picks lunch"
-            onChange={(e) => setPrize(e.target.value)}
-            onBlur={savePrize}
-          />
-        </label>
+        <div className="panel settings">
+          <fieldset>
+            <legend>Race length</legend>
+            {(['short', 'long'] as const).map((l) => (
+              <label key={l} htmlFor={`length-${l}`}>
+                <input
+                  id={`length-${l}`}
+                  type="radio"
+                  name="length"
+                  value={l}
+                  checked={length === l}
+                  onChange={() => act(() => setRaceLength(room.id, l))}
+                />{' '}
+                {LENGTH_LABEL[l]}{' '}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset>
+            <legend>Track</legend>
+            {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
+              <label key={id} htmlFor={`track-${id}`}>
+                <input
+                  id={`track-${id}`}
+                  type="radio"
+                  name="track"
+                  value={id}
+                  checked={room.track === id}
+                  onChange={() => act(() => setTrack(room.id, id))}
+                />{' '}
+                {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
+              </label>
+            ))}
+          </fieldset>
+          <label>
+            Prize{' '}
+            <input
+              value={prize}
+              maxLength={60}
+              placeholder="e.g. Winner picks lunch"
+              onChange={(e) => setPrize(e.target.value)}
+              onBlur={savePrize}
+            />
+          </label>
+        </div>
 
         {office && players.length > 0 && (
           <p>
@@ -187,7 +192,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
         </h2>
         <ul className="roster">
           {players.map((p) => (
-            <li key={p.id}>
+            <li key={p.id} className="card">
               <label htmlFor={`tick-${p.id}`}>
                 <input
                   id={`tick-${p.id}`}
@@ -197,11 +202,16 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
                 />{' '}
                 {p.name}
               </label>
-              {office && <span>💰 {balances[p.id] ?? 0}</span>}
-              {p.uid && <span>{online.has(p.id) ? '📱 online' : '📴 offline'}</span>}
+              {office && <span className="chip">💰 {balances[p.id] ?? 0}</span>}
+              {p.uid && (
+                <span className={online.has(p.id) ? 'chip on' : 'chip'}>
+                  {online.has(p.id) ? '📱 online' : '📴 offline'}
+                </span>
+              )}
               {!office && (
                 <button
                   type="button"
+                  className="remove"
                   aria-label={`Remove ${p.name}`}
                   onClick={() => act(() => removePlayer(p.id))}
                 >
@@ -230,7 +240,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
             </button>
           </form>
         )}
-        <p>
+        <p className="open-shop">
           <button
             type="button"
             className="primary"
@@ -268,16 +278,29 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
         {BOX_TYPES.map((b) => `${BOX_ICON[b]} ${BOX_NAME[b]} ${PRICES[b]}`).join(' · ')}
       </p>
       <ReadyLine players={players} />
-      <ul className="roster">
-        {players
-          .filter((p) => p.ticked)
-          .map((p) => (
-            <li key={p.id}>
-              🐎 {horseName(p)} {boxIcons(purchases, p.id)}
-              {p.uid && !online.has(p.id) && ' (offline)'}
-            </li>
-          ))}
-      </ul>
+      <div className="panel">
+        <table className="odds board">
+          <thead>
+            <tr>
+              <th>Horse</th>
+              <th>Boxes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {players
+              .filter((p) => p.ticked)
+              .map((p) => (
+                <tr key={p.id}>
+                  <td>
+                    🐎 {horseName(p)}
+                    {p.uid && !online.has(p.id) && ' (offline)'}
+                  </td>
+                  <td>{boxIcons(purchases, p.id)}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
       <p>
         <button type="button" disabled={busy} onClick={() => act(() => setPhase(room.id, 'LOBBY'))}>
           Back to lobby (cancels purchases)
@@ -314,31 +337,40 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   const horses = race?.horses ?? [];
   const office = room.kind === 'office';
   const { stats } = useOfficeStats(room.race_id, office);
+  const colors = colorsByPlayer(players);
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
-      <table className="odds">
-        <thead>
-          <tr>
-            <th>Horse</th>
-            {office && <th>Form</th>}
-            <th>Boxes</th>
-            <th>Win</th>
-            {canPlace(horses) && <th>Place</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {horses.map((id) => (
-            <tr key={id}>
-              <td>{horseNameOf(players, id)}</td>
-              {office && <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>}
-              <td>{boxIcons(purchases, id)}</td>
-              <td>{formatOdds(odds[id]?.win)}</td>
-              {canPlace(horses) && <td>{formatOdds(odds[id]?.place)}</td>}
+      <div className="panel">
+        <table className="odds board">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Horse</th>
+              {office && <th>Form</th>}
+              <th>Boxes</th>
+              <th>Win</th>
+              {canPlace(horses) && <th>Place</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {horses.map((id, lane) => (
+              <tr key={id}>
+                <td className="pixel">#{lane + 1}</td>
+                <td>
+                  <Silk color={colors(id, lane).silk} /> {horseNameOf(players, id)}
+                </td>
+                {office && (
+                  <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>
+                )}
+                <td>{boxIcons(purchases, id)}</td>
+                <td className="pixel">{formatOdds(odds[id]?.win)}</td>
+                {canPlace(horses) && <td className="pixel">{formatOdds(odds[id]?.place)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p>
         Bought boxes change a horse's chances. Pot: {potOf(bets)} coins in {bets.length}{' '}
         {bets.length === 1 ? 'bet' : 'bets'}.
@@ -430,7 +462,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
         >
           <ul className="cheers" aria-hidden="true">
             {shown.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className="chip">
                 {c.emoji} {nameOf(players, c.player)}
               </li>
             ))}
@@ -485,25 +517,27 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
           🏆 {horseNameOf(players, top3[0])}: {race.prize}
         </p>
       )}
-      <h2>Payouts</h2>
-      {best && (
-        <p>
-          🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
-          {horseNameOf(players, best.horse_id)}
-        </p>
-      )}
-      {winners.length === 0 ? (
-        <p>No winning bets.</p>
-      ) : (
-        <ul>
-          {winners.map((b) => (
-            <li key={b.id}>
-              {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)} (
-              {b.kind})
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="panel">
+        <h2>Payouts</h2>
+        {best && (
+          <p>
+            🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
+            {horseNameOf(players, best.horse_id)}
+          </p>
+        )}
+        {winners.length === 0 ? (
+          <p>No winning bets.</p>
+        ) : (
+          <ul>
+            {winners.map((b) => (
+              <li key={b.id}>
+                {nameOf(players, b.player_id)} won {b.payout} on {horseNameOf(players, b.horse_id)}{' '}
+                ({b.kind})
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <button
         type="button"
         className="primary"

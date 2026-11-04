@@ -13,7 +13,10 @@ describe('input validation', () => {
     ['too few horses', { horses: ['solo'] }],
     ['too many horses', { horses: ids(23) }],
     ['duplicate ids', { horses: ['a', 'a', 'b'] }],
-    ['more than 3 bought boxes', { bought: { h0: ['speed', 'speed', 'speed', 'speed'] as BoxType[] } }],
+    [
+      'more than 3 bought boxes',
+      { bought: { h0: ['speed', 'speed', 'speed', 'speed'] as BoxType[] } },
+    ],
     ['boxes for an unknown horse', { bought: { nobody: ['speed'] as BoxType[] } }],
     ['non-integer seed', { seed: 1.5 }],
   ])('rejects %s', (_, over) => {
@@ -27,17 +30,25 @@ describe('simulateRace', () => {
     expect(race({ seed: 8 }).progress).not.toEqual(race().progress);
   });
 
-  it.each(['short', 'long'] as const)('every horse finishes exactly once, in time order (%s)', (length) => {
-    for (let seed = 1; seed <= 20; seed++) {
-      const tl = race({ seed, length, horses: ids(22), bought: { h0: ALL_BOUGHT, h5: ['speed'] } });
-      expect([...tl.finishOrder].sort()).toEqual([...ids(22)].sort());
-      const times = tl.finishOrder.map((id) => tl.finishTimes[id]!);
-      expect(times).toEqual([...times].sort((a, b) => a - b));
-      const finishes = tl.events.filter((e) => e.type === 'finish');
-      expect(finishes.map((e) => e.place)).toEqual(ids(22).map((_, i) => i + 1));
-      expect(tl.distance).toBe(DISTANCE[length]);
-    }
-  });
+  it.each(['short', 'long'] as const)(
+    'every horse finishes exactly once, in time order (%s)',
+    (length) => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const tl = race({
+          seed,
+          length,
+          horses: ids(22),
+          bought: { h0: ALL_BOUGHT, h5: ['speed'] },
+        });
+        expect([...tl.finishOrder].sort()).toEqual([...ids(22)].sort());
+        const times = tl.finishOrder.map((id) => tl.finishTimes[id]!);
+        expect(times).toEqual([...times].sort((a, b) => a - b));
+        const finishes = tl.events.filter((e) => e.type === 'finish');
+        expect(finishes.map((e) => e.place)).toEqual(ids(22).map((_, i) => i + 1));
+        expect(tl.distance).toBe(DISTANCE[length]);
+      }
+    },
+  );
 
   it('progress starts at 0, never decreases and ends at the distance', () => {
     const tl = race({ bought: { h1: ALL_BOUGHT } });
@@ -51,9 +62,11 @@ describe('simulateRace', () => {
 
   it('every lane box is picked up exactly once, bought boxes included', () => {
     const tl = race({ bought: { h0: ALL_BOUGHT } });
-    expect(tl.boxes.h0).toHaveLength(MYSTERY_PER_LANE + 3);
+    expect(tl.boxes.h0).toHaveLength(MYSTERY_PER_LANE[tl.length] + 3);
     for (const id of tl.horses) {
-      const kinds = tl.events.flatMap((e) => (e.type === 'pickup' && e.horse === id ? [e.kind] : []));
+      const kinds = tl.events.flatMap((e) =>
+        e.type === 'pickup' && e.horse === id ? [e.kind] : [],
+      );
       expect(kinds).toEqual(tl.boxes[id]!.map((b) => b.kind));
     }
   });
@@ -124,7 +137,12 @@ describe('simulateRace', () => {
       for (const e of tl.events) {
         if (e.type !== 'blocked' || e.reason !== 'immune') continue;
         const bubble = tl.events.some(
-          (p) => p.type === 'pickup' && p.horse === e.horse && p.item === 'defense:immune' && p.t <= e.t && e.t - p.t <= 6,
+          (p) =>
+            p.type === 'pickup' &&
+            p.horse === e.horse &&
+            p.item === 'defense:immune' &&
+            p.t <= e.t &&
+            e.t - p.t <= 6,
         );
         expect(bubble).toBe(true);
         blocked++;

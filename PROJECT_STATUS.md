@@ -356,4 +356,11 @@
 - Checks: `npm test` 210 pass, `npm run test:db` 122 pass (the realtime roster test flaked once in the full run, passed alone), typecheck, lint and build clean.
 - Deploy order: `db push` (0019) first, then `functions deploy lock-odds`, then push `master`. The new function sends nulls, which the old `lock_odds_finish` rejects.
 
+## More power-ups on longer races (master, 2026-11-04)
+
+- Mystery boxes per lane now follow race length: 8 on Short (2 min), 12 on Long (3 min), about 4 a minute (was 5 for both). Bought boxes are unchanged (up to 3). Box zone widened from 10-90% to 5-95% of the distance, still fully random and at least 3% apart.
+- Balance suite 8/8 with the new counts (equal-field share, winner window, 3 Speed ≤ 18%, 3 Attack ≤ 13%, both lengths). `npm test` 212 pass.
+- HD-2D follow camera at 1.3× the pixel-target distance (was 1.6×): bigger horses, the top five in frame.
+- Deploy: `functions deploy lock-odds start-race` (both bundle `src/sim`), then push `master`. No migration.
+
 Next: owner review of Phase 8 on a real TV.

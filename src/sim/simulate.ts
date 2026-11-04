@@ -8,6 +8,7 @@ import {
   MAX_HORSES,
   MAX_RACE_FACTOR,
   MIN_HORSES,
+  MYSTERY_PER_LANE,
   NOISE,
   NOMINAL_SECONDS,
   PASS3_MARGIN,
@@ -87,7 +88,13 @@ export function simulateRace(input: RaceInput): Timeline {
   const distance = DISTANCE[input.length];
   const maxTicks = toTicks(NOMINAL_SECONDS[input.length] * MAX_RACE_FACTOR);
   const knotTicks = toTicks(NOISE.knotSeconds);
-  const boxes = placeBoxes(rng, input.horses, input.bought, distance);
+  const boxes = placeBoxes(
+    rng,
+    input.horses,
+    input.bought,
+    distance,
+    MYSTERY_PER_LANE[input.length],
+  );
   const horses: Horse[] = input.horses.map((id, index) => ({
     id,
     index,

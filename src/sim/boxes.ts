@@ -1,4 +1,4 @@
-import { BOX_MIN_GAP, BOX_ZONE, MYSTERY_PER_LANE } from './config.ts';
+import { BOX_MIN_GAP, BOX_ZONE } from './config.ts';
 import { round2 } from './math.ts';
 import type { Rng } from './rng.ts';
 import type { BoxKind, BoxSpot, BoxType, HorseId } from './types.ts';
@@ -14,13 +14,14 @@ export function shuffle<T>(rng: Rng, items: T[]): void {
 /**
  * Spots are uniformly random inside the box zone, sorted, and at least BOX_MIN_GAP apart (draw
  * n offsets in the zone minus the gaps, sort, then add i gaps). Lanes are independent, so every
- * horse's boxes fire at different times. Bought boxes take random places among the mystery ones.
+ * horse's boxes fire at different times. Bought boxes take random places among the `mystery` ones.
  */
 export function placeBoxes(
   rng: Rng,
   horses: readonly HorseId[],
   bought: Readonly<Record<HorseId, readonly BoxType[]>>,
   distance: number,
+  mystery: number,
 ): Record<HorseId, BoxSpot[]> {
   const lanes: Record<HorseId, BoxSpot[]> = {};
   const start = distance * BOX_ZONE.start;
@@ -28,7 +29,7 @@ export function placeBoxes(
   const gap = distance * BOX_MIN_GAP;
   for (const id of horses) {
     const kinds: BoxKind[] = [
-      ...Array.from({ length: MYSTERY_PER_LANE }, (): BoxKind => 'mystery'),
+      ...Array.from({ length: mystery }, (): BoxKind => 'mystery'),
       ...(bought[id] ?? []),
     ];
     shuffle(rng, kinds);

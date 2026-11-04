@@ -11,10 +11,11 @@ export const MAX_RACE_FACTOR = 3;
 
 export const MIN_HORSES = 2;
 export const MAX_HORSES = 22;
-export const MYSTERY_PER_LANE = 5;
+/** Mystery boxes per lane, about 4 a minute (owner 2026-11-04: 8 for 2 min, 12 for 3 min). */
+export const MYSTERY_PER_LANE: Readonly<Record<RaceLength, number>> = { short: 8, long: 12 };
 export const MAX_BOUGHT = 3;
-/** Boxes sit between these fractions of the race distance (owner 2026-11-04: 10-90%, fully random). */
-export const BOX_ZONE = { start: 0.1, end: 0.9 } as const;
+/** Boxes sit between these fractions of the race distance (owner 2026-11-04: 5-95%, fully random). */
+export const BOX_ZONE = { start: 0.05, end: 0.95 } as const;
 /** Minimum spacing between two boxes in one lane, as a share of the distance. */
 export const BOX_MIN_GAP = 0.03;
 export const PRICES: Readonly<Record<BoxType, number>> = { speed: 60, defense: 35, attack: 20 };

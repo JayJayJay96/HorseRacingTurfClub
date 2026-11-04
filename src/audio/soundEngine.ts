@@ -37,9 +37,16 @@ export function nextSong(count: number, last: number, r = Math.random()): number
   return i >= last ? i + 1 : i;
 }
 
-/** `songs`: audio file URLs per theme; a theme without any plays its chiptune loop. */
+/** Background bed (crowd, hooves) level on the sfx bus, under the effects. */
+const BED_GAIN = 0.4;
+
+/**
+ * `songs`: audio file URLs per theme; a theme without any plays its chiptune loop.
+ * `beds`: an optional looping background sound per theme, played alongside its music.
+ */
 export function createSoundEngine(
   songs: Readonly<Record<MusicTheme, readonly string[]>> = { lobby: [], race: [] },
+  beds: Readonly<Partial<Record<MusicTheme, string>>> = {},
 ): SoundEngine {
   const Ctor =
     globalThis.AudioContext ??
@@ -222,6 +229,38 @@ export function createSoundEngine(
     const c = running();
     if (!desiredTheme) stopSequencer();
     else if (c && sequencer?.theme !== desiredTheme) startSequencer(desiredTheme);
+    syncBed();
+  }
+
+  // ---------- background bed ----------
+  let bed: { url: string; stop: () => void } | null = null;
+
+  /** Loops the current theme's bed through the sfx bus (sfx volume and mute apply). */
+  function syncBed() {
+    const url = desiredTheme ? beds[desiredTheme] : undefined;
+    if (bed && bed.url !== url) stopBed();
+    const c = running();
+    if (!url || bed || !c || !sfxBus) return;
+    const el = new Audio(url);
+    el.loop = true;
+    const level = c.createGain();
+    level.gain.value = BED_GAIN;
+    const node = c.createMediaElementSource(el);
+    node.connect(level).connect(sfxBus);
+    void el.play().catch(() => undefined);
+    bed = {
+      url,
+      stop: () => {
+        el.pause();
+        node.disconnect();
+        level.disconnect();
+      },
+    };
+  }
+
+  function stopBed() {
+    bed?.stop();
+    bed = null;
   }
 
   // ---------- sfx ----------
@@ -375,6 +414,7 @@ export function createSoundEngine(
     dispose() {
       removeGesture();
       stopSequencer();
+      stopBed();
       globalThis.speechSynthesis?.cancel();
       void ctx?.close().catch(() => undefined);
       ctx = null;

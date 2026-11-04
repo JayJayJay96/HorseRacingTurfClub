@@ -6,12 +6,12 @@ import {
   type AudioSettings,
 } from './audioSettings.ts';
 import { createSoundEngine, type SoundEngine } from './soundEngine.ts';
-import { SONGS } from './songs.ts';
+import { BEDS, SONGS } from './songs.ts';
 
 let engine: SoundEngine | null = null;
 /** One engine per page, created on first use (tests and plain imports never touch Web Audio). */
 export function soundEngine(): SoundEngine {
-  engine ??= createSoundEngine(SONGS);
+  engine ??= createSoundEngine(SONGS, BEDS);
   return engine;
 }
 

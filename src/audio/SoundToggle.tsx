@@ -11,7 +11,7 @@ type Props = {
 /** 🔊/🔇 plus an optional volume panel. Clicking it also unlocks browser audio. */
 export function SoundToggle({ settings, update, full = false }: Props) {
   const [open, setOpen] = useState(false);
-  const slider = (label: string, key: 'music' | 'sfx' | 'voice') => (
+  const slider = (label: string, key: 'music' | 'sfx' | 'voice' | 'crowd') => (
     <label>
       {label}{' '}
       <input
@@ -44,6 +44,7 @@ export function SoundToggle({ settings, update, full = false }: Props) {
             <div className="sound-panel">
               {slider('Music', 'music')}
               {slider('Effects', 'sfx')}
+              {slider('Crowd', 'crowd')}
               {slider('Commentator', 'voice')}
               <label htmlFor="commentator-on">
                 <input

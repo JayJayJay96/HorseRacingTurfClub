@@ -54,6 +54,8 @@ export function priceOdds(p: number, range: OddsRange): number {
 /**
  * Finish counts from repeated runs of this exact field, bought boxes and length: how often each
  * horse won and finished top 3. Each run has a fresh seed, so box spots vary between runs.
+ * Horses with the same bought boxes are interchangeable, so each such group gets its average:
+ * equal horses show equal counts instead of simulation noise (counts may be fractional).
  */
 export function simulateShares(
   race: Omit<RaceInput, 'seed'>,
@@ -69,6 +71,17 @@ export function simulateShares(
     wins.set(finishOrder[0]!, wins.get(finishOrder[0]!)! + 1);
     for (const h of finishOrder.slice(0, 3)) top3.set(h, top3.get(h)! + 1);
     sims++;
+  }
+  const groups = new Map<string, HorseId[]>();
+  for (const h of race.horses) {
+    const key = [...(race.bought[h] ?? [])].sort().join();
+    groups.set(key, [...(groups.get(key) ?? []), h]);
+  }
+  for (const group of groups.values()) {
+    for (const counts of [wins, top3]) {
+      const mean = group.reduce((sum, h) => sum + counts.get(h)!, 0) / group.length;
+      for (const h of group) counts.set(h, mean);
+    }
   }
   return { wins, top3, sims };
 }

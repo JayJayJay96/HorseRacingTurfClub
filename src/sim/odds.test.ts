@@ -29,8 +29,20 @@ describe('simulateShares', () => {
       frozenClock,
     );
     const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
-    expect(sum(wins)).toBe(sims);
-    expect(sum(top3)).toBe(3 * sims);
+    expect(sum(wins)).toBeCloseTo(sims);
+    expect(sum(top3)).toBeCloseTo(3 * sims);
+  });
+
+  it('gives horses with the same boxes the same share and the same odds', () => {
+    const horses = ids(6);
+    const race = { horses, bought: { h0: ['speed'] as const }, length: 'short' as const };
+    const { wins, top3 } = simulateShares(race, createSeededRng(4), frozenClock);
+    for (const h of horses.slice(2)) {
+      expect(wins.get(h)).toBe(wins.get('h1'));
+      expect(top3.get(h)).toBe(top3.get('h1'));
+    }
+    const { odds } = simulateOdds(race, createSeededRng(4), frozenClock);
+    for (const h of horses.slice(2)) expect(odds[h]).toEqual(odds.h1);
   });
 });
 

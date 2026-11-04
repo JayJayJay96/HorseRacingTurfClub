@@ -37,9 +37,6 @@ export function nextSong(count: number, last: number, r = Math.random()): number
   return i >= last ? i + 1 : i;
 }
 
-/** Background bed (crowd, hooves) level on the sfx bus, under the effects. */
-const BED_GAIN = 0.4;
-
 /**
  * `songs`: audio file URLs per theme; a theme without any plays its chiptune loop.
  * `beds`: an optional looping background sound per theme, played alongside its music.
@@ -57,6 +54,7 @@ export function createSoundEngine(
   let master: GainNode | null = null;
   let musicBus: GainNode | null = null;
   let sfxBus: GainNode | null = null;
+  let crowdBus: GainNode | null = null;
   let noise: AudioBuffer | null = null;
   let desiredTheme: MusicTheme | null = null;
   let sequencer: { theme: MusicTheme; stop: () => void } | null = null;
@@ -67,6 +65,7 @@ export function createSoundEngine(
   const musicLevel = () => (settings && !settings.muted ? settings.music : 0);
   const sfxLevel = () => (settings && !settings.muted ? settings.sfx : 0);
   const voiceLevel = () => (settings && !settings.muted ? settings.voice : 0);
+  const crowdLevel = () => (settings && !settings.muted ? settings.crowd : 0);
 
   // Speech can't be routed through Web Audio, so there is no voice bus: say() sets its own volume.
   function ensureGraph(c: AudioContext) {
@@ -81,6 +80,8 @@ export function createSoundEngine(
     musicBus.connect(master);
     sfxBus = c.createGain();
     sfxBus.connect(master);
+    crowdBus = c.createGain();
+    crowdBus.connect(master);
     noise = c.createBuffer(1, c.sampleRate * 0.5, c.sampleRate);
     const data = noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -89,9 +90,10 @@ export function createSoundEngine(
 
   function applyLevels() {
     const c = ctx;
-    if (c && musicBus && sfxBus) {
+    if (c && musicBus && sfxBus && crowdBus) {
       musicBus.gain.setTargetAtTime(musicLevel() * 0.35, c.currentTime, 0.03);
       sfxBus.gain.setTargetAtTime(sfxLevel() * 0.6, c.currentTime, 0.03);
+      crowdBus.gain.setTargetAtTime(crowdLevel(), c.currentTime, 0.03);
     }
   }
 
@@ -235,25 +237,22 @@ export function createSoundEngine(
   // ---------- background bed ----------
   let bed: { url: string; stop: () => void } | null = null;
 
-  /** Loops the current theme's bed through the sfx bus (sfx volume and mute apply). */
+  /** Loops the current theme's bed through the crowd bus (crowd volume and mute apply). */
   function syncBed() {
     const url = desiredTheme ? beds[desiredTheme] : undefined;
     if (bed && bed.url !== url) stopBed();
     const c = running();
-    if (!url || bed || !c || !sfxBus) return;
+    if (!url || bed || !c || !crowdBus) return;
     const el = new Audio(url);
     el.loop = true;
-    const level = c.createGain();
-    level.gain.value = BED_GAIN;
     const node = c.createMediaElementSource(el);
-    node.connect(level).connect(sfxBus);
+    node.connect(crowdBus);
     void el.play().catch(() => undefined);
     bed = {
       url,
       stop: () => {
         el.pause();
         node.disconnect();
-        level.disconnect();
       },
     };
   }
@@ -374,6 +373,7 @@ export function createSoundEngine(
       master = null;
       musicBus = null;
       sfxBus = null;
+      crowdBus = null;
     }
   }
 
@@ -421,6 +421,7 @@ export function createSoundEngine(
       master = null;
       musicBus = null;
       sfxBus = null;
+      crowdBus = null;
     },
   };
 }

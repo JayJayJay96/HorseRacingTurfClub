@@ -7,14 +7,16 @@ export interface AudioSettings {
   readonly music: number;
   readonly sfx: number;
   readonly voice: number;
+  /** The race's crowd-and-hooves background bed. */
+  readonly crowd: number;
   /** Race commentary on the voice layer (big screen). */
   readonly commentator: boolean;
 }
 
 export const DEFAULTS: Readonly<Record<AudioScope, AudioSettings>> = {
-  screen: { muted: false, music: 0.5, sfx: 0.7, voice: 1, commentator: true },
+  screen: { muted: false, music: 0.5, sfx: 0.7, voice: 1, crowd: 0.8, commentator: true },
   // Phone sounds are opt-in (spec §11).
-  phone: { muted: true, music: 0, sfx: 0.7, voice: 0, commentator: false },
+  phone: { muted: true, music: 0, sfx: 0.7, voice: 0, crowd: 0, commentator: false },
 };
 
 const key = (scope: AudioScope) => `hrtc.audio.${scope}`;
@@ -50,6 +52,7 @@ export function loadAudioSettings(
     music: volume(r.music, d.music),
     sfx: volume(r.sfx, d.sfx),
     voice: volume(r.voice, d.voice),
+    crowd: volume(r.crowd, d.crowd),
     commentator: typeof r.commentator === 'boolean' ? r.commentator : d.commentator,
   };
 }

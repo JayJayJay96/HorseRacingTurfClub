@@ -24,6 +24,7 @@ The owner wants the race to read as "HD-2D, like Octopath Traveler" at a glance:
 4. **Sprites take the scene's light.** Horse and scenery billboards use a lit material, so sunset and floodlights colour them. The sun casts real, soft, low-resolution shadows (one shadow map) for horses and scenery; the blob shadow is the fallback when shadows are off.
 5. **Full post stack.** Tilt-shift blur, bloom, a strong vignette and a per-preset colour grade (warm by default); floating dust motes by day, fireflies at night; sunset light shafts faked with additive glow sprites.
 6. **Look test first.** Before shots, effects and the other presets are built, `/sandbox` shows one still frame: the home straight with 6 horses, in Afternoon and Night. The owner approves it, and the values it settles (FOV, pitch, blur band, bloom, vignette, grade, texel size) are written into this spec and frozen.
+   Approved 2026-11-04 (owner, from `docs/hd2d-screens/look-*.png`): PIXEL_M 0.15, PIXEL_SCALE 4.5, FOV_DEG 25, PITCH_DEG wide 50 / chase 35 / finish 28, TILT_BLUR_PX wide 4 / chase 2 / finish 2, TILT_FOCUS 0.45, LOOK_PAST_M 12 (chase and finish aim 12 m past the pack, away from the camera); every sun comes from the infield (camera) side; presets as in `src/render/hd2d/lighting.ts` at commit 51bd953.
 
 ## 1. Architecture
 

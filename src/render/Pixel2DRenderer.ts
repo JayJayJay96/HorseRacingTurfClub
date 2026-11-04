@@ -4,14 +4,10 @@ import { WIDE, cameraAt, type Camera } from './camera.ts';
 import { ITEM_INFO, popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse, drawNumber, poseOf } from './sprites.ts';
+import type { RaceRenderer } from './renderer.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
 
-/** Spec §4: every renderer plays the same Timeline on the same track. */
-export interface RaceRenderer {
-  /** `startAtMs` is the epoch ms of the gun (race time 0); earlier times show the countdown. */
-  play(timeline: Timeline, track: Track, startAtMs: number): void;
-  stop(): void;
-}
+export type { RaceRenderer } from './renderer.ts';
 
 export type ColorsOf = (horse: HorseId, lane: number) => HorseColors;
 /** Private rooms and the sandbox: colours by lane. */
@@ -25,14 +21,14 @@ const DIRT = '#b98a5a';
 const RAIL = '#f5f5f5';
 const STANDS = '#5d5d6e';
 const EASE = 0.06;
-const POPUP_SECONDS = 2;
+export const POPUP_SECONDS = 2;
 /**
  * Display only: a box is drawn where its horse was this long before the sim opened it, and the
  * item spins over the horse until then, so the effect reads as landing after the grab.
  */
 export const ITEM_HOLD_SECONDS = 1.5;
 /** Finished horses ease past the line (m/s) instead of piling up on it. Display only. */
-const COAST_SPEED = 10;
+export const COAST_SPEED = 10;
 /** A box appears once its horse is within this share of the race before it (owner 2026-11-04). */
 export const BOX_REVEAL = 0.1;
 /** Trail length in samples, and the on-screen gap between samples (px at size 1). */

@@ -18,7 +18,7 @@ import { horsePoint, type Track } from '../track.ts';
 import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
 import { PARTICLES, activeAt, effectsOf, particlesOf, type Effect } from './effects.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
-import { FOV_DEG, easeFor, PIXEL_M, TILT_BLUR_PX } from './look.ts';
+import { FOV_DEG, RENDER_MAX_WIDTH, easeFor, PIXEL_M, TILT_BLUR_PX } from './look.ts';
 import { buildPost, type Post } from './post.ts';
 import { buildWorld, cutoutMaterials, disposeTree, type World } from './scene.ts';
 import { CELL, cellOf, cellUv, drawSheet, sheetSize } from './sheet.ts';
@@ -311,7 +311,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.post = buildPost(renderer, scene, camera, preset);
 
     const fit = () => {
-      const w = Math.min(1920, Math.max(1, this.canvas.clientWidth));
+      const w = Math.min(RENDER_MAX_WIDTH, Math.max(1, this.canvas.clientWidth));
       const h = Math.max(1, Math.round((w * 9) / 16));
       if (w === this.lastW && h === this.lastH) return;
       this.lastW = w;

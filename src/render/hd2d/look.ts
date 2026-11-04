@@ -28,6 +28,8 @@ export const TILT_FOCUS = 0.45;
  * lower part of the frame and the stands fill the backdrop.
  */
 export const LOOK_PAST_M = 12;
+/** Widest drawing size in px: fullscreen fill-rate; CSS scales the canvas up. */
+export const RENDER_MAX_WIDTH = 1280;
 /** Per-frame ease toward the shot target (same as the 2D camera). */
 export const EASE = 0.06;
 

@@ -283,6 +283,7 @@ button.primary {
 }
 /* HD draws at the element's size (pixel ratio 1), so it needs its own height. */
 .race canvas.hd {
+  image-rendering: auto;
   aspect-ratio: 16 / 9;
   height: auto;
 }

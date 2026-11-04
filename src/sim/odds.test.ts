@@ -11,12 +11,23 @@ describe('priceOdds', () => {
     [0.1, ODDS.win, 9],
     [0.03, ODDS.win, 20], // 30 → max
     [0, ODDS.win, 20],
-    [0.9, ODDS.win, 1.2], // 1.0 → min
-    [1, ODDS.place, 1.05],
+    [0.75, ODDS.win, 1.2], // exactly the minimum
+    [0.9, ODDS.win, null], // 1.0 < min: closed, not lifted to 1.2
+    [1, ODDS.place, null], // 0.9 < min
+    [0.85, ODDS.place, 1.1], // 1.06 → 1.1
     [0.3, ODDS.place, 3],
     [0.05, ODDS.place, 6],
   ])('p=%s', (p, range, expected) => {
     expect(priceOdds(p, range)).toBe(expected);
+  });
+
+  it('never offers a bet that returns more than it costs on average', () => {
+    for (const range of [ODDS.win, ODDS.place, ODDS.group]) {
+      for (let p = 0.01; p <= 1; p += 0.001) {
+        const odds = priceOdds(p, range);
+        if (odds !== null) expect(odds * p).toBeLessThan(1);
+      }
+    }
   });
 });
 
@@ -74,7 +85,7 @@ describe('simulateOdds', () => {
     for (const h of ['a', 'b']) {
       expect(odds[h]!.win).toBeGreaterThanOrEqual(1.6);
       expect(odds[h]!.win).toBeLessThanOrEqual(2.1);
-      expect(odds[h]!.place).toBe(ODDS.place.min); // everyone places in a 2-horse race
+      expect(odds[h]!.place).toBeNull(); // everyone places in a 2-horse race: closed
     }
   });
 
@@ -87,9 +98,9 @@ describe('simulateOdds', () => {
     );
     const others = horses
       .slice(1)
-      .map((h) => odds[h]!.win)
+      .map((h) => odds[h]!.win!)
       .sort((a, b) => a - b);
-    expect(odds.h0!.win).toBeLessThan(others[4]!);
+    expect(odds.h0!.win!).toBeLessThan(others[4]!);
   });
 
   it('stops at the time budget but always runs minSims', () => {
@@ -113,7 +124,7 @@ describe('blendHistory', () => {
 });
 
 describe('simulateOdds with history', () => {
-  it('shortens a habitual winner and lengthens a habitual loser, same simulations', () => {
+  it('shortens a habitual winner but never lengthens anyone past the simulation', () => {
     const race = { horses: ids(4), bought: {}, length: 'short' as const };
     const plain = simulateOdds(race, createSeededRng(7), frozenClock);
     const hist = {
@@ -122,9 +133,23 @@ describe('simulateOdds with history', () => {
     };
     const blended = simulateOdds(race, createSeededRng(7), frozenClock, hist);
     expect(blended.sims).toBe(plain.sims);
-    expect(blended.odds.h0!.win).toBeLessThan(plain.odds.h0!.win);
-    expect(blended.odds.h1!.win).toBeGreaterThan(plain.odds.h1!.win);
-    // A horse with no history entry blends toward the field share (25%), not toward 0.
-    expect(Math.abs(blended.odds.h2!.win - plain.odds.h2!.win)).toBeLessThan(0.5);
+    expect(blended.odds.h0!.win!).toBeLessThan(plain.odds.h0!.win!);
+    // A habitual loser keeps its simulated odds: history can't make a bet on it pay more.
+    expect(blended.odds.h1!.win).toBe(plain.odds.h1!.win);
+    for (const h of race.horses) {
+      expect(blended.odds[h]!.win!).toBeLessThanOrEqual(plain.odds[h]!.win!);
+    }
+  });
+
+  it('prices a boxed horse with no history from its simulated chance', () => {
+    // History knows nothing about this race's boxes, so the old blend underpriced boxed horses.
+    const race = {
+      horses: ids(6),
+      bought: { h0: ['speed', 'speed', 'speed'] as const },
+      length: 'short' as const,
+    };
+    const plain = simulateOdds(race, createSeededRng(9), frozenClock);
+    const blended = simulateOdds(race, createSeededRng(9), frozenClock, {});
+    expect(blended.odds.h0).toEqual(plain.odds.h0);
   });
 });

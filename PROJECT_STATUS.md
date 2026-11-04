@@ -346,4 +346,14 @@
 - Frame time, 22 horses, long race, about 25 s in: 125.9 ms/frame on headless software GL (SwiftShader, CPU), not representative; the 16.7 ms target is unmeasured on a real GPU.
 - Not verified: a real TV, a real office laptop GPU.
 
+## Odds loopholes closed (master, 2026-11-04)
+
+- Two ways a bet could pay more than it was worth on average:
+  - the office history blend ignored this race's bought boxes and lengthened a boxed horse's odds (~4% profitable in a 10-horse race, more in small fields);
+  - the minimum odds (Win 1.2, Place/groups 1.05) lifted near-certain picks above their fair price.
+- Fix: price from max(p_sim, history blend), so history only ever shortens odds; a bet whose 90% price falls below the minimum is closed (null in `races.odds`), not lifted. Every open bet now returns at most ~94% on average (unit test sweeps p).
+- Migration 0019: `lock_odds_finish` accepts null prices; `place_bet` refuses them with `bet_closed`. Phone bet slip greys out closed picks and says why; boards show "Closed".
+- Checks: `npm test` 210 pass, `npm run test:db` 122 pass (the realtime roster test flaked once in the full run, passed alone), typecheck, lint and build clean.
+- Deploy order: `db push` (0019) first, then `functions deploy lock-odds`, then push `master`. The new function sends nulls, which the old `lock_odds_finish` rejects.
+
 Next: owner review of Phase 8 on a real TV.

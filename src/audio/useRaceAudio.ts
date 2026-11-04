@@ -19,7 +19,7 @@ export function useRaceAudio(
     names?: Readonly<Record<HorseId, string>>;
     commentary?: boolean;
     cues?: (c: SfxName) => boolean;
-    odds?: Readonly<Record<HorseId, { win: number } | undefined>>;
+    odds?: Readonly<Record<HorseId, { win: number | null } | undefined>>;
     prize?: string;
     /** Cheers on screen right now, for crowd lines. */
     cheers?: () => number;

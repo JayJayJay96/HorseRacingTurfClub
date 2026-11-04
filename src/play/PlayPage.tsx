@@ -351,9 +351,12 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
       : (horses[0] ?? '');
   const groupOdds = groupOddsOf(race);
   // A group (Odd/Even/Low/High) replaces the horse when picked; it bets on the winner's number.
-  const group = isGroup(pick) && groupOdds[pick] !== undefined ? pick : null;
+  const group = isGroup(pick) && typeof groupOdds[pick] === 'number' ? pick : null;
   const [choice, setChoice] = useState<BetKind>('win');
   const kind = group ?? (canPlace(horses) ? choice : 'win');
+  // null = closed: the bet would pay less than it is worth even at the minimum odds.
+  const line = odds[horse];
+  const chosenOdds = group ? groupOdds[group] : kind === 'place' ? line?.place : line?.win;
   const [stake, setStake] = useState('10');
   const amount = Number(stake);
   const colors = colorsByPlayer(players);
@@ -400,6 +403,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                   name="horse"
                   value={g}
                   checked={group === g}
+                  disabled={typeof groupOdds[g] !== 'number'}
                   onChange={() => setPick(g)}
                 />
                 <span>{GROUP_NAME[g]}</span>
@@ -423,6 +427,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 name="kind"
                 value="win"
                 checked={kind === 'win'}
+                disabled={line?.win === null}
                 onChange={() => setChoice('win')}
               />
               Win (1st)
@@ -435,6 +440,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                   name="kind"
                   value="place"
                   checked={kind === 'place'}
+                  disabled={line?.place === null}
                   onChange={() => setChoice('place')}
                 />
                 Place (top 3)
@@ -454,10 +460,22 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
             onChange={(e) => setStake(e.target.value)}
           />
         </label>
+        {chosenOdds === null && (
+          <p role="status">
+            That bet is closed: this pick is so likely that even the lowest odds would overpay.
+          </p>
+        )}
         <button
           type="submit"
           className="primary"
-          disabled={busy || !horse || !Number.isInteger(amount) || amount < 1 || amount > balance}
+          disabled={
+            busy ||
+            !horse ||
+            typeof chosenOdds !== 'number' ||
+            !Number.isInteger(amount) ||
+            amount < 1 ||
+            amount > balance
+          }
         >
           Bet
         </button>

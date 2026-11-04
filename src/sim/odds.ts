@@ -2,16 +2,21 @@ import type { Rng } from './rng.ts';
 import { simulateRace } from './simulate.ts';
 import type { HorseId, RaceInput } from './types.ts';
 
+/** `null` = that bet is closed for this horse (see `priceOdds`). */
 export interface OddsLine {
-  readonly win: number;
-  readonly place: number;
+  readonly win: number | null;
+  readonly place: number | null;
 }
 export interface OddsRange {
   readonly min: number;
   readonly max: number;
 }
 
-/** Spec §7 (Private: p = p_sim). Odds pay 90% of fair value, rounded to 0.1, then clamped. */
+/**
+ * Spec §7 (Private: p = p_sim). Odds pay 90% of fair value, rounded to 0.1, capped at `max`. A bet
+ * whose 90% price falls below `min` is closed rather than lifted to `min`, which would pay more
+ * than it is worth; with rounding, no open bet returns more than ~94% of its stake on average.
+ */
 export const ODDS = {
   payoutRate: 0.9,
   win: { min: 1.2, max: 20 },
@@ -47,10 +52,12 @@ export function blendHistory(
   return (1 - HISTORY.weight) * pSim + HISTORY.weight * pHist;
 }
 
-export function priceOdds(p: number, range: OddsRange): number {
+/** Odds for a chance `p`, or null when the bet is closed (its 90% price is below `range.min`). */
+export function priceOdds(p: number, range: OddsRange): number | null {
   if (p <= 0) return range.max;
-  const odds = Math.round((ODDS.payoutRate / p) * 10) / 10;
-  return Math.min(range.max, Math.max(range.min, odds));
+  const raw = ODDS.payoutRate / p;
+  if (raw < range.min) return null;
+  return Math.min(range.max, Math.round(raw * 10) / 10);
 }
 
 /**
@@ -126,15 +133,17 @@ export function simulateOdds(
   history?: Readonly<Record<HorseId, HorseHistory>>,
 ): {
   odds: Record<HorseId, OddsLine>;
-  groups: Partial<Record<GroupKind, number>>;
+  groups: Partial<Record<GroupKind, number | null>>;
   sims: number;
 } {
   const { wins, top3, sims } = simulateShares(race, rng, now);
   const n = race.horses.length;
+  // History only ever shortens odds: it ignores this race's boxes, so letting it lengthen them
+  // would underprice a boxed horse and make betting on it pay more than it is worth.
   const blend = (h: HorseId, p: number, hits: (s: HorseHistory) => number, share: number) => {
     if (!history) return p;
     const s = history[h] ?? EMPTY;
-    return blendHistory(p, hits(s), s.races, share);
+    return Math.max(p, blendHistory(p, hits(s), s.races, share));
   };
   const pWin = race.horses.map((h) => blend(h, wins.get(h)! / sims, (s) => s.wins, 1 / n));
   const odds = Object.fromEntries(

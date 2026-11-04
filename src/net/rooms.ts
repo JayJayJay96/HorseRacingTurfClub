@@ -216,6 +216,7 @@ const ERROR_TEXT: Record<string, string> = {
   not_enough_coins: 'Not enough coins.',
   bad_box: 'Unknown box type.',
   bad_bet: 'Pick Win or Place.',
+  bet_closed: 'That bet is closed: it is too likely to pay fairly.',
   bad_stake: 'Stake must be at least 1 coin.',
   not_in_race: "That horse isn't in this race.",
   bet_not_found: 'That bet is gone.',

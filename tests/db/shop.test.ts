@@ -273,6 +273,25 @@ describe('group bets', () => {
     ]);
   });
 
+  it('accepts closed (null) prices and refuses bets on them with bet_closed', async () => {
+    const r = await shopRoom();
+    await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+    await ok(
+      adminClient().rpc('lock_odds_finish', {
+        p_race: r.raceId,
+        p_odds: {
+          ...fixtureOdds(r),
+          [r.ali.player.id]: { win: null, place: 1.5 },
+          groups: { ...groups, low: null },
+        },
+      }),
+    );
+    expect(await fails(bet(r, 'win', r.ali.player.id))).toBe('bet_closed');
+    expect(await fails(bet(r, 'low'))).toBe('bet_closed');
+    expect(await ok(bet(r, 'place', r.ali.player.id))).toMatchObject({ odds: 1.5 });
+    expect(await ok(bet(r, 'high'))).toMatchObject({ odds: 2.1 });
+  });
+
   it('refuses group bets when the race has no group odds, and out-of-range group odds', async () => {
     const r = await bettingRoom(); // fixture odds without groups
     expect(await fails(bet(r, 'even'))).toBe('bad_bet');

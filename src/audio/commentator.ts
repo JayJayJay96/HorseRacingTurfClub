@@ -78,7 +78,7 @@ export function createCommentator(
   opts: {
     finalStretchMetres?: number;
     rand?: Rand;
-    odds?: Readonly<Record<HorseId, { win: number } | undefined>>;
+    odds?: Readonly<Record<HorseId, { win: number | null } | undefined>>;
     prize?: string;
   } = {},
 ): Commentator {

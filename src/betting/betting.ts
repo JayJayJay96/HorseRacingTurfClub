@@ -47,7 +47,7 @@ export const isGroup = (kind: string): kind is GroupKind =>
 
 /** races.odds.groups: Odd/Even/Low/High odds, written by lock-odds for 4+ horses. */
 export const groupOddsOf = (race: { odds: Json | null } | null) =>
-  (race?.odds as { groups?: Partial<Record<GroupKind, number>> } | null)?.groups ?? {};
+  (race?.odds as { groups?: Partial<Record<GroupKind, number | null>> } | null)?.groups ?? {};
 
 type BetLike = { horse_id: string | null; kind: string };
 
@@ -70,8 +70,9 @@ export function betWinning(b: BetLike, order: readonly string[], horses: readonl
 /** With 3 or fewer horses every horse places, so the server refuses Place bets. */
 export const canPlace = (horses: readonly string[]) => horses.length > 3;
 
-export const formatOdds = (odds: number | undefined) =>
-  odds === undefined ? '–' : `${Number(odds.toFixed(2))}×`;
+/** `null` = the bet is closed: its fair price fell below the minimum odds. */
+export const formatOdds = (odds: number | null | undefined) =>
+  odds === undefined ? '–' : odds === null ? 'Closed' : `${Number(odds.toFixed(2))}×`;
 
 export function ordinal(n: number): string {
   const teen = n % 100 >= 11 && n % 100 <= 13;

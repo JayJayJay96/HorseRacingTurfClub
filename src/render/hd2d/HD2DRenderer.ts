@@ -249,7 +249,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.fxPoints = new THREE.Points(
       fxGeo,
       new THREE.PointsMaterial({
-        size: 0.3,
+        size: 0.6,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
@@ -268,7 +268,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.motes = pointsOf(
       MOTES,
       new THREE.PointsMaterial({
-        size: preset.motes === 'fireflies' ? 0.25 : 0.15,
+        size: preset.motes === 'fireflies' ? 0.5 : 0.3,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
@@ -558,7 +558,7 @@ export class HD2DRenderer implements RaceRenderer {
             pt.up,
             here.y + az * pt.ahead + ax * pt.side,
           );
-          c.set(pt.color).multiplyScalar(pt.alpha * 1.5);
+          c.set(pt.color).multiplyScalar(pt.alpha * 2.5);
           colAttr.setXYZ(k, c.r, c.g, c.b);
           k++;
         }
@@ -581,7 +581,7 @@ export class HD2DRenderer implements RaceRenderer {
       for (let i = 0; i < MOTES; i++) {
         const mo = moteAt(this.motion ? t : 0, preset.motes, i);
         pos.setXYZ(i, tx + mo.x, mo.y, ty + mo.z);
-        tint.set(hex).multiplyScalar(mo.alpha * 1.5);
+        tint.set(hex).multiplyScalar(mo.alpha * 2.5);
         colAttr.setXYZ(i, tint.r, tint.g, tint.b);
       }
       pos.needsUpdate = true;

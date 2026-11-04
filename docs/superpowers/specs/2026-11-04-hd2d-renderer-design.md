@@ -14,6 +14,17 @@ Owner decisions 2026-11-04. Builds on the main spec (`2026-10-29-horse-racing-tu
 - New hand-made art: sprites come from the existing code-drawn `drawHorse`.
 - A unique effect per item, a scoreboard, birds, crowd reactions, a host-picked time of day, automatic quality scaling.
 
+## Look targets
+
+The owner wants the race to read as "HD-2D, like Octopath Traveler" at a glance: a resemblance in style, with no copied assets, characters or UI. These rules carry that look and win over any looser wording below.
+
+1. **Pixel-art world, not flat colour.** Ground, dirt, stands, rail, crowd and scenery use pixel-art textures generated in code, nearest-neighbour filtered, no mipmaps, at one fixed texel density that matches the sprites.
+2. **Big, chunky pixels.** One sprite pixel covers 4–5 screen pixels at 1080p on the chase shot; camera distance is fitted to hit that. Textures use the same pixel size on screen.
+3. **High, narrow camera.** Every shot looks down from above with a narrow lens (vertical FOV ~20–30°); no shot drops to ground level.
+4. **Sprites take the scene's light.** Horse and scenery billboards use a lit material, so sunset and floodlights colour them. The sun casts real, soft, low-resolution shadows (one shadow map) for horses and scenery; the blob shadow is the fallback when shadows are off.
+5. **Full post stack.** Tilt-shift blur, bloom, a strong vignette and a per-preset colour grade (warm by default); floating dust motes by day, fireflies at night; sunset light shafts faked with additive glow sprites.
+6. **Look test first.** Before shots, effects and the other presets are built, `/sandbox` shows one still frame: the home straight with 6 horses, in Afternoon and Night. The owner approves it, and the values it settles (FOV, pitch, blur band, bloom, vignette, grade, texel size) are written into this spec and frozen.
+
 ## 1. Architecture
 
 - `RaceRenderer` (`play(timeline, track, startAtMs)`, `stop()`) moves from `Pixel2DRenderer.ts` to `src/render/renderer.ts`; `Pixel2DRenderer` is unchanged otherwise.
@@ -41,7 +52,7 @@ Owner decisions 2026-11-04. Builds on the main spec (`2026-10-29-horse-racing-tu
 
 - Cylindrical billboards (turn around the vertical axis only), nearest-neighbour filtering, no mipmaps.
 - Pose: the existing `poseOf` on the horse's direction projected into camera space; gallop frame from race time.
-- Shadows: a soft dark blob under each horse, not shadow maps.
+- Shadows: real sun shadows per Look target 4; a soft blob under each horse when shadows are off.
 - Item display matches 2D: boxes appear within `BOX_REVEAL` of the race before their horse, are drawn where the horse was `ITEM_HOLD_SECONDS` before the sim opened them, and the item spins over the horse until then; finished horses coast past the line.
 - Trails (`trail:dust`, `trail:sparkle`) and silk patterns follow the horse's cosmetics as in 2D.
 
@@ -52,14 +63,14 @@ Same timing as today's `cameraAt`:
 | Race time | Shot |
 |---|---|
 | first 2 s | **Wide:** high diorama over the whole track |
-| until the leader is 60 m from the finish | **Chase:** ~3 m high, just outside the rail beside the top 3, looking along the track; eases within the shot |
+| until the leader is 60 m from the finish | **Chase:** a following diorama shot, ~12–15 m high and pitched down ~30–40°, outside the rail beside the top 3; eases within the shot (never at ground level) |
 | from then on | **Finish:** side-on at the finish line from the stands |
 
 Cuts between shots are hard. Reduced motion holds the wide shot (no cuts, no crowd bob).
 
 ### Post-processing
 
-Render pass → tilt-shift blur on the top and bottom bands (strong on wide, light on chase and finish) → bloom on bright things (boxes, trails, sun, floodlights) → output pass. Pixel ratio capped at 1.
+Render pass → tilt-shift blur on the top and bottom bands (strong on wide, lighter on chase and finish) → bloom on bright things (boxes, trails, sun, floodlights) → vignette and colour grade (one shader pass, values per preset) → output pass. Pixel ratio capped at 1.
 
 ### Lighting (`lighting.ts`)
 
@@ -111,5 +122,6 @@ Popup labels (`popupOf`) stay, as sprites.
   - Scenery placement: deterministic per seed, never inside `trackBounds` plus the margin.
   - `pickRenderer`.
 - E2E: the existing races also assert the race canvas renders and no page errors fire (headless Chromium uses its software WebGL; if WebGL2 is missing there, the test asserts the 2D fallback instead).
+- Look test (Look target 6): owner approves the still frame before the rest is built.
 - Manual: `/sandbox` on 3 tracks × 3 presets; screenshots in `docs/hd2d-screens/`.
 - Performance target: 60 fps at 1080p on integrated graphics, 22 horses, long race; checked with a dev-only frame-time readout in `/sandbox`. On a slow TV the 2D chip is the escape hatch.

@@ -15,6 +15,7 @@ import {
 import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
+import { PARTICLES, activeAt, effectsOf, particlesOf, type Effect } from './effects.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
 import { EASE, FOV_DEG, PIXEL_M, TILT_BLUR_PX } from './look.ts';
 import { buildPost, type Post } from './post.ts';
@@ -37,6 +38,9 @@ interface HorseView {
   readonly mesh: THREE.Mesh;
   readonly map: THREE.Texture;
 }
+
+/** At most this many effects draw at once (12 particles each). */
+const MAX_FX = 64;
 
 export class HD2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -64,6 +68,9 @@ export class HD2DRenderer implements RaceRenderer {
   private labels: THREE.Sprite[] = [];
   private readonly textCache = new Map<string, THREE.CanvasTexture>();
   private trails: { dust: THREE.Points; sparkle: THREE.Points } | null = null;
+  private effects: Effect[] = [];
+  private fxPoints: THREE.Points | null = null;
+  private readonly fxCol = new THREE.Color();
   private hud: {
     scene: THREE.Scene;
     camera: THREE.OrthographicCamera;
@@ -229,6 +236,22 @@ export class HD2DRenderer implements RaceRenderer {
       ),
     };
     scene.add(this.trails.dust, this.trails.sparkle);
+
+    this.effects = effectsOf(timeline.events);
+    const fxGeo = new THREE.BufferGeometry();
+    const fxN = MAX_FX * PARTICLES;
+    fxGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fxN * 3), 3));
+    fxGeo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(fxN * 3), 3));
+    this.fxPoints = new THREE.Points(
+      fxGeo,
+      new THREE.PointsMaterial({
+        size: 0.3,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    scene.add(this.fxPoints);
 
     // Countdown / GO! in a screen-space overlay drawn after the post stack.
     const hudScene = new THREE.Scene();
@@ -477,6 +500,42 @@ export class HD2DRenderer implements RaceRenderer {
       fill(this.trails.sparkle, 'trail:sparkle', (i) => 1.5 + (i % 3) * 0.3);
     }
 
+    // Item effects: pure particles in each horse's running frame.
+    if (this.fxPoints) {
+      const pos = this.fxPoints.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const colAttr = this.fxPoints.geometry.getAttribute('color') as THREE.BufferAttribute;
+      const c = this.fxCol;
+      let k = 0;
+      for (const { effect, age } of activeAt(this.effects, t).slice(0, MAX_FX)) {
+        const lane = timeline.horses.indexOf(effect.horse);
+        if (lane < 0) continue;
+        // The box puff stays where the box was grabbed; others ride with the horse.
+        const m =
+          effect.kind === 'box'
+            ? progressAt(timeline, effect.horse, effect.t0)
+            : this.metres(timeline, effect.horse, t);
+        const here = horsePoint(track, d, m, lane);
+        const next = horsePoint(track, d, m + 1, lane);
+        const len = Math.hypot(next.x - here.x, next.y - here.y) || 1;
+        const ax = (next.x - here.x) / len;
+        const az = (next.y - here.y) / len;
+        for (const pt of particlesOf(effect.kind, age)) {
+          pos.setXYZ(
+            k,
+            here.x + ax * pt.ahead - az * pt.side,
+            pt.up,
+            here.y + az * pt.ahead + ax * pt.side,
+          );
+          c.set(pt.color).multiplyScalar(pt.alpha * 1.5);
+          colAttr.setXYZ(k, c.r, c.g, c.b);
+          k++;
+        }
+      }
+      this.fxPoints.geometry.setDrawRange(0, k);
+      pos.needsUpdate = true;
+      colAttr.needsUpdate = true;
+    }
+
     post.composer.render();
     // Countdown, then GO!, over the post stack.
     if (t < 1 && this.hud && this.renderer) {
@@ -503,6 +562,8 @@ export class HD2DRenderer implements RaceRenderer {
     this.hud = null;
     this.boxMesh = null;
     this.trails = null;
+    this.fxPoints = null;
+    this.effects = [];
     this.badges = [];
     this.labels = [];
     if (this.scene) disposeTree(this.scene);

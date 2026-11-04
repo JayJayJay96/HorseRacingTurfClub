@@ -8,3 +8,4 @@ playwright-report/
 !.env.example
 *.log
 .superpowers/
+backups/

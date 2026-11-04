@@ -181,6 +181,7 @@ export class HD2DRenderer implements RaceRenderer {
       boxCount,
     );
     boxMesh.count = 0;
+    boxMesh.frustumCulled = false; // matrices change every frame; the cached bounds go stale
     scene.add(boxMesh);
     this.boxMesh = boxMesh;
 
@@ -209,7 +210,7 @@ export class HD2DRenderer implements RaceRenderer {
     });
 
     // A pool of text sprites for held items and popups, always on top.
-    this.labels = Array.from({ length: 48 }, () => {
+    this.labels = Array.from({ length: 2 * lanes + 8 }, () => {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
       s.renderOrder = 10;
       s.center.set(0.5, 0);
@@ -239,6 +240,7 @@ export class HD2DRenderer implements RaceRenderer {
         }),
       ),
     };
+    this.trails.dust.frustumCulled = this.trails.sparkle.frustumCulled = false;
     scene.add(this.trails.dust, this.trails.sparkle);
 
     this.effects = effectsOf(timeline.events);
@@ -255,6 +257,7 @@ export class HD2DRenderer implements RaceRenderer {
         depthWrite: false,
       }),
     );
+    this.fxPoints.frustumCulled = false;
     scene.add(this.fxPoints);
 
     const pointsOf = (n: number, material: THREE.PointsMaterial) => {
@@ -262,6 +265,7 @@ export class HD2DRenderer implements RaceRenderer {
       g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
       g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
       const pts = new THREE.Points(g, material);
+      pts.frustumCulled = false;
       scene.add(pts);
       return pts;
     };
@@ -319,6 +323,16 @@ export class HD2DRenderer implements RaceRenderer {
       typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     );
 
+    // Text drawn before the webfont arrives keeps the fallback font; redraw once it loads.
+    document.fonts
+      ?.load('40px "Pixelify Sans"')
+      .then(() => {
+        if (this.renderer !== renderer) return; // stopped or restarted meanwhile
+        for (const tex of this.textCache.values()) tex.dispose();
+        this.textCache.clear();
+      })
+      .catch(() => {});
+
     let last = performance.now();
     const frame = () => {
       const now = performance.now();
@@ -366,6 +380,14 @@ export class HD2DRenderer implements RaceRenderer {
     tex.colorSpace = THREE.SRGBColorSpace;
     this.textCache.set(label, tex);
     return tex;
+  }
+
+  /** Swap a sprite's map; the shader program only changes when it goes from none to some. */
+  private setMap(m: THREE.SpriteMaterial, tex: THREE.Texture) {
+    if (m.map === tex) return;
+    const had = m.map !== null;
+    m.map = tex;
+    if (!had) m.needsUpdate = true;
   }
 
   /** Box display rules, the same as the 2D renderer's play(). */
@@ -489,13 +511,17 @@ export class HD2DRenderer implements RaceRenderer {
       const s = this.labels[used++];
       if (!s) return;
       const tex = this.text(label);
-      s.material.map = tex;
-      s.material.needsUpdate = true;
+      this.setMap(s.material, tex);
       s.position.set(x, y, z);
       const w = (tex.image as HTMLCanvasElement).width;
       s.scale.set(w * PIXEL_M * 0.25 * spin, 64 * PIXEL_M * 0.25, 1);
       s.visible = true;
     };
+    // Popups first so they win if the pool runs out.
+    for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
+      const at = where.get(e.horse);
+      if (at) show(popupOf(e), at.x, 5 + (t - e.t) * 1.2, at.z, 1);
+    }
     for (const e of this.held) {
       if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
       const at = where.get(e.horse);
@@ -503,10 +529,6 @@ export class HD2DRenderer implements RaceRenderer {
       const icon = e.item ? ITEM_INFO[e.item].icon : '\u{1F4A8}';
       const spin = this.motion ? Math.abs(Math.cos(t * 2 * Math.PI * 1.5)) || 0.05 : 1;
       show(icon, at.x, 4.2 + (this.motion ? Math.sin(t * 8) * 0.2 : 0), at.z, spin);
-    }
-    for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
-      const at = where.get(e.horse);
-      if (at) show(popupOf(e), at.x, 5 + (t - e.t) * 1.2, at.z, 1);
     }
     for (let i = used; i < this.labels.length; i++) this.labels[i]!.visible = false;
 
@@ -610,8 +632,7 @@ export class HD2DRenderer implements RaceRenderer {
     // Countdown, then GO!, over the post stack.
     if (t < 1 && this.hud && this.renderer) {
       const tex = this.text(t < 0 ? String(Math.ceil(-t)) : 'GO!');
-      this.hud.sprite.material.map = tex;
-      this.hud.sprite.material.needsUpdate = true;
+      this.setMap(this.hud.sprite.material, tex);
       // 8 world units per 256 px, as before the canvas became variable.
       this.hud.sprite.scale.set(((tex.image as HTMLCanvasElement).width * 8) / 256, 2, 1);
       this.renderer.autoClear = false;

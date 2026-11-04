@@ -124,6 +124,8 @@ export function RaceView({
           className="chip"
           aria-pressed={active === 'hd'}
           disabled={!webgl2 || hdFailed}
+          aria-label="HD graphics"
+          title={webgl2 && !hdFailed ? undefined : 'HD needs WebGL2; showing the 2D view'}
           onClick={toggleMode}
         >
           {webgl2 && !hdFailed ? 'HD' : 'HD unavailable'}

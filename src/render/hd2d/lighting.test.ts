@@ -7,7 +7,7 @@ describe('lighting', () => {
     expect(presetOf(1).id).toBe('sunset');
     expect(presetOf(2).id).toBe('night');
     expect(presetOf(3).id).toBe('afternoon');
-    expect(presetOf(4_294_967_295).id).toBe(PRESETS[4_294_967_295 % 3]!.id);
+    expect(presetOf(4_294_967_295).id).toBe('afternoon'); // 4294967295 % 3 === 0
   });
 
   it('is stable per seed and safe for negative seeds', () => {

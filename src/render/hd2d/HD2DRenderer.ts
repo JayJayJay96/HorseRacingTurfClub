@@ -50,6 +50,8 @@ export class HD2DRenderer implements RaceRenderer {
   private raf = 0;
   private renderer: THREE.WebGLRenderer | null = null;
   private scene: THREE.Scene | null = null;
+  /** Badges and labels: drawn after the post stack so they never bloom or tone-map. */
+  private overlay: THREE.Scene | null = null;
   private camera: THREE.PerspectiveCamera | null = null;
   private post: Post | null = null;
   private world: World | null = null;
@@ -185,6 +187,9 @@ export class HD2DRenderer implements RaceRenderer {
     scene.add(boxMesh);
     this.boxMesh = boxMesh;
 
+    const overlay = new THREE.Scene();
+    this.overlay = overlay;
+
     // Number badges (lane + 1, saddle-cloth style) drawn with the 2D code.
     this.badges = timeline.horses.map((h, lane) => {
       const n = String(lane + 1);
@@ -202,20 +207,20 @@ export class HD2DRenderer implements RaceRenderer {
       tex.magFilter = tex.minFilter = THREE.NearestFilter;
       tex.generateMipmaps = false;
       tex.colorSpace = THREE.SRGBColorSpace;
-      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex }));
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, toneMapped: false }));
       sprite.scale.set(c.width * PIXEL_M, c.height * PIXEL_M, 1);
       sprite.center.set(0.5, 0);
-      scene.add(sprite);
+      overlay.add(sprite);
       return sprite;
     });
 
     // A pool of text sprites for held items and popups, always on top.
     this.labels = Array.from({ length: 2 * lanes + 8 }, () => {
-      const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, toneMapped: false }));
       s.renderOrder = 10;
       s.center.set(0.5, 0);
       s.visible = false;
-      scene.add(s);
+      overlay.add(s);
       return s;
     });
 
@@ -290,7 +295,9 @@ export class HD2DRenderer implements RaceRenderer {
 
     // Countdown / GO! in a screen-space overlay drawn after the post stack.
     const hudScene = new THREE.Scene();
-    const hudSprite = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false }));
+    const hudSprite = new THREE.Sprite(
+      new THREE.SpriteMaterial({ depthTest: false, toneMapped: false }),
+    );
     hudSprite.scale.set(8, 2, 1);
     hudScene.add(hudSprite);
     this.hud = {
@@ -629,17 +636,21 @@ export class HD2DRenderer implements RaceRenderer {
     }
 
     post.composer.render();
-    // Countdown, then GO!, over the post stack.
-    if (t < 1 && this.hud && this.renderer) {
+    const { renderer, overlay, hud } = this;
+    if (!renderer || !overlay) return;
+    // Badges, labels and the countdown over the post stack, in exact colours.
+    renderer.autoClear = false;
+    renderer.clearDepth();
+    renderer.render(overlay, camera);
+    if (t < 1 && hud) {
       const tex = this.text(t < 0 ? String(Math.ceil(-t)) : 'GO!');
-      this.setMap(this.hud.sprite.material, tex);
+      this.setMap(hud.sprite.material, tex);
       // 8 world units per 256 px, as before the canvas became variable.
-      this.hud.sprite.scale.set(((tex.image as HTMLCanvasElement).width * 8) / 256, 2, 1);
-      this.renderer.autoClear = false;
-      this.renderer.clearDepth();
-      this.renderer.render(this.hud.scene, this.hud.camera);
-      this.renderer.autoClear = true;
+      hud.sprite.scale.set(((tex.image as HTMLCanvasElement).width * 8) / 256, 2, 1);
+      renderer.clearDepth();
+      renderer.render(hud.scene, hud.camera);
     }
+    renderer.autoClear = true;
   }
 
   stop() {
@@ -651,6 +662,8 @@ export class HD2DRenderer implements RaceRenderer {
     this.textCache.clear();
     if (this.hud) disposeTree(this.hud.scene);
     this.hud = null;
+    if (this.overlay) disposeTree(this.overlay); // text textures again: a second dispose is a no-op
+    this.overlay = null;
     this.boxMesh = null;
     this.trails = null;
     this.fxPoints = null;

@@ -316,4 +316,19 @@
 - Checks: typecheck, lint, `npm test` 171 pass, `npm run test:e2e` 6/6 (axe included). Headless screenshots at 1920×1080, 1280×800 and 375×812 in `docs/ui-theme-screens/` (not committed).
 - Not verified: a real phone, a real TV, `/stats` signed in, fullscreen.
 
+## Music, shop chances and group bets (master, 2026-11-04)
+
+- Music: songs in `src/assets/music/{lobby,race}/` are found by `import.meta.glob` (an empty folder keeps the chiptune); a random song plays on the music bus, never the same one twice in a row, and Lobby → Shop → Betting keeps the same song. Now 2 lobby and 6 race songs.
+- Crowd bed: the first file in `src/assets/music/background/` loops under the race music on its own Crowd bus and slider (default 80%).
+- The MP3s (~43 MB) are bundled and come from a royalty-free library. Their site and licence are not recorded yet (`THIRD_PARTY_NOTICES.md`).
+- Shop board: live Win and Top 3 chances from 500 simulated races with the boxes bought so far (web worker, reruns on each purchase), Form column for office races, horses face right.
+- Equal horses: `simulateShares` averages horses with the same bought boxes, so equal horses show identical chances and odds instead of simulation noise.
+- Betting → Shop: refunds bets, clears odds, keeps boxes (migration 0017).
+- Group bets (4+ horses) on the winner's number: Odd, Even, Low (first half, rounded down), High. Priced at Lock from the summed win chances, 90% of fair like Win; paid in `start_race_finish`; no horse (migration 0018).
+- Lobby: add-a-name form above the roster; tapping a roster card toggles the tick. Shop and betting boards mark phones that pressed Ready; the bet slip preselects the player's own horse.
+- Deployed: hosted DB has 0017 and 0018, `lock-odds` redeployed after the last commit (`start-race` only imports a type from `odds.ts`), `master` pushed.
+- Checks (2026-11-04): typecheck, lint and build clean, `npm test` 177 pass, `npm run test:db` 121 pass (`realtime.test.ts` failed once in the full run and passed alone, so it's flaky), `npm run test:e2e` 6/6.
+- Not verified: the music by ear, a real phone or TV.
+- Before or during Phase 8: the main JS chunk is 547 KB, so lazy-load the Three.js renderer; `RaceView` always creates `Pixel2DRenderer` and `RaceRenderer` lives in that file.
+
 Next: Phase 8 (HD-2D renderer).

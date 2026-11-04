@@ -184,43 +184,41 @@ export function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {data?.members.map((m) => (
-              <tr key={m.id}>
-                <td>
-                  {m.name}
-                  {m.horse_name && ` (🐎 ${m.horse_name})`}
-                  {m.archived && ' — removed'}
-                </td>
-                <td>{m.balance}</td>
-                <td>{m.has_pin ? 'set' : '—'}</td>
-                <td>{m.phone ? '📱' : ''}</td>
-                <td>
-                  <button type="button" disabled={busy} onClick={() => rename(m)}>
-                    Rename
-                  </button>{' '}
-                  <button type="button" disabled={busy} onClick={() => adjust(m)}>
-                    Coins
-                  </button>{' '}
-                  {!m.archived && (
-                    <>
-                      <button type="button" disabled={busy} onClick={() => setPin(m)}>
-                        {m.has_pin ? 'Reset PIN' : 'Set PIN'}
-                      </button>{' '}
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          window.confirm(`Remove ${m.name}? Their history stays.`) &&
-                          run('archive', { player: m.id })
-                        }
-                      >
-                        Remove
-                      </button>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {/* Removed members keep their history in the DB but leave the list. */}
+            {data?.members
+              .filter((m) => !m.archived)
+              .map((m) => (
+                <tr key={m.id}>
+                  <td>
+                    {m.name}
+                    {m.horse_name && ` (🐎 ${m.horse_name})`}
+                  </td>
+                  <td>{m.balance}</td>
+                  <td>{m.has_pin ? 'set' : '—'}</td>
+                  <td>{m.phone ? '📱' : ''}</td>
+                  <td>
+                    <button type="button" disabled={busy} onClick={() => rename(m)}>
+                      Rename
+                    </button>{' '}
+                    <button type="button" disabled={busy} onClick={() => adjust(m)}>
+                      Coins
+                    </button>{' '}
+                    <button type="button" disabled={busy} onClick={() => setPin(m)}>
+                      {m.has_pin ? 'Reset PIN' : 'Set PIN'}
+                    </button>{' '}
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        window.confirm(`Remove ${m.name}? Their history stays.`) &&
+                        run('archive', { player: m.id })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

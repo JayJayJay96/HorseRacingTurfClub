@@ -27,7 +27,37 @@ export function cellUv(lanes: number, cell: { col: number; row: number }) {
   };
 }
 
-/** Draws every lane's poses and gallop frames with the 2D sprite code. */
+/** Dark rim so horses read against the grass after tilt-shift and bloom. */
+export const OUTLINE_RGBA = [20, 16, 28, 255] as const;
+
+/**
+ * Paints a 1-pixel outline around the opaque pixels (alpha >= 128, the material's alphaTest)
+ * of one cell, staying inside the cell so neighbours never bleed in.
+ */
+export function outlineCell(
+  data: Uint8ClampedArray,
+  width: number,
+  x0: number,
+  y0: number,
+  w: number,
+  h: number,
+  rgba: readonly number[] = OUTLINE_RGBA,
+) {
+  const solid = (x: number, y: number) =>
+    x >= x0 && x < x0 + w && y >= y0 && y < y0 + h && data[(y * width + x) * 4 + 3]! >= 128;
+  const rim: number[] = [];
+  for (let y = y0; y < y0 + h; y++) {
+    for (let x = x0; x < x0 + w; x++) {
+      if (solid(x, y)) continue;
+      if (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1)) {
+        rim.push((y * width + x) * 4);
+      }
+    }
+  }
+  for (const i of rim) for (let k = 0; k < 4; k++) data[i + k] = rgba[k]!;
+}
+
+/** Draws every lane's poses and gallop frames with the 2D sprite code, then outlines them. */
 export function drawSheet(ctx: CanvasRenderingContext2D, colors: readonly HorseColors[]) {
   ctx.imageSmoothingEnabled = false;
   colors.forEach((c, lane) => {
@@ -38,4 +68,12 @@ export function drawSheet(ctx: CanvasRenderingContext2D, colors: readonly HorseC
       }
     }
   });
+  const { width, height } = sheetSize(colors.length);
+  const img = ctx.getImageData(0, 0, width, height);
+  for (let row = 0; row < colors.length; row++) {
+    for (let col = 0; col < POSES.length * FRAMES; col++) {
+      outlineCell(img.data, width, col * CELL.w, row * CELL.h, CELL.w, CELL.h);
+    }
+  }
+  ctx.putImageData(img, 0, 0);
 }

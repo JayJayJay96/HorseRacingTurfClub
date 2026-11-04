@@ -1,5 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { CELL, FRAMES, POSES, cellOf, cellUv, sheetSize } from './sheet.ts';
+import {
+  CELL,
+  FRAMES,
+  OUTLINE_RGBA,
+  POSES,
+  cellOf,
+  cellUv,
+  outlineCell,
+  sheetSize,
+} from './sheet.ts';
+
+describe('outlineCell', () => {
+  it('rims opaque pixels with the outline colour, inside the cell only', () => {
+    // 4x3 image, two 2x3 cells side by side; one opaque pixel at (1,1) on the cell edge.
+    const width = 4;
+    const data = new Uint8ClampedArray(width * 3 * 4);
+    const at = (x: number, y: number) => (y * width + x) * 4;
+    data.set([200, 100, 50, 255], at(1, 1));
+    outlineCell(data, width, 0, 0, 2, 3);
+    const alpha = (x: number, y: number) => data[at(x, y) + 3];
+    expect(Array.from(data.slice(at(0, 1), at(0, 1) + 4))).toEqual([...OUTLINE_RGBA]);
+    expect(alpha(1, 0)).toBe(255);
+    expect(alpha(1, 2)).toBe(255);
+    expect(alpha(0, 0)).toBe(0); // diagonals stay clear
+    expect(alpha(2, 1)).toBe(0); // the next cell is untouched
+    expect(Array.from(data.slice(at(1, 1), at(1, 1) + 4))).toEqual([200, 100, 50, 255]);
+  });
+});
 
 describe('sheet', () => {
   it('gives every lane, pose and frame its own cell', () => {

@@ -19,7 +19,15 @@ export function toTexture(img: PixelImage, repeat: boolean): THREE.DataTexture {
 
 /** Lit, alpha-tested billboard material whose shadow keeps the cut-out shape. */
 export function cutoutMaterials(map: THREE.Texture) {
-  const material = new THREE.MeshLambertMaterial({ map, alphaTest: 0.5, side: THREE.DoubleSide });
+  // Upright cards catch little of a high sun or moon, so they give off a little of their own
+  // colour: silks stay readable in every preset while the light still tints them.
+  const material = new THREE.MeshLambertMaterial({
+    map,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+    emissive: '#555555',
+    emissiveMap: map,
+  });
   const depth = new THREE.MeshDepthMaterial({
     depthPacking: THREE.RGBADepthPacking,
     map,

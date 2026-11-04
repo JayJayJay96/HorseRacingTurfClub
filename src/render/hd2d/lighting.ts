@@ -59,8 +59,9 @@ export const PRESETS: readonly Preset[] = [
   {
     id: 'night',
     sky: ['#060a1f', '#1c2a55'],
-    sun: { color: '#9fb4ff', intensity: 1.4, from: [0.3, 0.9, -0.2] },
-    hemi: { sky: '#4a5fa8', ground: '#1a2248', intensity: 1.3 },
+    // Bright enough that silks read away from the floodlights (owner 2026-11-04).
+    sun: { color: '#b4c6ff', intensity: 2.4, from: [0.3, 0.9, -0.2] },
+    hemi: { sky: '#5a70b8', ground: '#2a3260', intensity: 1.8 },
     fog: '#0d1530',
     bloom: { strength: 1.2, radius: 0.6, threshold: 0.6 },
     grade: { tint: [0.92, 0.97, 1.1], saturation: 0.95, vignette: 0.6 },

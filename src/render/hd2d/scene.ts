@@ -161,7 +161,11 @@ export function buildWorld(track: Track, lanes: number, seed: number, preset: Pr
   const crowdTex = toTexture(pixelTexture('crowd', seed + 3, 32, 16), true);
   const crowdH = 16 * PIXEL_M;
   crowdTex.repeat.set(width / TILE_M, 1);
-  const { material: crowdMat } = cutoutMaterials(crowdTex);
+  const crowdMat = new THREE.MeshLambertMaterial({
+    map: crowdTex,
+    alphaTest: 0.5,
+    side: THREE.DoubleSide,
+  });
   for (let i = 0; i < 4; i++) {
     const h = 1.2 * (i + 1);
     const tier = new THREE.Mesh(new THREE.BoxGeometry(width, h, 6), woodMat);
@@ -260,6 +264,7 @@ export function disposeTree(root: THREE.Object3D) {
   root.traverse((o) => {
     const mesh = o as THREE.Mesh;
     mesh.geometry?.dispose();
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
     const mats = mesh.material ? ([] as THREE.Material[]).concat(mesh.material) : [];
     if (mesh.customDepthMaterial) mats.push(mesh.customDepthMaterial);
     for (const m of mats) {

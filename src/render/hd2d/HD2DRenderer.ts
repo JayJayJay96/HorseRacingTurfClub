@@ -12,7 +12,7 @@ import { buildWorld, cutoutMaterials, disposeTree, type World } from './scene.ts
 import { CELL, cellOf, cellUv, drawSheet, sheetSize } from './sheet.ts';
 
 export interface HD2DOptions {
-  /** Called once if the WebGL context is lost; RaceView swaps to 2D. */
+  /** Called once if the WebGL context is lost or a frame failed; RaceView swaps to 2D. */
   onLost?: () => void;
   /** Look test: hold race time here instead of following the clock. */
   freezeT?: number;
@@ -42,6 +42,11 @@ export class HD2DRenderer implements RaceRenderer {
   private sheet: THREE.CanvasTexture | null = null;
   private horses: HorseView[] = [];
   private sun: THREE.DirectionalLight | null = null;
+  private fog: THREE.Fog | null = null;
+  private readonly p = new THREE.Vector3();
+  private readonly q = new THREE.Vector3();
+  private lastW = 0;
+  private lastH = 0;
   private preset: Preset | null = null;
   private resize: ResizeObserver | null = null;
   private readonly lost = (e: Event) => {
@@ -80,7 +85,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.world = world;
     scene.add(world.group);
     scene.background = world.sky;
-    scene.fog = new THREE.Fog(preset.fog, 100, 400);
+    this.fog = scene.fog = new THREE.Fog(preset.fog, 100, 400);
     scene.add(
       new THREE.HemisphereLight(preset.hemi.sky, preset.hemi.ground, preset.hemi.intensity),
     );
@@ -88,6 +93,12 @@ export class HD2DRenderer implements RaceRenderer {
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.bias = -0.0005;
+    const cam = sun.shadow.camera;
+    cam.left = cam.bottom = -60;
+    cam.right = cam.top = 60;
+    cam.near = 1;
+    cam.far = 500;
+    cam.updateProjectionMatrix();
     scene.add(sun, sun.target);
     this.sun = sun;
 
@@ -96,8 +107,10 @@ export class HD2DRenderer implements RaceRenderer {
     const sheetCanvas = document.createElement('canvas');
     sheetCanvas.width = width;
     sheetCanvas.height = height;
+    const sheetCtx = sheetCanvas.getContext('2d');
+    if (!sheetCtx) throw new Error('2D canvas context unavailable');
     drawSheet(
-      sheetCanvas.getContext('2d')!,
+      sheetCtx,
       timeline.horses.map((h, lane) => this.colors(h, lane)),
     );
     const sheet = new THREE.CanvasTexture(sheetCanvas);
@@ -124,8 +137,11 @@ export class HD2DRenderer implements RaceRenderer {
     this.post.setTilt(TILT_BLUR_PX.chase);
 
     const fit = () => {
-      const w = Math.max(1, this.canvas.clientWidth);
+      const w = Math.min(1920, Math.max(1, this.canvas.clientWidth));
       const h = Math.max(1, Math.round((w * 9) / 16));
+      if (w === this.lastW && h === this.lastH) return;
+      this.lastW = w;
+      this.lastH = h;
       renderer.setSize(w, h, false);
       this.post?.setSize(w, h);
       camera.aspect = w / h;
@@ -145,7 +161,14 @@ export class HD2DRenderer implements RaceRenderer {
       }
       last = now;
       const t = this.opts.freezeT ?? (Date.now() - startAtMs) / 1000;
-      this.draw(timeline, track, t);
+      try {
+        this.draw(timeline, track, t);
+      } catch (e) {
+        console.error(e);
+        this.stop();
+        this.opts.onLost?.();
+        return;
+      }
       this.raf = requestAnimationFrame(frame);
     };
     frame();
@@ -158,8 +181,8 @@ export class HD2DRenderer implements RaceRenderer {
   }
 
   private draw(timeline: Timeline, track: Track, t: number) {
-    const { camera, post, sun, world, preset } = this;
-    if (!camera || !post || !sun || !world || !preset) return;
+    const { camera, post, sun, world, preset, fog } = this;
+    if (!camera || !post || !sun || !world || !preset || !fog) return;
     const d = timeline.distance;
 
     // Look-test camera: chase-style, centred on the top 3, from the infield side.
@@ -182,7 +205,6 @@ export class HD2DRenderer implements RaceRenderer {
       ty + Math.cos(yaw) * Math.cos(CHASE_PITCH) * dist,
     );
     camera.lookAt(tx, 0, ty);
-    const fog = this.scene!.fog as THREE.Fog;
     fog.near = dist * 1.2;
     fog.far = dist * 4;
 
@@ -190,19 +212,11 @@ export class HD2DRenderer implements RaceRenderer {
     const [fx, fy, fz] = preset.sun.from;
     sun.target.position.set(tx, 0, ty);
     sun.position.set(tx + fx * 200, fy * 200, ty + fz * 200);
-    const cam = sun.shadow.camera;
-    cam.left = cam.bottom = -60;
-    cam.right = cam.top = 60;
-    cam.near = 1;
-    cam.far = 500;
-    cam.updateProjectionMatrix();
-
     // Everything flat faces the camera's yaw (parallel billboards).
     for (const o of world.billboards) o.rotation.y = yaw;
 
     // Horses: position, facing, pose and gallop frame.
-    const p = new THREE.Vector3();
-    const q = new THREE.Vector3();
+    const { p, q } = this;
     for (const v of this.horses) {
       const m = this.metres(timeline, v.horse, t);
       const here = horsePoint(track, d, m, v.lane);
@@ -237,7 +251,10 @@ export class HD2DRenderer implements RaceRenderer {
     this.post = null;
     this.world = null;
     this.sheet = null;
+    this.sun?.dispose();
     this.sun = null;
+    this.fog = null;
+    this.lastW = this.lastH = 0;
     this.preset = null;
     this.horses = [];
   }

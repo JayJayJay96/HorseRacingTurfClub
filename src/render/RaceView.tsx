@@ -91,6 +91,12 @@ export function RaceView({
       r?.stop();
     };
   }, [timeline, startAtMs, track, active, look]);
+  // Release the GL context of a canvas the view stops using (hd -> 2d swap or unmount).
+  useEffect(() => {
+    if (active !== 'hd') return;
+    const el = canvas.current;
+    return () => el?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+  }, [active]);
 
   const t = useRaceTime(startAtMs);
   const toggleMode = () => {

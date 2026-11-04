@@ -91,6 +91,7 @@ export function buildPost(
       apply();
     },
     dispose() {
+      for (const pass of composer.passes) pass.dispose();
       composer.dispose();
     },
   };

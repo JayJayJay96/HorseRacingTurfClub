@@ -5,6 +5,7 @@ import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } 
 import {
   FINISH_DISTANCE_SCALE,
   FOLLOW_DISTANCE_SCALE,
+  FOLLOW_PACK,
   FOV_DEG,
   LOOK_PAST_M,
   PITCH_DEG,
@@ -52,7 +53,7 @@ function aimPast(p: Point, yaw: number) {
   return { x: p.x - Math.sin(yaw) * LOOK_PAST_M, y: p.y - Math.cos(yaw) * LOOK_PAST_M };
 }
 
-/** Where the camera wants to be at race time `t`; the renderer eases within a shot, cuts between. */
+/** Where the camera wants to be at race time `t`; the renderer glides toward it. */
 export function shotAt(track: Track, timeline: Timeline, t: number, motion = true): Shot {
   const lanes = timeline.horses.length;
   if (!motion || t < WIDE_SECONDS) return wideShot(track, lanes);
@@ -70,7 +71,7 @@ export function shotAt(track: Track, timeline: Timeline, t: number, motion = tru
     };
   }
   const pack = order
-    .slice(0, 3)
+    .slice(0, FOLLOW_PACK)
     .map((h) => horsePoint(track, distance, progressAt(timeline, h, t), horses.indexOf(h)));
   const mean = (f: (p: Point) => number) => pack.reduce((sum, p) => sum + f(p), 0) / pack.length;
   // Fixed orientation like the 2D view: always from the north, so the oval reads as an oval.

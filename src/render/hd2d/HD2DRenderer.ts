@@ -62,6 +62,8 @@ export class HD2DRenderer implements RaceRenderer {
   private readonly p = new THREE.Vector3();
   private readonly q = new THREE.Vector3();
   private shot: Shot | null = null;
+  private tilt = 0;
+  private shadowHalf = 0;
   private boxes: (readonly BoxSpot[])[] = [];
   private grabs: number[][] = [];
   private boxAt: number[][] = [];
@@ -138,7 +140,7 @@ export class HD2DRenderer implements RaceRenderer {
     sun.shadow.mapSize.set(1024, 1024);
     sun.shadow.bias = -0.0005;
     const cam = sun.shadow.camera;
-    cam.near = 1; // the frustum is sized per shot kind in draw()
+    cam.near = 1; // the frustum follows the shot distance in draw()
     scene.add(sun, sun.target);
     this.sun = sun;
 
@@ -326,6 +328,8 @@ export class HD2DRenderer implements RaceRenderer {
     this.resize.observe(this.canvas);
 
     this.shot = null;
+    this.tilt = TILT_BLUR_PX.wide; // every race opens on the wide shot
+    this.shadowHalf = 0;
     this.motion = !(
       typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
     );
@@ -428,37 +432,37 @@ export class HD2DRenderer implements RaceRenderer {
     if (!camera || !post || !sun || !world || !preset || !fog) return;
     const d = timeline.distance;
 
-    // Hard cut when the shot kind changes; ease toward the target within a shot.
+    // Every shot parameter glides toward the target (reduced motion snaps).
     const want = shotAt(track, timeline, t, this.motion);
-    const prev = this.shot;
+    const prev = this.shot ?? want;
     const k = this.motion ? easeFor(dt) : 1;
-    const shot: Shot =
-      !prev || prev.kind !== want.kind
-        ? want
-        : {
-            ...want,
-            x: prev.x + (want.x - prev.x) * k,
-            y: prev.y + (want.y - prev.y) * k,
-            yaw:
-              prev.yaw +
-              Math.atan2(Math.sin(want.yaw - prev.yaw), Math.cos(want.yaw - prev.yaw)) * k,
-          };
+    const shot: Shot = {
+      ...want,
+      x: prev.x + (want.x - prev.x) * k,
+      y: prev.y + (want.y - prev.y) * k,
+      distance: prev.distance + (want.distance - prev.distance) * k,
+      pitch: prev.pitch + (want.pitch - prev.pitch) * k,
+      yaw: prev.yaw + Math.atan2(Math.sin(want.yaw - prev.yaw), Math.cos(want.yaw - prev.yaw)) * k,
+    };
     this.shot = shot;
     const pos = cameraPosition(shot);
     camera.position.set(pos.x, pos.y, pos.z);
     camera.lookAt(shot.x, 0, shot.y);
-    post.setTilt(TILT_BLUR_PX[shot.kind]);
+    this.tilt += (TILT_BLUR_PX[want.kind] - this.tilt) * k;
+    post.setTilt(this.tilt);
     fog.near = shot.distance * 1.2;
     fog.far = shot.distance * 4;
     const tx = shot.x;
     const ty = shot.y;
     const yaw = shot.yaw;
-    if (shot.kind !== prev?.kind) {
-      const half = shot.kind === 'wide' ? 450 : 60;
+    // Shadow box scales with the eased distance; rebuild its matrix only on a visible change.
+    const half = Math.min(450, Math.max(60, shot.distance * 0.6));
+    if (Math.abs(half - this.shadowHalf) > 1) {
+      this.shadowHalf = half;
       const cam = sun.shadow.camera;
       cam.left = cam.bottom = -half;
       cam.right = cam.top = half;
-      cam.far = shot.kind === 'wide' ? 1200 : 500;
+      cam.far = Math.min(1200, Math.max(500, shot.distance * 2.5));
       cam.updateProjectionMatrix();
     }
 

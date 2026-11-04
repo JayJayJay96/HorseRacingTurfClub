@@ -2,11 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { fakeTimeline } from '../../sim/testTimeline.ts';
 import { FINISH_SHOT_METRES } from '../camera.ts';
 import { TRACK, horsePoint } from '../track.ts';
-import { FOLLOW_DISTANCE_SCALE, LOOK_PAST_M, PITCH_DEG, distanceForScale } from './look.ts';
+import {
+  FOLLOW_DISTANCE_SCALE,
+  FOLLOW_PACK,
+  LOOK_PAST_M,
+  PITCH_DEG,
+  distanceForScale,
+} from './look.ts';
 import { WIDE_SECONDS, cameraPosition, shotAt } from './shots.ts';
 
 describe('shotAt', () => {
-  const speeds = { a: 10, b: 9, c: 8, d: 7 };
+  const speeds = { a: 10, b: 9, c: 8, d: 7, e: 6, f: 5 };
   const tl = fakeTimeline(speeds, 1000);
 
   it('is wide during the countdown, the first 2 s, and always with reduced motion', () => {
@@ -15,15 +21,16 @@ describe('shotAt', () => {
     expect(shotAt(TRACK, tl, 30, false).kind).toBe('wide');
   });
 
-  it('chases the plain top-3 centroid from the follow distance and pitch', () => {
+  it('chases the plain top-5 centroid from the follow distance and pitch', () => {
     const t = 30;
     const shot = shotAt(TRACK, tl, t);
-    const pts = [speeds.a, speeds.b, speeds.c].map((v, lane) =>
-      horsePoint(TRACK, 1000, v * t, lane),
-    );
+    const pts = Object.values(speeds)
+      .slice(0, FOLLOW_PACK)
+      .map((v, lane) => horsePoint(TRACK, 1000, v * t, lane));
+    expect(pts).toHaveLength(5);
     expect(shot.kind).toBe('chase');
-    expect(shot.x).toBeCloseTo((pts[0]!.x + pts[1]!.x + pts[2]!.x) / 3);
-    expect(shot.y).toBeCloseTo((pts[0]!.y + pts[1]!.y + pts[2]!.y) / 3);
+    expect(shot.x).toBeCloseTo(pts.reduce((s, p) => s + p.x, 0) / 5);
+    expect(shot.y).toBeCloseTo(pts.reduce((s, p) => s + p.y, 0) / 5);
     expect(shot.distance).toBeCloseTo(distanceForScale() * FOLLOW_DISTANCE_SCALE);
     expect(PITCH_DEG.chase).toBe(50);
     expect(shot.pitch).toBeCloseTo((PITCH_DEG.chase * Math.PI) / 180);
@@ -53,7 +60,7 @@ describe('shotAt', () => {
     expect(shotAt(TRACK, tl, (1000 - FINISH_SHOT_METRES) / 10).kind).toBe('finish');
     const shot = shotAt(TRACK, tl, 500);
     expect(shot.kind).toBe('finish');
-    const f = horsePoint(TRACK, 1000, 1000, (4 - 1) / 2);
+    const f = horsePoint(TRACK, 1000, 1000, (6 - 1) / 2);
     expect(Math.hypot(shot.x - f.x, shot.y - f.y)).toBeCloseTo(LOOK_PAST_M);
   });
 

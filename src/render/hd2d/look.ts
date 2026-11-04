@@ -13,6 +13,8 @@ export const FOV_DEG = 25;
 /** Ground texture tile, in pixels and metres. */
 export const TILE_PX = 32;
 export const TILE_M = TILE_PX * PIXEL_M;
+/** The chase camera follows the centroid of this many leaders (fewer if fewer race). */
+export const FOLLOW_PACK = 5;
 /** Camera pitch below horizontal per shot, degrees (Look target 3). */
 export const PITCH_DEG = { wide: 50, chase: 50, finish: 28 } as const;
 /** The chase (follow) shot sits this much farther than the pixel-target distance. */

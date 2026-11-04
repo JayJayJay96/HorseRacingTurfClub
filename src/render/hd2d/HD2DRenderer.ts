@@ -15,6 +15,7 @@ import {
 import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
+import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
 import { PARTICLES, activeAt, effectsOf, particlesOf, type Effect } from './effects.ts';
 import { presetById, presetOf, type Preset, type PresetId } from './lighting.ts';
 import { FOV_DEG, easeFor, PIXEL_M, TILT_BLUR_PX } from './look.ts';
@@ -71,6 +72,9 @@ export class HD2DRenderer implements RaceRenderer {
   private effects: Effect[] = [];
   private fxPoints: THREE.Points | null = null;
   private readonly fxCol = new THREE.Color();
+  private readonly tint = new THREE.Color();
+  private motes: THREE.Points | null = null;
+  private confetti: THREE.Points | null = null;
   private hud: {
     scene: THREE.Scene;
     camera: THREE.OrthographicCamera;
@@ -252,6 +256,33 @@ export class HD2DRenderer implements RaceRenderer {
       }),
     );
     scene.add(this.fxPoints);
+
+    const pointsOf = (n: number, material: THREE.PointsMaterial) => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+      const pts = new THREE.Points(g, material);
+      scene.add(pts);
+      return pts;
+    };
+    this.motes = pointsOf(
+      MOTES,
+      new THREE.PointsMaterial({
+        size: preset.motes === 'fireflies' ? 0.25 : 0.15,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+      }),
+    );
+    this.confetti = pointsOf(CONFETTI, new THREE.PointsMaterial({ size: 0.3, vertexColors: true }));
+    if (preset.floodlights) {
+      // Warm fill over the home straight so night sprites pick up floodlight colour.
+      for (const x of [-60, 60]) {
+        const fill = new THREE.PointLight('#ffe9b0', 1.2, 0, 0);
+        fill.position.set(x, 25, world.finishTop.z - 10);
+        scene.add(fill);
+      }
+    }
 
     // Countdown / GO! in a screen-space overlay drawn after the post stack.
     const hudScene = new THREE.Scene();
@@ -537,6 +568,44 @@ export class HD2DRenderer implements RaceRenderer {
       colAttr.needsUpdate = true;
     }
 
+    // Crowd bob in whole texels; motes near the action; confetti after the first finish.
+    world.crowd.forEach((row, i) => {
+      const bob = this.motion ? Math.round(Math.sin(t * 6 + i * 1.3)) * PIXEL_M : 0;
+      row.position.y = (row.userData.baseY as number) + bob;
+    });
+    const tint = this.tint;
+    if (this.motes) {
+      const pos = this.motes.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const colAttr = this.motes.geometry.getAttribute('color') as THREE.BufferAttribute;
+      const hex = preset.motes === 'fireflies' ? '#d4ff6a' : '#fff3c4';
+      for (let i = 0; i < MOTES; i++) {
+        const mo = moteAt(this.motion ? t : 0, preset.motes, i);
+        pos.setXYZ(i, tx + mo.x, mo.y, ty + mo.z);
+        tint.set(hex).multiplyScalar(mo.alpha * 1.5);
+        colAttr.setXYZ(i, tint.r, tint.g, tint.b);
+      }
+      pos.needsUpdate = true;
+      colAttr.needsUpdate = true;
+    }
+    if (this.confetti) {
+      const age = t - Math.min(...Object.values(timeline.finishTimes));
+      const visible = age >= 0 && age < CONFETTI_SECONDS;
+      this.confetti.visible = visible;
+      if (visible) {
+        const pos = this.confetti.geometry.getAttribute('position') as THREE.BufferAttribute;
+        const colAttr = this.confetti.geometry.getAttribute('color') as THREE.BufferAttribute;
+        const top = world.finishTop;
+        for (let i = 0; i < CONFETTI; i++) {
+          const cp = confettiAt(age, i);
+          pos.setXYZ(i, top.x + cp.x, top.y + cp.y, top.z + cp.z);
+          tint.set(cp.color).multiplyScalar(cp.alpha);
+          colAttr.setXYZ(i, tint.r, tint.g, tint.b);
+        }
+        pos.needsUpdate = true;
+        colAttr.needsUpdate = true;
+      }
+    }
+
     post.composer.render();
     // Countdown, then GO!, over the post stack.
     if (t < 1 && this.hud && this.renderer) {
@@ -564,6 +633,8 @@ export class HD2DRenderer implements RaceRenderer {
     this.boxMesh = null;
     this.trails = null;
     this.fxPoints = null;
+    this.motes = null;
+    this.confetti = null;
     this.effects = [];
     this.badges = [];
     this.labels = [];

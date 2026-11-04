@@ -89,7 +89,7 @@ LOBBY → SHOP → ODDS_LOCKED → BETTING → RUNNING → PODIUM → LOBBY
 - Tick 10 Hz. Position = **progress distance** along the centreline (lanes are visual; inner/outer equal).
 - **Length option** (host, lobby): **Short ≈ 2:00** (≈1.5 laps) or **Long ≈ 3:00** (≈2 laps). The finish is in front of the stands. Same base speed; only distance changes.
 - Pace = base × (1 + smooth noise ±6%) × active item modifiers. Each horse gets one random finishing kick (2–5 s burst) in the last 20%.
-- **Boxes:** each lane has **5 mystery boxes + up to 3 bought boxes**, spread over the race distance at seed-chosen spots (shown before the start). A horse picks up only boxes in its own lane, and items **fire automatically on pickup**.
+- **Boxes:** each lane has **8 mystery boxes on a Short race, 12 on a Long one (about 4 a minute; owner 2026-11-04), + up to 3 bought boxes**, spread over 5-95% of the race distance at seed-chosen spots (shown before the start). A horse picks up only boxes in its own lane, and items **fire automatically on pickup**.
 - Defense items don't stack: one held at a time, and a new one replaces the old.
 - Every race must finish: every effect is time-limited, and the engine throws if a race runs past 3× its nominal length.
 

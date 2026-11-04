@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { blendHistory, ODDS, priceOdds, simulateOdds } from './odds.ts';
+import { blendHistory, ODDS, priceOdds, simulateOdds, simulateShares } from './odds.ts';
 import { createSeededRng } from './rng.ts';
 
 const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `h${i}`);
@@ -17,6 +17,20 @@ describe('priceOdds', () => {
     [0.05, ODDS.place, 6],
   ])('p=%s', (p, range, expected) => {
     expect(priceOdds(p, range)).toBe(expected);
+  });
+});
+
+describe('simulateShares', () => {
+  it('counts one winner and three top-3 finishers per run', () => {
+    const horses = ids(5);
+    const { wins, top3, sims } = simulateShares(
+      { horses, bought: { h0: ['speed'] }, length: 'short' },
+      createSeededRng(3),
+      frozenClock,
+    );
+    const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
+    expect(sum(wins)).toBe(sims);
+    expect(sum(top3)).toBe(3 * sims);
   });
 });
 

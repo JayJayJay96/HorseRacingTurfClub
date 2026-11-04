@@ -177,3 +177,51 @@ describe('place_bet and cancel_bet', () => {
     expect(await fails(r.ali.client.rpc('cancel_bet', { p_bet: aliPlace.id }))).toBe('wrong_phase');
   });
 });
+
+describe('back to the shop', () => {
+  it('refunds bets and clears the odds; boxes stay and the race can be re-priced', async () => {
+    const r = await shopRoom();
+    await ok(r.ali.client.rpc('buy_box', { p_room: r.room.id, p_box: 'attack' }));
+    await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+    await ok(adminClient().rpc('lock_odds_finish', { p_race: r.raceId, p_odds: fixtureOdds(r) }));
+    await ok(
+      r.cal.client.rpc('place_bet', {
+        p_room: r.room.id,
+        p_horse: r.bea.player.id,
+        p_kind: 'win',
+        p_stake: 30,
+      }),
+    );
+
+    const room = await ok(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }));
+    expect(room).toMatchObject({ phase: 'SHOP', race_id: r.raceId });
+    expect(await balance(r.cal.client, r.raceId, r.cal.player.id)).toBe(100);
+    expect(await balance(r.ali.client, r.raceId, r.ali.player.id)).toBe(100 - PRICES.attack);
+    expect(await ok(adminClient().from('bets').select('id').eq('race_id', r.raceId))).toEqual([]);
+    const [race] = await ok(adminClient().from('races').select('horses, odds').eq('id', r.raceId));
+    expect(race).toEqual({ horses: [], odds: null });
+
+    // The shop works again, and Lock odds prices the new field.
+    await ok(r.ali.client.rpc('buy_box', { p_room: r.room.id, p_box: 'speed' }));
+    await ok(r.host.rpc('lock_odds_begin', { p_room: r.room.id }));
+  });
+
+  it('is only for the host, and not once the race runs', async () => {
+    const r = await bettingRoom();
+    expect(await fails(r.ali.client.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }))).toBe(
+      'not_host',
+    );
+    await ok(
+      adminClient().rpc('start_race_finish', {
+        p_race: r.raceId,
+        p_timeline: {},
+        p_finish: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
+        p_seconds: 60,
+        p_awards: {},
+      }),
+    );
+    expect(await fails(r.host.rpc('set_phase', { p_room: r.room.id, p_phase: 'SHOP' }))).toBe(
+      'bad_transition',
+    );
+  });
+});

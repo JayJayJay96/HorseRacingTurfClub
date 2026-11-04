@@ -50,10 +50,25 @@ main {
   gap: 8px;
 }
 .roster li {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+}
+/* The tick's label covers the whole card, so a tap anywhere toggles it; Remove sits above. */
+.roster label {
+  cursor: pointer;
+}
+.roster label::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.roster input,
+.roster .remove {
+  position: relative;
+  z-index: 1;
 }
 .roster .remove {
   margin-left: auto;
@@ -62,6 +77,11 @@ main {
 /* Danger red is 4.2:1 on --raised; the darker hover keeps it above 4.5:1. */
 .roster .remove:hover {
   background: var(--edge);
+}
+/* The horse emoji faces left; the race runs to the right. */
+.face-right {
+  display: inline-block;
+  transform: scaleX(-1);
 }
 .open-shop {
   text-align: right;

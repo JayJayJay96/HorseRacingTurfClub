@@ -47,6 +47,7 @@ import { podiumLine } from '../audio/commentator.ts';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
+import { useChances } from './useChances.ts';
 
 type Act = (fn: () => Promise<unknown>) => void;
 type BoardProps = RoomState & { online: ReadonlySet<string>; act: Act; busy: boolean };
@@ -190,6 +191,21 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
         <h2>
           Roster ({ticked}/{MAX_HORSES} racing)
         </h2>
+        {/* Above the roster, so new names don't push it down. */}
+        {!office && (
+          <form onSubmit={add}>
+            <input
+              aria-label="Name"
+              placeholder="Add a name (no phone)"
+              value={name}
+              maxLength={24}
+              onChange={(e) => setName(e.target.value)}
+            />{' '}
+            <button type="submit" disabled={!name.trim()}>
+              Add
+            </button>
+          </form>
+        )}
         <ul className="roster">
           {players.map((p) => (
             <li key={p.id} className="card">
@@ -221,24 +237,11 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
             </li>
           ))}
         </ul>
-        {office ? (
+        {office && (
           <p>
             People, PINs and coins are managed at <a href="/admin">/admin</a>. History:{' '}
             <a href="/stats">Stats</a>.
           </p>
-        ) : (
-          <form onSubmit={add}>
-            <input
-              aria-label="Name"
-              placeholder="Add a name (no phone)"
-              value={name}
-              maxLength={24}
-              onChange={(e) => setName(e.target.value)}
-            />{' '}
-            <button type="submit" disabled={!name.trim()}>
-              Add
-            </button>
-          </form>
         )}
         <p className="open-shop">
           <button
@@ -269,7 +272,18 @@ function ReadyLine({ players }: { players: RoomPlayer[] }) {
   );
 }
 
+const percent = (p: number | undefined) => (p === undefined ? '…' : `${Math.round(p * 100)}%`);
+
 function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) {
+  const racing = players.filter((p) => p.ticked);
+  const ids = racing.map((p) => p.id);
+  const chances = useChances({
+    horses: ids,
+    bought: Object.fromEntries(ids.map((id) => [id, boxesOf(purchases, id)])),
+    length: room.race_length as RaceLength,
+  });
+  const office = room.kind === 'office';
+  const { stats } = useOfficeStats(room.race_id, office);
   return (
     <section>
       <h1>Shop open · room {room.code}</h1>
@@ -284,23 +298,38 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
             <tr>
               <th>Horse</th>
               <th>Boxes</th>
+              <th>Win chance</th>
+              {canPlace(ids) && <th>Top 3 chance</th>}
+              {office && <th>Form</th>}
             </tr>
           </thead>
           <tbody>
-            {players
-              .filter((p) => p.ticked)
-              .map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    🐎 {horseName(p)}
-                    {p.uid && !online.has(p.id) && ' (offline)'}
-                  </td>
-                  <td>{boxIcons(purchases, p.id)}</td>
-                </tr>
-              ))}
+            {racing.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <span className="face-right" aria-hidden="true">
+                    🐎
+                  </span>{' '}
+                  {horseName(p)}
+                  {p.uid && !online.has(p.id) && ' (offline)'}
+                </td>
+                <td>{boxIcons(purchases, p.id)}</td>
+                <td className="pixel">{percent(chances?.win[p.id])}</td>
+                {canPlace(ids) && <td className="pixel">{percent(chances?.top3[p.id])}</td>}
+                {office && (
+                  <td>{formatForm(stats?.horses.find((h) => h.id === p.id)?.last5 ?? [])}</td>
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
+      <p>
+        <small>
+          Chances from {chances?.sims ?? '…'} simulated races with these boxes. Luck still counts: a
+          horse with no boxes often makes the top 3.
+        </small>
+      </p>
       <p>
         <button type="button" disabled={busy} onClick={() => act(() => setPhase(room.id, 'LOBBY'))}>
           Back to lobby (cancels purchases)
@@ -383,6 +412,9 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
         onClick={() => act(() => startRace(room.id))}
       >
         Start race
+      </button>{' '}
+      <button type="button" disabled={busy} onClick={() => act(() => setPhase(room.id, 'SHOP'))}>
+        Back to shop (refunds bets)
       </button>{' '}
       <CancelRace room={room} act={act} busy={busy} />
     </section>

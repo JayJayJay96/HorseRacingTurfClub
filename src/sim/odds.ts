@@ -52,16 +52,14 @@ export function priceOdds(p: number, range: OddsRange): number {
 }
 
 /**
- * Win/Place odds from repeated runs of this exact field, bought boxes and length.
- * Each run has a fresh seed, so box spots vary between runs. Office races pass `history`
- * (spec §7): horses missing from it count as having no past races.
+ * Finish counts from repeated runs of this exact field, bought boxes and length: how often each
+ * horse won and finished top 3. Each run has a fresh seed, so box spots vary between runs.
  */
-export function simulateOdds(
+export function simulateShares(
   race: Omit<RaceInput, 'seed'>,
   rng: Rng,
   now: () => number = () => performance.now(),
-  history?: Readonly<Record<HorseId, HorseHistory>>,
-): { odds: Record<HorseId, OddsLine>; sims: number } {
+): { wins: Map<HorseId, number>; top3: Map<HorseId, number>; sims: number } {
   const wins = new Map(race.horses.map((h) => [h, 0]));
   const top3 = new Map(race.horses.map((h) => [h, 0]));
   const start = now();
@@ -72,6 +70,20 @@ export function simulateOdds(
     for (const h of finishOrder.slice(0, 3)) top3.set(h, top3.get(h)! + 1);
     sims++;
   }
+  return { wins, top3, sims };
+}
+
+/**
+ * Win/Place odds from `simulateShares`. Office races pass `history` (spec §7): horses missing
+ * from it count as having no past races.
+ */
+export function simulateOdds(
+  race: Omit<RaceInput, 'seed'>,
+  rng: Rng,
+  now: () => number = () => performance.now(),
+  history?: Readonly<Record<HorseId, HorseHistory>>,
+): { odds: Record<HorseId, OddsLine>; sims: number } {
+  const { wins, top3, sims } = simulateShares(race, rng, now);
   const n = race.horses.length;
   const blend = (h: HorseId, p: number, hits: (s: HorseHistory) => number, share: number) => {
     if (!history) return p;

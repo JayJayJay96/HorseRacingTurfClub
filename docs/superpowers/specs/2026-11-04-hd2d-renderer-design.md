@@ -63,10 +63,10 @@ Same timing as today's `cameraAt`:
 | Race time | Shot |
 |---|---|
 | first 2 s | **Wide:** high diorama over the whole track |
-| until the leader is 60 m from the finish | **Chase:** a following diorama shot, ~12–15 m high and pitched down ~30–40°, outside the rail beside the top 3; eases within the shot (never at ground level) |
-| from then on | **Finish:** side-on at the finish line from the stands |
+| until the leader is 60 m from the finish | **Chase:** a following diorama shot pitched down ~35°, beside the top 3; its distance is fitted to Look target 2 (~80 m at a 25° FOV); eases within the shot (never at ground level) |
+| from then on | **Finish:** side-on at the finish line, looking across the track at the stands |
 
-Cuts between shots are hard. Reduced motion holds the wide shot (no cuts, no crowd bob).
+Every shot sits on the infield side looking outward, so the stands, crowd and scenery are the backdrop. Cuts between shots are hard. Reduced motion holds the wide shot (no cuts, no crowd bob).
 
 ### Post-processing
 

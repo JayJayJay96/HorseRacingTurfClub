@@ -21,6 +21,8 @@ test.afterAll(async () => {
 test('private race: 3 phones, reload mid-race, podium matches phones', async ({ browser }) => {
   test.setTimeout(6 * 60_000);
   const screen = await (await browser.newContext()).newPage();
+  const pageErrors: Error[] = [];
+  screen.on('pageerror', (e) => pageErrors.push(e));
   await screen.goto('/');
   await screen.getByRole('button', { name: 'Host a race (big screen)' }).click();
   await expect(screen).toHaveURL(/\/track\?code=/);
@@ -50,6 +52,8 @@ test('private race: 3 phones, reload mid-race, podium matches phones', async ({ 
   await screen.getByRole('button', { name: 'Start race' }).click();
   const raceView = screen.getByRole('img', { name: /race, 3 horses/ });
   await expect(raceView).toBeVisible();
+  // HD-2D runs where WebGL2 exists (headless Chromium has it); otherwise the chip says so.
+  await expect(screen.getByRole('button', { name: /^HD/ })).toBeVisible();
   const before = await roomByCode(code);
   expect(before.phase).toBe('RUNNING');
 
@@ -81,4 +85,5 @@ test('private race: 3 phones, reload mid-race, podium matches phones', async ({ 
     fromPhones[place - 1] = names[i]!;
   }
   expect(podium).toEqual(fromPhones);
+  expect(pageErrors).toEqual([]);
 });

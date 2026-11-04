@@ -331,4 +331,19 @@
 - Not verified: the music by ear, a real phone or TV.
 - Before or during Phase 8: the main JS chunk is 547 KB, so lazy-load the Three.js renderer; `RaceView` always creates `Pixel2DRenderer` and `RaceRenderer` lives in that file.
 
-Next: Phase 8 (HD-2D renderer).
+## Phase 8 — HD-2D renderer (branch `phase8-hd2d`)
+
+- Built per `docs/superpowers/plans/2026-11-04-phase8-hd2d.md` (spec `docs/superpowers/specs/2026-11-04-hd2d-renderer-design.md`). No database, Edge Function or sim changes.
+- Three.js r187, lazy-loaded only when the HD view starts; phones and the 2D view never download it.
+- Look: pixel-art textures and code-drawn sprites at one texel size, high narrow camera on the infield side, lit billboards with sun shadows, tilt-shift + bloom + grade/vignette; approved values in the spec.
+- Shots: wide 2 s → chase → side-on finish, hard cuts; reduced motion holds wide.
+- Lighting from `seed % 3`: afternoon, sunset (light shafts), night (floodlights, fireflies).
+- Six item-family effects, motes, confetti, crowd bob; boxes, items, popups, badges and trails follow the 2D rules.
+- HD by default; "HD" chip per browser (`hrtc.render`); falls back to 2D on no WebGL2, a failed import, a `play()` error or context loss, at the same race time.
+- Deviations from the spec: the sun and cameras sit on the infield side, so the stands are the backdrop; chase and finish shots aim `LOOK_PAST_M` (12 m) past the pack; camera easing is frame-rate independent (`EASE` is the 60 fps value); shadows use `PCFShadowMap` because r187 dropped `PCFSoftShadowMap`; the GL context is released only after the canvas has left the page (StrictMode's simulated unmount reuses the same canvas).
+- Fallback checks (headless Chromium, `/sandbox`): `hrtc.render=2d` shows the 640×360 2D canvas with the chip unpressed, and the chip brings up the `hd` canvas; `loseContext()` during an HD race gives one "HD-2D unavailable" warning, a 2D canvas, and a disabled "HD unavailable" chip; 10 back-to-back races: JS heap 31.8 MB after the 1st, 34.2 MB after the 10th (+2.4 MB, forced GC).
+- Checks: typecheck, lint, `npm test` 206 pass (35 files), `npm run test:e2e` 6/6 (the full run failed the lobby a11y test once on a roster realtime update that never arrived, the same flake as `realtime.test.ts`; it passes on re-run and the private-race spec passed with the HD chip and no page errors); build: HD chunk 589.91 kB (148.15 kB gzip), main chunk 552.03 kB (+4.5 kB from 547.55 kB). Nine screenshots (3 tracks × 3 lights) in `docs/hd2d-screens/`.
+- Frame time, 22 horses, long race, about 25 s in: 125.9 ms/frame on headless software GL (SwiftShader, CPU), not representative; the 16.7 ms target is unmeasured on a real GPU.
+- Not verified: a real TV, a real office laptop GPU.
+
+Next: owner review of Phase 8 on a real TV.

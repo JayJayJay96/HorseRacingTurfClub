@@ -98,6 +98,24 @@ export function drawHorse(
     } else if (colors.pattern === 'pattern:stars') {
       px(bx, by + 1, 1, 1, ink);
       px(bx + bw - 1, by + bh - 1, 1, 1, ink);
+    } else if (colors.pattern === 'pattern:chevrons') {
+      for (let i = 0; i < bw; i++) px(bx + i, by + 1 + Math.min(i, bw - 1 - i), 1, 1, ink);
+    } else if (colors.pattern === 'pattern:quarters') {
+      const hw = Math.ceil(bw / 2);
+      const hh = Math.ceil(bh / 2);
+      px(bx, by, hw, hh, ink);
+      px(bx + hw, by + hh, bw - hw, bh - hh, ink);
+    } else if (colors.pattern === 'pattern:dots') {
+      for (let r = 1; r < bh; r += 2) {
+        for (let c = (r >> 1) % 2; c < bw; c += 2) px(bx + c, by + r, 1, 1, ink);
+      }
+    } else if (colors.pattern === 'pattern:lightning') {
+      // Gold bolt on dark silks, the contrast ink on light ones (gold would vanish on yellow).
+      const bolt = ink === '#ffffff' ? '#ffd54f' : ink;
+      px(bx + bw - 1, by, 1, 1, bolt);
+      px(bx + 1, by + 1, bw - 1, 1, bolt);
+      px(bx, by + 2, bw - 1, 1, bolt);
+      if (bh > 3) px(bx, by + 3, 1, 1, bolt);
     }
   }
   ctx.restore();

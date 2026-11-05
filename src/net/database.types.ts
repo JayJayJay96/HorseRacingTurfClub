@@ -325,6 +325,7 @@ export type Database = {
           room_id: string;
           started_at: string | null;
           track: string;
+          weather: string;
         };
         ComputedFields: never;
         Insert: {
@@ -339,6 +340,7 @@ export type Database = {
           room_id: string;
           started_at?: string | null;
           track?: string;
+          weather?: string;
         };
         Update: {
           created_at?: string;
@@ -352,6 +354,7 @@ export type Database = {
           room_id?: string;
           started_at?: string | null;
           track?: string;
+          weather?: string;
         };
         Relationships: [
           {
@@ -433,6 +436,7 @@ export type Database = {
           race_id: string | null;
           race_length: string;
           track: string;
+          weather_enabled: boolean;
         };
         ComputedFields: never;
         Insert: {
@@ -447,6 +451,7 @@ export type Database = {
           race_id?: string | null;
           race_length?: string;
           track?: string;
+          weather_enabled?: boolean;
         };
         Update: {
           code?: string;
@@ -460,6 +465,7 @@ export type Database = {
           race_id?: string | null;
           race_length?: string;
           track?: string;
+          weather_enabled?: boolean;
         };
         Relationships: [
           {
@@ -559,6 +565,7 @@ export type Database = {
         };
       };
       admin_reset_pin: { Args: { p_pin: string; p_player: string }; Returns: undefined };
+      admin_set_weather: { Args: { p_on: boolean }; Returns: undefined };
       buy_box: {
         Args: { p_box: string; p_room: string };
         Returns: {
@@ -594,6 +601,7 @@ export type Database = {
           race_id: string | null;
           race_length: string;
           track: string;
+          weather_enabled: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -640,6 +648,7 @@ export type Database = {
           race_id: string | null;
           race_length: string;
           track: string;
+          weather_enabled: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -673,7 +682,10 @@ export type Database = {
         };
       };
       lock_odds_begin: { Args: { p_room: string }; Returns: Json };
-      lock_odds_finish: { Args: { p_odds: Json; p_race: string }; Returns: undefined };
+      lock_odds_finish: {
+        Args: { p_odds: Json; p_race: string; p_weather?: string };
+        Returns: undefined;
+      };
       office_login: { Args: { p_pin: string; p_player: string }; Returns: Json };
       office_logout: { Args: { p_room: string }; Returns: undefined };
       office_roster: {
@@ -760,6 +772,7 @@ export type Database = {
           race_id: string | null;
           race_length: string;
           track: string;
+          weather_enabled: boolean;
         };
         SetofOptions: {
           from: '*';
@@ -795,6 +808,7 @@ export type Database = {
           race_id: string | null;
           race_length: string;
           track: string;
+          weather_enabled: boolean;
         };
         SetofOptions: {
           from: '*';

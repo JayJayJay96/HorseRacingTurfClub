@@ -12,6 +12,8 @@ describe('lock_odds', () => {
     expect(input).toEqual({
       race_id: r.raceId,
       length: 'short',
+      weather: 'clear',
+      weather_enabled: true,
       horses: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
       bought: {},
       history: null,

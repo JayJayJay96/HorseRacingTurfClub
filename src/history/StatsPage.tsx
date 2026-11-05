@@ -72,6 +72,7 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
     const m = byId.get(id);
     return m ? horseName(m) : '?';
   };
+  // Stats don't know a past race's lanes, so these are roster-position colours (accepted).
   const tint = (id: string) => horseColors(stats.members, [], id);
   const board = (title: string, rows: Ranked[]) => (
     <section className="panel">

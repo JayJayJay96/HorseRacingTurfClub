@@ -260,9 +260,22 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         {room.prize && ` · Prize: ${room.prize}`}
       </p>
       <WeatherBadge weather={state.race?.weather} />
-      <HotStrip hot={state.race?.hot_items} />
+      {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
+        <HotStrip hot={state.race?.hot_items} />
+      )}
       {room.phase === 'LOBBY' && (
-        <p>{mine.ticked ? "You're racing today! 🐎" : 'Waiting for the host to tick you in.'}</p>
+        <section className="panel lobby-card">
+          <HorseSprite
+            colors={horseColors(state.players, state.race?.horses ?? [], mine.id)}
+            size="lg"
+          />
+          <p className="lobby-name">{mine.name}</p>
+          <p>
+            {mine.ticked
+              ? "You're racing today! Waiting for the host to open the shop."
+              : 'Waiting for the host to tick you in.'}
+          </p>
+        </section>
       )}
       {room.kind === 'office' && room.phase === 'LOBBY' && (
         <>
@@ -577,7 +590,7 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
       </p>
       {lane >= 0 && (
         <p className="you">
-          You're #{lane + 1}
+          {`#${lane + 1} ${mine.name}`}
           {t >= 0 && ` · ${ordinal(order.indexOf(mine.id) + 1)}`}
         </p>
       )}

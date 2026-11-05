@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { soundEngine } from '../audio/sound.ts';
 
 export const PHASE_BANNER: Readonly<Record<string, string>> = {
@@ -10,16 +11,19 @@ export const PHASE_BANNER: Readonly<Record<string, string>> = {
 };
 const SHOW_MS = 1200;
 
-/** Banner text for a phase change; null when nothing changed or for the lobby. */
-export const bannerText = (prev: string, next: string): string | null =>
-  prev === next ? null : (PHASE_BANNER[next] ?? null);
+/**
+ * Banner text for a phase change; null on mount (`prev` null), when nothing changed, or for the
+ * lobby. Each change compares against the last phase seen, so A to B to C shows C's banner.
+ */
+export const bannerText = (prev: string | null, next: string): string | null =>
+  prev === null || prev === next ? null : (PHASE_BANNER[next] ?? null);
 
 /**
  * A pixel band across the screen when `phase` changes after mount (spec 2026-11-05 polish section 3),
  * with the `phase` sting. aria-hidden: the live regions already announce phase changes.
  */
 export function PhaseBanner({ phase }: { phase: string }) {
-  const prev = useRef(phase);
+  const prev = useRef<string | null>(null);
   const [shown, setShown] = useState<{ text: string; n: number } | null>(null);
   useEffect(() => {
     const text = bannerText(prev.current, phase);
@@ -39,11 +43,14 @@ export function PhaseBanner({ phase }: { phase: string }) {
     return () => clearTimeout(timer);
   }, [shown]);
   if (!shown) return null;
-  return (
+  const layer = (
     <div className="phase-layer" aria-hidden="true">
       <div key={shown.n} className="phase-banner">
         <span>{shown.text}</span>
       </div>
     </div>
   );
+  // In fullscreen only that element (and its children) is drawn, so show the banner inside it.
+  const host = document.fullscreenElement;
+  return host ? createPortal(layer, host) : layer;
 }

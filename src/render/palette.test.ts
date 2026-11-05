@@ -69,6 +69,21 @@ describe('horseColors', () => {
     );
     expect(horseColors(players, [], 'x')).toEqual(colorsOf(0));
   });
+  it('joined_at is compared as text, so microseconds count', () => {
+    const p = (id: string, joined_at: string) => ({
+      id,
+      joined_at,
+      ticked: true,
+      coat: null,
+      silk: null,
+    });
+    const roster = [
+      p('a', '2026-01-01T00:00:00.000002+00:00'),
+      p('b', '2026-01-01T00:00:00.000001+00:00'),
+    ];
+    expect(horseColors(roster, [], 'b')).toEqual(colorsOf(0));
+    expect(horseColors(roster, [], 'a')).toEqual(colorsOf(1));
+  });
   it('before odds lock a ticked horse gets the lane lock_odds_begin will give it', () => {
     const p = (id: string, joined_at: string, ticked: boolean) => ({
       id,

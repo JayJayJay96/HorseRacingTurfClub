@@ -70,10 +70,11 @@ export function horseColors(
 ): HorseColors {
   let lane = horses.indexOf(id);
   if (lane < 0 && players.find((p) => p.id === id)?.ticked) {
-    const t = (p: { joined_at?: string }) => Date.parse(p.joined_at ?? '') || 0;
+    // String order, like the database: timestamps keep their microseconds (Date.parse drops them).
+    const cmp = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
     lane = players
       .filter((p) => p.ticked)
-      .sort((a, b) => t(a) - t(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .sort((a, b) => cmp(a.joined_at ?? '', b.joined_at ?? '') || cmp(a.id, b.id))
       .findIndex((p) => p.id === id);
   }
   if (lane < 0) lane = Math.max(0, players.findIndex((p) => p.id === id));

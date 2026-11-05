@@ -9,6 +9,18 @@ main {
 }
 .play {
   max-width: 480px;
+  /* A column as tall as the screen, so the action bar rests at the bottom on short pages. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: 0;
+}
+.play > .action-bar {
+  margin-top: auto;
+}
+.play > :has(+ .action-bar) {
+  margin-bottom: 16px;
 }
 .lobby {
   display: grid;
@@ -288,7 +300,7 @@ button.primary {
   animation: cutin-band 1.3s linear both;
 }
 .race .cutin-portrait {
-  /* Not the race canvas: undo .race canvas (full width, turf background). */
+  /* Not the race canvas: undo .race-frame > canvas (full width, turf background). */
   flex: none;
   background: none;
   height: 90%;
@@ -690,16 +702,19 @@ a.button.primary {
   position: relative;
 }
 /* Horses stand on the steps: above the "1st" label, hooves on the step's top edge. */
+.podium li {
+  --hs: 4; /* sprite scale: 4x, the winner 6x */
+}
+.podium li:nth-child(1) {
+  --hs: 6;
+}
+.podium .horse-sprite {
+  --px: var(--hs);
+}
 .podium-horse {
   order: -1;
   line-height: 0;
-  margin-top: -104px; /* lg sprite 88px + the step's 16px padding */
-}
-.podium li:nth-child(1) .podium-horse {
-  margin-top: -148px; /* winner at 6x: 132px + 16px */
-}
-.podium li:nth-child(1) .horse-sprite {
-  --px: 6;
+  margin-top: calc(-22px * var(--hs) - 16px); /* sprite height + the step's 16px padding */
 }
 .podium-hop {
   transform-origin: 50% 100%;
@@ -882,4 +897,19 @@ a.button.primary {
 .play h2 {
   margin: 16px 0 8px;
   font-size: 1.25rem;
+}
+
+.lobby-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.lobby-card p {
+  margin: 0;
+}
+.lobby-name {
+  font-family: var(--font-pixel);
+  font-size: 1.5rem;
 }

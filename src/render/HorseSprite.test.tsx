@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { HorseSprite, paintHorse } from './HorseSprite.tsx';
+import { HorseSprite, paintHorse, sameColors } from './HorseSprite.tsx';
 import { colorsOf, contrastOf } from './palette.ts';
 
 /** Records what drawHorse paints: fill colours and each draw's x offset. */
@@ -72,5 +72,22 @@ describe('HorseSprite', () => {
       <HorseSprite colors={colorsOf(0)} size="lg" className="cutin-portrait" />,
     );
     expect(html).toContain('class="horse-sprite horse-sprite-lg cutin-portrait"');
+  });
+});
+
+describe('sameColors', () => {
+  const c = colorsOf(0);
+  it('equal colours, with null and undefined pattern alike', () => {
+    expect(sameColors(c, { ...c })).toBe(true);
+    expect(sameColors({ ...c, pattern: null }, c)).toBe(true);
+  });
+  it('a different coat, mane, silk or pattern is a change', () => {
+    expect(sameColors(c, { ...c, coat: '#000000' })).toBe(false);
+    expect(sameColors(c, { ...c, mane: '#000000' })).toBe(false);
+    expect(sameColors(c, { ...c, silk: '#000000' })).toBe(false);
+    expect(sameColors(c, { ...c, pattern: 'pattern:hoops' })).toBe(false);
+  });
+  it('the trail is not drawn, so it never triggers a redraw', () => {
+    expect(sameColors(c, { ...c, trail: 'trail:dust' })).toBe(true);
   });
 });

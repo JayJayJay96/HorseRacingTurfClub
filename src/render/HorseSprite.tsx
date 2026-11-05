@@ -61,7 +61,8 @@ function Sprite({ colors, size, animated = false, className }: Props) {
   );
 }
 
-const sameColors = (a: HorseColors, b: HorseColors) =>
+/** Colours that change what is drawn. `trail` is not drawn on a sprite, so it is ignored. */
+export const sameColors = (a: HorseColors, b: HorseColors) =>
   a.coat === b.coat &&
   a.mane === b.mane &&
   a.silk === b.silk &&

@@ -10,6 +10,18 @@ describe('bannerText', () => {
     expect(bannerText('BETTING', 'RUNNING')).toBe('🏁 RACE TIME!');
     expect(bannerText('RUNNING', 'PODIUM')).toBe('🏆 RESULTS!');
   });
+  it('nothing on mount (no previous phase)', () => {
+    expect(bannerText(null, 'BETTING')).toBeNull();
+  });
+  it('rapid A to B to C ends on the banner for C', () => {
+    let prev: string | null = null;
+    const shown: (string | null)[] = [];
+    for (const p of ['SHOP', 'ODDS_LOCKED', 'BETTING']) {
+      shown.push(bannerText(prev, p));
+      prev = p;
+    }
+    expect(shown).toEqual([null, '🔒 ODDS LOCKED', '💰 PLACE YOUR BETS!']);
+  });
   it('nothing for the lobby or a refetch with the same phase', () => {
     expect(bannerText('PODIUM', 'LOBBY')).toBeNull();
     expect(bannerText('SHOP', 'SHOP')).toBeNull();

@@ -76,8 +76,7 @@ export function effectsOf(events: readonly RaceEvent[], hot: readonly HotItem[] 
     if (e.type === 'pickup') {
       out.push({ kind: 'box', horse: e.horse, t0: e.t - ITEM_HOLD_SECONDS });
       if (e.item?.startsWith('speed:')) out.push({ kind: 'speed', horse: e.horse, t0: e.t });
-      if (e.item === 'speed:pass3')
-        out.push({ kind: 'stampede', horse: e.horse, t0: e.t, ...longer('stampede', e.item) });
+      if (e.item === 'speed:pass3') out.push({ kind: 'stampede', horse: e.horse, t0: e.t });
       if (e.item?.startsWith('dud:')) out.push({ kind: 'dud', horse: e.horse, t0: e.t });
       continue;
     }

@@ -12,10 +12,10 @@ export const LINES = {
   bump: ['Bonk! {a} and {b} bump in the fog!', '{a} and {b} knock shoulders!'],
   hot: ['Hot item! {h} grabs a {b} {i}!', '{h} picks up a hot one: {b} {i}!'],
   mudderRain: ['Mudder {h} loves this rain!', '{h} is a Mudder. Bring on the puddles!'],
-  tough: ['Tough {h} shrugs it off!', '{h} is Tough. That barely hurt!'],
+  tough: ['Tough {h} takes it better than most!', '{h} is Tough and handles that well.'],
   toughLasso: [
-    'Golden Lasso from {by}, but Tough {v} keeps moving!',
-    'Tough {v} drags the lasso along!',
+    'Golden Lasso from {by}, but Tough {v} digs in against the lasso!',
+    'Tough {v} digs in against the rope!',
   ],
   off: ["And they're off!", "The gates open and they're away!", 'Here we go! The race is on!'],
   lead: [

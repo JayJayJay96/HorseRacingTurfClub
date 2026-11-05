@@ -16,6 +16,10 @@ export const HOT_LUCKY_ONLY: readonly ItemCode[] = [
   'defense:reflect',
 ];
 
+/** Whether `item` can be Extended: it has a duration and is not Lucky-only. */
+export const canBeExtended = (item: ItemCode): boolean =>
+  EFFECTS[item].seconds > 0 && !HOT_LUCKY_ONLY.includes(item);
+
 /** The race's buff on `item`, if it is hot. */
 export const buffOf = (hot: readonly HotItem[], item: ItemCode | null): HotBuff | undefined =>
   item ? hot.find((x) => x.item === item)?.buff : undefined;

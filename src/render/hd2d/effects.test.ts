@@ -139,20 +139,15 @@ describe('weather effects', () => {
 
 describe('Extended hot items on screen', () => {
   const events: RaceEvent[] = [
-    { t: 5, type: 'pickup', horse: 'a', kind: 'mystery', item: 'speed:pass3', hot: 'extended' },
     { t: 6, type: 'hit', horse: 'b', by: 'c', item: 'attack:leader' },
     { t: 7, type: 'blocked', horse: 'b', by: 'c', item: 'attack:leader', reason: 'shield' },
     { t: 8, type: 'hit', horse: 'd', by: 'c', item: 'attack:top3' },
   ];
-  const hot = [
-    { item: 'speed:pass3', buff: 'extended' },
-    { item: 'attack:leader', buff: 'extended' },
-  ] as const;
+  const hot = [{ item: 'attack:leader', buff: 'extended' }] as const;
 
   it('special effects last as long as the Extended item does in the sim', () => {
     const fx = effectsOf(events, hot).filter((f) => SPECIAL_KINDS.has(f.kind));
     expect(fx.map((f) => `${f.kind}:${durationOf(f)}`)).toEqual([
-      `stampede:${EFFECT_SECONDS.stampede + 4}`, // 8 s -> 12 s
       `lasso:${EFFECT_SECONDS.lasso + 1}`, // 2 s -> 3 s
       'lasso:0.5', // a blocked one still plays only its miss
       `swarm:${EFFECT_SECONDS.swarm}`, // not hot
@@ -161,8 +156,8 @@ describe('Extended hot items on screen', () => {
 
   it('without hot items nothing changes', () => {
     expect(effectsOf(events)).toEqual(effectsOf(events, []));
-    expect(durationOf(effectsOf(events).find((f) => f.kind === 'stampede')!)).toBe(
-      EFFECT_SECONDS.stampede,
+    expect(durationOf(effectsOf(events).find((f) => f.kind === 'lasso')!)).toBe(
+      EFFECT_SECONDS.lasso,
     );
   });
 });

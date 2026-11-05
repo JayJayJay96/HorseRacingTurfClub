@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EFFECTS, HOT } from './config.ts';
-import { buffOf, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
+import { buffOf, canBeExtended, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
 import type { HotItem } from './types.ts';
 
 const HOT_LIST: readonly HotItem[] = [
@@ -51,5 +51,13 @@ describe('effectSeconds on more items', () => {
   it('another hot item or none leaves the seconds alone', () => {
     expect(effectSeconds('speed:pass3', ext('speed:self3'))).toBe(EFFECTS['speed:pass3'].seconds);
     expect(effectSeconds('defense:immune')).toBe(EFFECTS['defense:immune'].seconds);
+  });
+});
+
+describe('canBeExtended', () => {
+  it('needs a duration and is not Lucky-only', () => {
+    expect(canBeExtended('attack:leader')).toBe(true);
+    expect(canBeExtended('speed:pass3')).toBe(false);
+    expect(canBeExtended('defense:block1')).toBe(false);
   });
 });

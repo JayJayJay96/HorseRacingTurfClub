@@ -3,8 +3,8 @@ import { cutinsOf } from '../render/cutins.ts';
 import { RaceView } from '../render/RaceView.tsx';
 import type { PresetId } from '../render/hd2d/lighting.ts';
 import { ITEM_INFO } from '../render/items.ts';
-import { EFFECTS, HOT, TRAIT_CODES } from '../sim/config.ts';
-import { HOT_ELIGIBLE } from '../sim/hot.ts';
+import { HOT, TRAIT_CODES } from '../sim/config.ts';
+import { canBeExtended, HOT_ELIGIBLE } from '../sim/hot.ts';
 import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
@@ -191,7 +191,7 @@ export function Sandbox() {
             <option value="">Add…</option>
             {HOT_ELIGIBLE.flatMap((item) =>
               (['lucky', 'extended'] as const)
-                .filter((buff) => buff === 'lucky' || EFFECTS[item].seconds > 0)
+                .filter((buff) => buff === 'lucky' || canBeExtended(item))
                 .map((buff) => (
                   <option key={`${item}|${buff}`} value={`${item}|${buff}`}>
                     {ITEM_INFO[item].name} {BUFF_TEXT[buff]}

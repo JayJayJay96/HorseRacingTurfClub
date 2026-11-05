@@ -142,7 +142,7 @@ export const TRAIT_CODES = [
   'mudder',
 ] as const satisfies readonly Trait[];
 
-/** Horse traits (spec 2026-11-05 D). Tuned by the balance test (Task 7); final values in PROJECT_STATUS. */
+/** Horse traits (spec 2026-11-05 D). Tuned by the balance test; see PROJECT_STATUS. */
 export const TRAITS = {
   /** This share of a Charmed horse's dud type rolls is rolled again without the dud (50 = half the duds). */
   charmed: { rerollPercent: 10 },

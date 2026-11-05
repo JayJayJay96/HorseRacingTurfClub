@@ -159,7 +159,20 @@ describe('hot item and trait lines', () => {
     };
     const c = createCommentator(tl, (h) => h, -0.5, { rand: () => 0 });
     expect(c.linesUpTo(0.1)).toContain('Mudder a loves this rain!');
-    expect(c.linesUpTo(6)).toContain('Golden Lasso from a, but Tough b keeps moving!');
-    expect(c.linesUpTo(13)).toContain('Tough b shrugs it off!');
+    expect(c.linesUpTo(6)).toContain('Golden Lasso from a, but Tough b digs in against the lasso!');
+    expect(c.linesUpTo(13)).toContain('Tough b takes it better than most!');
+  });
+});
+
+describe('timelines without traits', () => {
+  it('still comment on a hit and a rainy start', () => {
+    const tl = {
+      ...fakeTimeline({ a: 10, b: 5 }, 100, [
+        { t: 5, type: 'hit', horse: 'b', by: 'a', item: 'attack:leader' },
+      ]),
+      weather: 'rain' as const,
+    };
+    const c = createCommentator(tl, (h) => h, -0.5, { rand: () => 0 });
+    expect(() => c.linesUpTo(6)).not.toThrow();
   });
 });

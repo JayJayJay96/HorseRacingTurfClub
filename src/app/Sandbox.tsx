@@ -6,7 +6,7 @@ import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
 import { fakeTimeline } from '../sim/testTimeline.ts';
-import type { RaceLength, Timeline } from '../sim/types.ts';
+import type { RaceLength, Timeline, Weather } from '../sim/types.ts';
 import { TRACKS, type TrackId } from '../render/track.ts';
 import { colorsOf } from '../render/palette.ts';
 import { COSMETICS, type CosmeticSlot } from '../shop/cosmetics.ts';
@@ -24,6 +24,8 @@ const MOMENTS = [
   { item: 'attack:leader', label: 'Golden Lasso' },
   { item: 'speed:pass3', label: 'Stampede' },
   { item: 'attack:top3', label: 'Hornet Swarm' },
+  { item: 'slip', label: 'Slip' },
+  { item: 'bump', label: 'Bump' },
 ] as const;
 /** A full 22-horse field for the performance target (spec §4). */
 const FULL_FIELD = [...SAMPLE_HORSES, ...Array.from({ length: 16 }, (_, i) => `Extra ${i + 1}`)];
@@ -36,6 +38,7 @@ export function Sandbox() {
   const [looks, setLooks] = useState<Record<CosmeticSlot, string>>({ pattern: '', trail: '' });
   const [field, setField] = useState<6 | 22>(6);
   const [preset, setPreset] = useState<PresetId | ''>('');
+  const [weather, setWeather] = useState<Weather>('clear');
   const [lookTest, setLookTest] = useState(false);
   const [frameMs, setFrameMs] = useState(0);
   const horses = field === 6 ? SAMPLE_HORSES : FULL_FIELD;
@@ -76,17 +79,21 @@ export function Sandbox() {
         horses,
         bought: { [SAMPLE_HORSES[0]!]: ['speed', 'attack', 'defense'] },
         length,
+        weather,
       }),
       gun: Date.now() + COUNTDOWN_SECONDS * 1000,
     });
   // Jump to 4 s before a special moment (spec 2026-11-05): the first seed that has one.
   const moment = (item: (typeof MOMENTS)[number]['item']) => {
     for (let seed = 1; seed <= 5000; seed++) {
-      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short' });
+      const w = item === 'slip' ? 'rain' : item === 'bump' ? 'fog' : weather;
+      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short', weather: w });
       const at =
-        item === 'attack:top3'
-          ? timeline.events.find((e) => e.type === 'pickup' && e.item === item && e.t > 6)?.t
-          : cutinsOf(timeline).find((c) => c.item === item && c.t > 6)?.t;
+        item === 'slip' || item === 'bump'
+          ? timeline.events.find((e) => e.type === item && e.t > 6)?.t
+          : item === 'attack:top3'
+            ? timeline.events.find((e) => e.type === 'pickup' && e.item === item && e.t > 6)?.t
+            : cutinsOf(timeline).find((c) => c.item === item && c.t > 6)?.t;
       if (at !== undefined) {
         setRun({ timeline, gun: Date.now() - (at - 4) * 1000, at });
         return;
@@ -150,6 +157,15 @@ export function Sandbox() {
             <option value="sunset">Sunset</option>
             <option value="night">Night</option>
           </select>
+        </label>
+        <label>
+          {' '}
+          Weather{' '}
+          <select value={weather} onChange={(e) => setWeather(e.target.value as Weather)}>
+            <option value="clear">Clear</option>
+            <option value="rain">Rain</option>
+            <option value="fog">Fog</option>
+          </select>
         </label>{' '}
         <button type="button" aria-pressed={lookTest} onClick={() => setLookTest(!lookTest)}>
           Look test
@@ -169,7 +185,9 @@ export function Sandbox() {
             {m.label}
           </button>
         ))}
-        {run && !lookTest && ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events`}
+        {run &&
+          !lookTest &&
+          ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events · ${run.timeline.weather ?? 'clear'}`}
         {import.meta.env.DEV && frameMs > 0 && ` · ${frameMs.toFixed(1)} ms/frame`}
       </p>
       {shown && (

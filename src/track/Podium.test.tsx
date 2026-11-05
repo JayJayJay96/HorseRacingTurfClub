@@ -1,6 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Confetti, Payouts, payoutLines } from './Podium.tsx';
+import {
+  CELEBRATIONS,
+  Celebration,
+  Confetti,
+  Payouts,
+  celebrationClass,
+  payoutLines,
+} from './Podium.tsx';
+import { COSMETICS } from '../shop/cosmetics.ts';
 
 const players = [
   { id: 'a', name: 'Ann', coat: null, silk: null },
@@ -61,5 +69,65 @@ describe('Confetti', () => {
     const html = renderToStaticMarkup(<Confetti colors={['#e53935']} />);
     expect(html).toMatch(/^<div class="confetti" aria-hidden="true">/);
     expect(html.match(/<i /g)).toHaveLength(40);
+  });
+});
+
+describe('celebrationClass', () => {
+  it('maps each celebration to its podium class; none or unknown keeps the hop', () => {
+    expect(celebrationClass('celebration:spin')).toBe('celebrate-spin');
+    expect(celebrationClass('celebration:fireworks')).toBe('celebrate-fireworks');
+    expect(celebrationClass('celebration:moonwalk')).toBe('celebrate-moonwalk');
+    expect(celebrationClass('celebration:cannon')).toBe('celebrate-cannon');
+    expect(celebrationClass(null)).toBe('podium-hop');
+    expect(celebrationClass(undefined)).toBe('podium-hop');
+    expect(celebrationClass('celebration:disco')).toBe('podium-hop');
+  });
+  it('every celebration in the shop has one', () => {
+    for (const c of COSMETICS.filter((x) => x.slot === 'celebration')) {
+      expect(CELEBRATIONS[c.code], c.code).toBeDefined();
+    }
+  });
+});
+
+describe('Celebration', () => {
+  it('wraps the sprite; fireworks and cannon add decorative particles', () => {
+    const fw = renderToStaticMarkup(
+      <Celebration code="celebration:fireworks">
+        <b>horse</b>
+      </Celebration>,
+    );
+    expect(fw).toMatch(
+      /^<span class="celebration celebrate-fireworks"><b>horse<\/b><span class="celebration-fx" aria-hidden="true">/,
+    );
+    expect(fw.match(/<i /g)).toHaveLength(16);
+    const cannon = renderToStaticMarkup(
+      <Celebration code="celebration:cannon">
+        <b />
+      </Celebration>,
+    );
+    expect(cannon.match(/<i /g)).toHaveLength(14);
+    expect(
+      renderToStaticMarkup(
+        <Celebration code="celebration:spin">
+          <b />
+        </Celebration>,
+      ),
+    ).toBe('<span class="celebration celebrate-spin"><b></b></span>');
+  });
+  it("none keeps today's hop; once plays a single time", () => {
+    expect(
+      renderToStaticMarkup(
+        <Celebration code={null}>
+          <b />
+        </Celebration>,
+      ),
+    ).toBe('<span class="celebration podium-hop"><b></b></span>');
+    expect(
+      renderToStaticMarkup(
+        <Celebration code="celebration:moonwalk" once>
+          <b />
+        </Celebration>,
+      ),
+    ).toContain('class="celebration celebrate-moonwalk is-once"');
   });
 });

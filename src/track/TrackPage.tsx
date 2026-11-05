@@ -54,7 +54,7 @@ import { podiumLine } from '../audio/commentator.ts';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
-import { Confetti, Payouts } from './Podium.tsx';
+import { Celebration, Confetti, Payouts } from './Podium.tsx';
 import { useChances } from './useChances.ts';
 import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 
@@ -595,8 +595,14 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
       <ol className="podium">
         {top3.map((id, i) => (
           <li key={id}>
-            <span className={i === 0 ? 'podium-horse podium-hop' : 'podium-horse'}>
-              <HorseSprite colors={horseColors(players, horses, id)} size="lg" animated={i === 0} />
+            <span className="podium-horse">
+              {i === 0 ? (
+                <Celebration code={horseColors(players, horses, id).celebration}>
+                  <HorseSprite colors={horseColors(players, horses, id)} size="lg" animated />
+                </Celebration>
+              ) : (
+                <HorseSprite colors={horseColors(players, horses, id)} size="lg" />
+              )}
             </span>
             {horseNameOf(players, id)}
             {timeOf(id)}

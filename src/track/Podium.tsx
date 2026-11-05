@@ -1,3 +1,4 @@
+import type { CSSProperties, ReactNode } from 'react';
 import { nameOf } from '../betting/betting.ts';
 import { HorseSprite } from '../render/HorseSprite.tsx';
 import { horseColors, SILK_COLORS } from '../render/palette.ts';
@@ -8,6 +9,8 @@ type Person = {
   coat: number | null;
   silk: number | null;
   pattern?: string | null;
+  cap?: string | null;
+  celebration?: string | null;
 };
 type Paid = { player_id: string; payout: number | null };
 
@@ -61,5 +64,67 @@ export function Confetti({ colors }: { colors: readonly string[] }) {
         />
       ))}
     </div>
+  );
+}
+
+/** Podium class per celebration (app.css). None or an unknown code keeps today's hop. */
+export const CELEBRATIONS: Readonly<Record<string, string>> = {
+  'celebration:spin': 'celebrate-spin',
+  'celebration:fireworks': 'celebrate-fireworks',
+  'celebration:moonwalk': 'celebrate-moonwalk',
+  'celebration:cannon': 'celebrate-cannon',
+};
+export const celebrationClass = (code?: string | null) =>
+  (code && CELEBRATIONS[code]) || 'podium-hop';
+
+const FX_COLORS = ['#ffd54f', '#e53935', '#29b6f6', '#66bb6a', '#ffffff', '#d81b60'];
+
+/** Particle start/offset: two firework bursts of 8, or a cannon fan of 14 to the upper right. */
+function particles(code: string): CSSProperties[] {
+  if (code === 'celebration:fireworks') {
+    return Array.from({ length: 16 }, (_, i) => {
+      const a = (i % 8) * (Math.PI / 4);
+      return {
+        left: i < 8 ? '25%' : '75%',
+        top: i < 8 ? '10%' : '0%',
+        '--dx': `${Math.round(Math.cos(a) * 40)}px`,
+        '--dy': `${Math.round(Math.sin(a) * 40)}px`,
+        background: FX_COLORS[i % FX_COLORS.length],
+        animationDelay: i < 8 ? '0.3s' : '0.8s',
+      } as CSSProperties;
+    });
+  }
+  if (code === 'celebration:cannon') {
+    return Array.from({ length: 14 }, (_, i) => {
+      const a = ((-20 - i * 5) * Math.PI) / 180;
+      const r = 80 + (i % 4) * 25;
+      return {
+        '--dx': `${Math.round(Math.cos(a) * r)}px`,
+        '--dy': `${Math.round(Math.sin(a) * r)}px`,
+        background: FX_COLORS[i % FX_COLORS.length],
+        animationDelay: `${(i % 3) * 0.05}s`,
+      } as CSSProperties;
+    });
+  }
+  return [];
+}
+
+/**
+ * The podium winner's celebration around its sprite (CSS only; spec 2026-11-05 cosmetics shop).
+ * Reduced motion: no movement, no particles. `once` plays it a single time (the shop preview).
+ */
+export function Celebration(props: { code?: string | null; once?: boolean; children: ReactNode }) {
+  const fx = props.code ? particles(props.code) : [];
+  return (
+    <span className={`celebration ${celebrationClass(props.code)}${props.once ? ' is-once' : ''}`}>
+      {props.children}
+      {fx.length > 0 && (
+        <span className="celebration-fx" aria-hidden="true">
+          {fx.map((style, i) => (
+            <i key={i} style={style} />
+          ))}
+        </span>
+      )}
+    </span>
   );
 }

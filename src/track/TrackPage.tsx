@@ -41,8 +41,9 @@ import { useCheers } from '../net/cheers.ts';
 import { useOfficeStats } from '../net/stats.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
-import { colorsByPlayer } from '../render/palette.ts';
-import { RaceView, Silk } from '../render/RaceView.tsx';
+import { colorsByPlayer, horseColors, type HorseColors } from '../render/palette.ts';
+import { HorseSprite } from '../render/HorseSprite.tsx';
+import { RaceView } from '../render/RaceView.tsx';
 import { TRACKS, trackById } from '../render/track.ts';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
@@ -223,7 +224,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
                   checked={p.ticked}
                   onChange={(e) => act(() => setTicked(p.id, e.target.checked))}
                 />{' '}
-                {p.name}
+                <HorseSprite colors={horseColors(players, [], p.id)} size="md" /> {p.name}
               </label>
               {office && <span className="chip">💰 {balances[p.id] ?? 0}</span>}
               {p.uid && (
@@ -279,19 +280,19 @@ function ReadyLine({ players }: { players: RoomPlayer[] }) {
   );
 }
 
-/** A resting horse, or a galloping one once that phone has pressed Ready. */
-function HorseMark({ ready }: { ready: boolean }) {
-  return ready ? (
+/** The horse's sprite, plus a ✅ once that phone has pressed Ready. */
+function HorseMark({ colors, ready }: { colors: HorseColors; ready: boolean }) {
+  return (
     <>
-      <span className="face-right gallop" aria-hidden="true">
-        🏇
-      </span>
-      <span className="visually-hidden">(ready)</span>
+      <HorseSprite colors={colors} size="md" />
+      {ready && (
+        <>
+          {' '}
+          <span aria-hidden="true">✅</span>
+          <span className="visually-hidden">(ready)</span>
+        </>
+      )}
     </>
-  ) : (
-    <span className="face-right" aria-hidden="true">
-      🐎
-    </span>
   );
 }
 
@@ -333,8 +334,8 @@ function ShopBoard({ room, players, race, purchases, online, act, busy }: BoardP
             {racing.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <HorseMark ready={p.ready} /> <TraitIcon trait={asTrait(p.trait)} />{' '}
-                  {horseName(p)}
+                  <HorseMark colors={horseColors(players, [], p.id)} ready={p.ready} />{' '}
+                  <TraitIcon trait={asTrait(p.trait)} /> {horseName(p)}
                   {p.uid && !online.has(p.id) && ' (offline)'}
                 </td>
                 <td>{boxIcons(purchases, p.id)}</td>
@@ -391,7 +392,6 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   const horses = race?.horses ?? [];
   const office = room.kind === 'office';
   const { stats } = useOfficeStats(room.race_id, office);
-  const colors = colorsByPlayer(players);
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
@@ -415,8 +415,11 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
               <tr key={id}>
                 <td className="pixel">#{lane + 1}</td>
                 <td>
-                  <HorseMark ready={players.find((p) => p.id === id)?.ready ?? false} />{' '}
-                  <Silk color={colors(id, lane).silk} /> {horseNameOf(players, id)}
+                  <HorseMark
+                    colors={horseColors(players, horses, id)}
+                    ready={players.find((p) => p.id === id)?.ready ?? false}
+                  />{' '}
+                  {horseNameOf(players, id)}
                 </td>
                 {office && (
                   <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>
@@ -586,7 +589,7 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
       <ol className="podium">
         {top3.map((id) => (
           <li key={id}>
-            <Silk color={colorsByPlayer(players)(id, (race?.horses ?? []).indexOf(id)).silk} />{' '}
+            <HorseSprite colors={horseColors(players, race?.horses ?? [], id)} size="lg" />{' '}
             {horseNameOf(players, id)}
             {timeline && ` · ${timeline.finishTimes[id]?.toFixed(2)} s`}
           </li>

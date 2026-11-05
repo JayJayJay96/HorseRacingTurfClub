@@ -47,7 +47,7 @@ import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
 import { BOX_COLOR, colorsByPlayer } from '../render/palette.ts';
-import { Silk } from '../render/RaceView.tsx';
+import { HorseSprite } from '../render/HorseSprite.tsx';
 import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
@@ -410,7 +410,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 checked={!group && horse === id}
                 onChange={() => setPick(id)}
               />
-              <Silk color={colors(id, lane).silk} />
+              <HorseSprite colors={colors(id, lane)} size="sm" />
               <span className="pixel">#{lane + 1}</span>
               <span>{horseNameOf(players, id)}</span>
               <span className="pixel odds-line">

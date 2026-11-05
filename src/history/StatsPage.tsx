@@ -10,7 +10,8 @@ import { OFFICE_CODE } from '../lobby/lobby.ts';
 import { useOfficeStats, type OfficeStats, type Ranked } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useTimeline } from '../net/useTimeline.ts';
-import { colorsByPlayer } from '../render/palette.ts';
+import { colorsByPlayer, horseColors } from '../render/palette.ts';
+import { HorseSprite } from '../render/HorseSprite.tsx';
 import { RaceView } from '../render/RaceView.tsx';
 import { trackById } from '../render/track.ts';
 import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
@@ -71,6 +72,7 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
     const m = byId.get(id);
     return m ? horseName(m) : '?';
   };
+  const tint = (id: string) => horseColors(stats.members, [], id);
   const board = (title: string, rows: Ranked[]) => (
     <section className="panel">
       <h2>{title}</h2>
@@ -80,7 +82,7 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
         <ol>
           {rows.map((r, i) => (
             <li key={`${r.id}-${i}`}>
-              {who(r.id)} · {r.value} coins
+              <HorseSprite colors={tint(r.id)} size="sm" /> {who(r.id)} · {r.value} coins
             </li>
           ))}
         </ol>
@@ -116,7 +118,9 @@ function Overview({ stats, onReplay }: { stats: OfficeStats; onReplay: (race: st
               <tbody>
                 {stats.horses.map((h) => (
                   <tr key={h.id}>
-                    <td>{horse(h.id)}</td>
+                    <td>
+                      <HorseSprite colors={tint(h.id)} size="sm" /> {horse(h.id)}
+                    </td>
                     <td>{h.races}</td>
                     <td>{h.wins}</td>
                     <td>{h.places}</td>

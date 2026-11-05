@@ -6,6 +6,7 @@ import type { HorseId, Timeline } from '../sim/types.ts';
 import { CutInOverlay } from './CutInOverlay.tsx';
 import { cutinAt, cutinsOf } from './cutins.ts';
 import type { HD2DOptions } from './hd2d/HD2DRenderer.ts';
+import { HorseSprite } from './HorseSprite.tsx';
 import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
 import type { RaceRenderer } from './renderer.ts';
 import {
@@ -17,11 +18,6 @@ import {
 } from './renderSetting.ts';
 import { TRACK, type Track } from './track.ts';
 import { useRaceTime } from './useRaceTime.ts';
-
-/** A horse's silk colour as a small square. */
-export function Silk({ color }: { color: string }) {
-  return <span className="silk" style={{ background: color }} />;
-}
 
 type Props = {
   timeline: Timeline;
@@ -162,7 +158,7 @@ export function RaceView({
           const lane = timeline.horses.indexOf(h);
           return (
             <li key={h}>
-              <Silk color={(colors ?? defaultColors)(h, lane).silk} /> #{lane + 1}{' '}
+              <HorseSprite colors={(colors ?? defaultColors)(h, lane)} size="sm" /> #{lane + 1}{' '}
               {timeline.traits && <TraitIcon trait={asTrait(timeline.traits[h])} />}{' '}
               {names[h] ?? '?'}
               {time <= t && ` · ${time.toFixed(2)} s`}

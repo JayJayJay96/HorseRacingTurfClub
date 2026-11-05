@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { WEATHER } from '../../sim/config.ts';
 import { eventsBetween, progressAt } from '../../sim/playback.ts';
-import type { BoxSpot, HorseId, RaceEvent, Timeline } from '../../sim/types.ts';
+import type { BoxSpot, HorseId, RaceEvent, Timeline, Weather } from '../../sim/types.ts';
 import { ITEM_INFO, popupOf } from '../items.ts';
 import { BOX_COLOR } from '../palette.ts';
 import {
@@ -15,6 +16,7 @@ import {
 import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
+import { FOG, RAIN, puddleOutline, rainDrop } from '../weatherFx.ts';
 import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
 import {
   PARTICLES,
@@ -55,6 +57,8 @@ const MAX_FX = 96;
 const GHOSTS_EACH = 3;
 const GHOST_GAP_M = 3;
 const GHOST_POOL = 2 * GHOSTS_EACH;
+/** Puddle stencil value; horses write 0 over it so a reflection never paints over a horse. */
+const PUDDLE_STENCIL = 1;
 
 export class HD2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
@@ -74,6 +78,14 @@ export class HD2DRenderer implements RaceRenderer {
     mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
     map: THREE.Texture;
   }[] = [];
+  private weather: Weather = 'clear';
+  /** Per lane: its puddles' [from, to] metres, so a reflection shows only near water. */
+  private wet: [number, number][][] = [];
+  private reflections: {
+    mesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
+    map: THREE.Texture;
+  }[] = [];
+  private rain: THREE.LineSegments<THREE.BufferGeometry, THREE.LineBasicMaterial> | null = null;
   private sun: THREE.DirectionalLight | null = null;
   private fog: THREE.Fog | null = null;
   private readonly p = new THREE.Vector3();
@@ -130,6 +142,10 @@ export class HD2DRenderer implements RaceRenderer {
     const lanes = timeline.horses.length;
     const preset = this.opts.preset ? presetById(this.opts.preset) : presetOf(timeline.seed);
     this.preset = preset;
+    this.weather = timeline.weather ?? 'clear';
+    this.motion = !(
+      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
 
     const renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -149,7 +165,9 @@ export class HD2DRenderer implements RaceRenderer {
     this.world = world;
     scene.add(world.group);
     scene.background = world.sky;
-    this.fog = scene.fog = new THREE.Fog(preset.fog, 100, 400);
+    const fogColor = new THREE.Color(preset.fog);
+    if (this.weather === 'fog') fogColor.lerp(new THREE.Color(FOG.color), FOG.mix);
+    this.fog = scene.fog = new THREE.Fog(fogColor, 100, 400);
     scene.add(
       new THREE.HemisphereLight(preset.hemi.sky, preset.hemi.ground, preset.hemi.intensity),
     );
@@ -184,7 +202,13 @@ export class HD2DRenderer implements RaceRenderer {
     this.horses = timeline.horses.map((horse, lane) => {
       const map = sheet.clone();
       const { material, depth } = cutoutMaterials(map);
+      // Horses clear the puddle mark where they stand (alphaTest texels write nothing).
+      material.stencilWrite = true;
+      material.stencilRef = 0;
+      material.stencilFunc = THREE.AlwaysStencilFunc;
+      material.stencilZPass = THREE.ReplaceStencilOp;
       const mesh = new THREE.Mesh(geo, material);
+      mesh.renderOrder = 2; // after the puddles (the opaque pass sorts by renderOrder)
       mesh.customDepthMaterial = depth;
       mesh.castShadow = true;
       scene.add(mesh);
@@ -210,6 +234,69 @@ export class HD2DRenderer implements RaceRenderer {
       scene.add(mesh);
       return { mesh, map };
     });
+
+    // Rain puddles: dark glossy water that marks the stencil for reflections.
+    this.wet = timeline.horses.map(() => []);
+    for (const pd of timeline.puddles ?? []) {
+      const ring = puddleOutline(track, timeline.distance, pd);
+      const pg = new THREE.ShapeGeometry(
+        new THREE.Shape(ring.map((pt) => new THREE.Vector2(pt.x, pt.y))),
+      );
+      pg.rotateX(Math.PI / 2); // (x, y, 0) -> (x, 0, y): lies on the track
+      const water = new THREE.Mesh(
+        pg,
+        new THREE.MeshStandardMaterial({
+          // No env map, so any metalness reads as black; a lit slate reads as water.
+          color: '#4f6272',
+          roughness: 0.15,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          stencilWrite: true,
+          stencilRef: PUDDLE_STENCIL,
+          stencilFunc: THREE.AlwaysStencilFunc,
+          stencilZPass: THREE.ReplaceStencilOp,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+        }),
+      );
+      water.position.y = 0.02;
+      water.renderOrder = 1;
+      water.receiveShadow = true;
+      scene.add(water);
+      for (let lane = pd.lanes[0]; lane <= pd.lanes[1]; lane++) {
+        this.wet[lane]?.push([pd.at - 1, pd.at + WEATHER.puddleLengthM + 1]);
+      }
+    }
+    // One upside-down copy per horse, drawn only where a puddle marked the stencil.
+    this.reflections =
+      this.weather === 'rain'
+        ? timeline.horses.map(() => {
+            const map = sheet.clone();
+            const mesh = new THREE.Mesh(
+              geo,
+              new THREE.MeshBasicMaterial({
+                map,
+                color: '#9fc3e0',
+                transparent: true,
+                opacity: 0.4,
+                alphaTest: 0.02,
+                depthTest: false,
+                depthWrite: false,
+                side: THREE.DoubleSide,
+                stencilWrite: true, // three only applies stencilFunc when this is on
+                stencilRef: PUDDLE_STENCIL,
+                stencilFunc: THREE.EqualStencilFunc,
+                stencilZPass: THREE.KeepStencilOp,
+              }),
+            );
+            mesh.scale.y = -1;
+            // First in the transparent pass, so rain, ghosts and splashes draw over it.
+            mesh.renderOrder = -1;
+            mesh.visible = false;
+            scene.add(mesh);
+            return { mesh, map };
+          })
+        : [];
 
     // Boxes: glowing cubes (colour x 2 so bloom catches them).
     this.cacheBoxes(timeline);
@@ -329,6 +416,21 @@ export class HD2DRenderer implements RaceRenderer {
       }),
     );
     this.confetti = pointsOf(CONFETTI, new THREE.PointsMaterial({ size: 0.3, vertexColors: true }));
+    if (this.weather === 'rain' && this.motion) {
+      const rg = new THREE.BufferGeometry();
+      rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAIN.drops * 6), 3));
+      this.rain = new THREE.LineSegments(
+        rg,
+        new THREE.LineBasicMaterial({
+          color: '#dfe9f3',
+          transparent: true,
+          opacity: 0.35,
+          depthWrite: false,
+        }),
+      );
+      this.rain.frustumCulled = false;
+      scene.add(this.rain);
+    }
     if (preset.floodlights) {
       // Warm fill over the home straight so night sprites pick up floodlight colour.
       for (const x of [-60, 60]) {
@@ -353,7 +455,13 @@ export class HD2DRenderer implements RaceRenderer {
 
     const camera = new THREE.PerspectiveCamera(FOV_DEG, 16 / 9, 1, 3000);
     this.camera = camera;
-    this.post = buildPost(renderer, scene, camera, preset);
+    this.post = buildPost(
+      renderer,
+      scene,
+      camera,
+      preset,
+      this.weather === 'rain' ? { tint: RAIN.tint, saturation: RAIN.saturation } : undefined,
+    );
 
     const fit = () => {
       const w = Math.min(RENDER_MAX_WIDTH, Math.max(1, this.canvas.clientWidth));
@@ -373,9 +481,6 @@ export class HD2DRenderer implements RaceRenderer {
     this.shot = null;
     this.tilt = TILT_BLUR_PX.wide; // every race opens on the wide shot
     this.shadowHalf = 0;
-    this.motion = !(
-      typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
 
     // Text drawn before the webfont arrives keeps the fallback font; redraw once it loads.
     document.fonts
@@ -493,8 +598,9 @@ export class HD2DRenderer implements RaceRenderer {
     camera.lookAt(shot.x, 0, shot.y);
     this.tilt += (TILT_BLUR_PX[want.kind] - this.tilt) * k;
     post.setTilt(this.tilt);
-    fog.near = shot.distance * 1.2;
-    fog.far = shot.distance * 4;
+    const foggy = this.weather === 'fog';
+    fog.near = shot.distance * (foggy ? FOG.near : 1.2);
+    fog.far = shot.distance * (foggy ? FOG.far : 4);
     const tx = shot.x;
     const ty = shot.y;
     const yaw = shot.yaw;
@@ -533,6 +639,20 @@ export class HD2DRenderer implements RaceRenderer {
       const uv = cellUv(timeline.horses.length, cellOf(v.lane, pose, Math.floor(m / 1.5)));
       v.map.offset.set(uv.offsetX, uv.offsetY);
       v.map.repeat.set(uv.repeatX, uv.repeatY);
+    }
+    // Puddle reflections: the horse mirrored at its feet while it is near water in its lane.
+    for (const v of this.horses) {
+      const r = this.reflections[v.lane];
+      if (!r) continue;
+      const m = this.metres(timeline, v.horse, t);
+      const near = this.wet[v.lane]?.some(([a, b]) => m >= a && m <= b) ?? false;
+      r.mesh.visible = near;
+      if (!near) continue;
+      const wobble = this.motion ? Math.sin(t * 9 + v.lane) * 0.04 : 0;
+      r.mesh.position.set(v.mesh.position.x + wobble, 0, v.mesh.position.z);
+      r.mesh.rotation.y = yaw;
+      r.map.offset.copy(v.map.offset);
+      r.map.repeat.copy(v.map.repeat);
     }
 
     // Effects live this frame, shared by the ghosts and the particle clouds.
@@ -694,6 +814,17 @@ export class HD2DRenderer implements RaceRenderer {
       pos.needsUpdate = true;
       colAttr.needsUpdate = true;
     }
+    if (this.rain) {
+      const pos = this.rain.geometry.getAttribute('position') as THREE.BufferAttribute;
+      for (let i = 0; i < RAIN.drops; i++) {
+        const dr = rainDrop(i, t);
+        const x = tx + dr.x;
+        const z = ty + dr.z;
+        pos.setXYZ(i * 2, x, dr.y, z);
+        pos.setXYZ(i * 2 + 1, x - RAIN.lean * RAIN.length, dr.y - RAIN.length, z);
+      }
+      pos.needsUpdate = true;
+    }
     if (this.confetti) {
       const age = t - Math.min(...Object.values(timeline.finishTimes));
       const visible = age >= 0 && age < CONFETTI_SECONDS;
@@ -757,6 +888,11 @@ export class HD2DRenderer implements RaceRenderer {
     for (const v of this.horses) v.map.dispose();
     for (const gh of this.ghosts) gh.map.dispose();
     this.ghosts = [];
+    for (const r of this.reflections) r.map.dispose();
+    this.reflections = [];
+    this.wet = [];
+    this.rain = null; // disposeTree(scene) above freed its geometry and material
+    this.weather = 'clear';
     this.post?.dispose();
     this.renderer?.dispose();
     this.renderer = null;

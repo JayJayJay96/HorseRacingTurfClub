@@ -53,8 +53,18 @@ export function buildPost(
   scene: THREE.Scene,
   camera: THREE.Camera,
   preset: Preset,
+  /** Weather grade on top of the preset (rain: cooler and a little greyer). */
+  weather: { tint: readonly [number, number, number]; saturation: number } = {
+    tint: [1, 1, 1],
+    saturation: 1,
+  },
 ): Post {
-  const composer = new EffectComposer(renderer);
+  // EffectComposer clones this target for its second buffer, so both keep the stencil.
+  const target = new THREE.WebGLRenderTarget(1, 1, {
+    type: THREE.HalfFloatType,
+    stencilBuffer: true, // puddle reflections are clipped with the stencil (spec 2026-11-05)
+  });
+  const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));
   const tiltH = new ShaderPass(HorizontalTiltShiftShader);
   const tiltV = new ShaderPass(VerticalTiltShiftShader);
@@ -65,8 +75,10 @@ export function buildPost(
   const { strength, radius, threshold } = preset.bloom;
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), strength, radius, threshold));
   const grade = new ShaderPass(GradeShader);
-  grade.uniforms.tint!.value = new THREE.Vector3(...preset.grade.tint);
-  grade.uniforms.saturation!.value = preset.grade.saturation;
+  const [r, g, b] = preset.grade.tint;
+  const [wr, wg, wb] = weather.tint;
+  grade.uniforms.tint!.value = new THREE.Vector3(r * wr, g * wg, b * wb);
+  grade.uniforms.saturation!.value = preset.grade.saturation * weather.saturation;
   grade.uniforms.vignette!.value = preset.grade.vignette;
   composer.addPass(grade);
   composer.addPass(new OutputPass());

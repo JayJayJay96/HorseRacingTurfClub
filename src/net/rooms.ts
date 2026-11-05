@@ -1,7 +1,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import { unpackTimeline, type PackedTimeline } from '../sim/pack.ts';
 import type { GroupKind } from '../sim/odds.ts';
-import type { BoxType, RaceLength, Timeline } from '../sim/types.ts';
+import type { BoxType, RaceLength, Timeline, Trait } from '../sim/types.ts';
 import type { TrackId } from '../render/track.ts';
 import type { CosmeticSlot } from '../shop/cosmetics.ts';
 import type { Database } from './database.types.ts';
@@ -56,6 +56,8 @@ export const setReady = (roomId: string, ready: boolean) =>
 
 export const buyBox = (roomId: string, box: BoxType) =>
   call(supabase.rpc('buy_box', { p_room: roomId, p_box: box }));
+export const setTrait = (roomId: string, trait: Trait) =>
+  call(supabase.rpc('set_trait', { p_room: roomId, p_trait: trait }));
 /** `horseId` is null for a group bet (Odd/Even/Low/High on the winner's number). */
 export const placeBet = (roomId: string, horseId: string | null, kind: BetKind, stake: number) =>
   call(
@@ -215,6 +217,7 @@ const ERROR_TEXT: Record<string, string> = {
   max_boxes: 'A horse can carry at most 3 bought boxes.',
   not_enough_coins: 'Not enough coins.',
   bad_box: 'Unknown box type.',
+  bad_trait: 'Pick one of the six traits.',
   bad_bet: 'Pick Win or Place.',
   bet_closed: 'That bet is closed: it is too likely to pay fairly.',
   bad_stake: 'Stake must be at least 1 coin.',

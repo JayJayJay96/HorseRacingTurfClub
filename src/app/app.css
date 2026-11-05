@@ -499,6 +499,18 @@ a.button.primary {
   display: inline-block;
   margin: 0 0 0.5rem;
 }
+.hot-strip {
+  display: inline-block;
+  margin: 0 0 0.5rem;
+}
+.trait-pick {
+  display: grid;
+  gap: 8px;
+}
+.trait-pick button[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--gold);
+}
 /* Badges are chips; body font because the descriptions are small text. */
 .badges li {
   padding: 4px 10px;

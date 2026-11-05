@@ -19,6 +19,9 @@ import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
 import { TopBar } from '../app/TopBar.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
+import { HotStrip, hotBoxTypes, hotOf } from '../app/HotItems.tsx';
+import { TRAIT_INFO, asTrait, traitOf } from '../app/Traits.tsx';
+import { TraitPicker } from './TraitPicker.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -33,6 +36,7 @@ import {
   placeBet,
   privateRoster,
   setReady,
+  setTrait,
   type BetKind,
   type RoomPlayer,
   type RoomState,
@@ -242,6 +246,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         {room.prize && ` · Prize: ${room.prize}`}
       </p>
       <WeatherBadge weather={state.race?.weather} />
+      <HotStrip hot={state.race?.hot_items} />
       {room.phase === 'LOBBY' && (
         <p>{mine.ticked ? "You're racing today! 🐎" : 'Waiting for the host to tick you in.'}</p>
       )}
@@ -307,11 +312,12 @@ function MyRecord({ stats, id }: { stats: OfficeStats | null; id: string }) {
   );
 }
 
-function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
+function ShopPanel({ room, race, mine, purchases, balance, act, busy }: PanelProps) {
   if (!mine.ticked) {
     return <p>💰 {balance} coins. You're not racing, but you can bet once the odds lock.</p>;
   }
   const boxes = boxesOf(purchases, mine.id);
+  const hotTypes = hotBoxTypes(hotOf(race?.hot_items));
   return (
     <>
       <p>
@@ -331,11 +337,25 @@ function ShopPanel({ room, mine, purchases, balance, act, busy }: PanelProps) {
             onClick={() => act(() => buyBox(room.id, box).then(playCoin))}
           >
             <span className="box-icon">{BOX_ICON[box]}</span>
-            <span>{BOX_NAME[box]}</span>
+            <span>
+              {BOX_NAME[box]}
+              {hotTypes.has(box) && (
+                <>
+                  {' '}
+                  <span aria-hidden="true">🔥</span>
+                  <span className="visually-hidden"> hot</span>
+                </>
+              )}
+            </span>
             <span className="chip">{PRICES[box]} coins</span>
           </button>
         ))}
       </div>
+      <TraitPicker
+        current={asTrait(mine.trait)}
+        disabled={busy}
+        onPick={(trait) => act(() => setTrait(room.id, trait))}
+      />
       <p>Boxes go in your own lane and open automatically. No refunds.</p>
     </>
   );
@@ -371,6 +391,12 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
 
   return (
     <>
+      {horses.includes(mine.id) && (
+        <p>
+          Trait: <span aria-hidden="true">{TRAIT_INFO[traitOf(race?.traits, mine.id)].icon}</span>{' '}
+          {TRAIT_INFO[traitOf(race?.traits, mine.id)].name}
+        </p>
+      )}
       <form className="shop" onSubmit={submit}>
         <fieldset className="horse-pick">
           <legend>Horse</legend>

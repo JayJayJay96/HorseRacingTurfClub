@@ -403,3 +403,13 @@ Specs C and D and plan: `docs/superpowers/plans/2026-11-05-hot-items-and-traits.
 - `npm test` 303 pass (44 files); `test:balance` 9 pass; `npm run test:db` 137 pass (18 files); E2E 6/6; typecheck, lint and build clean.
 - Not done: real-TV frame-rate check.
 - Deploy pending owner approval, in this order: `npx supabase db push --linked`, then `npx supabase functions deploy admin lock-odds start-race`, then `git push origin master`.
+
+## Visual polish (master, 2026-11-05)
+
+- Pixel horse sprites (`src/render/HorseSprite.tsx`, colours from `horseColors`) beside every horse name: lobby/shop/betting boards, race standings, stats, bet slip, phone header and lobby card, cut-in portraits. Before odds lock a horse's default colours use the lane it will race in (ticked players by `joined_at`, `id`), so colours match the race. Stats can't know lanes (accepted exception).
+- Podium: horses on the steps, the winner bigger and hopping, confetti on entry, prize banner, payout lines with sprites (top payout gold). Phone result card: sprite, place, winnings.
+- Phase banners ("SHOP OPEN!", "ODDS LOCKED", "PLACE YOUR BETS!", "RACE TIME!", "RESULTS!") on the shared screen and phones with a soft `phase` sting; only on a real phase change; shown inside race fullscreen too; reduced motion fades.
+- Phone: one-row header (sprite, name, coins, sound icon), sticky bottom action bar (Bet / I'm ready) pinned to the bottom, trait picker as a 2×3 grid, hot strip only in shop and betting, race line "#1 Ann · 2nd".
+- Icons: five Emoji 13–14 icons swapped for older ones (Mirror 🔁, Lasso ➰, Bubble 🔮, Broke 💸, Untouchable 👻); `src/app/emojiSupport.test.ts` blocks newer emoji.
+- Checks: `npm test` 339 pass, typecheck, lint, build clean, `npm run test:e2e` 6/6.
+- Known: the two `join_room` 400s in a phone's console on first load are the deliberate rejoin probe (empty name), harmless. Not done: real-TV/monitor frame-rate check.

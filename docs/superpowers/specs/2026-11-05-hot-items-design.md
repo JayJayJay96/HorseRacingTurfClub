@@ -12,7 +12,7 @@ type becomes a choice: if the Carrot is hot today, Speed boxes are worth more.
 
 - **3 hot items per race**, rolled when the shop opens, shown from shop to finish.
 - **One buff each:** 🍀 **Lucky** (2× as likely to come out of its box) or ⏱️ **Extended** (effect
-  lasts 50 % longer), 50/50. Shield and Mirror (no duration, held until used) always get Lucky.
+  lasts 50 % longer), 50/50. Shield and Mirror (no duration, held until used) and Stampede (it ends when the horse reaches its target, so a longer cap does nothing) always get Lucky.
 - **Eligible:** the 14 non-dud items (4 speed incl. Stampede, 7 attack incl. Lasso, Swarm,
   Thunderclap, 3 defense). Duds are never hot.
 - **Pick:** 3 different items, at most 2 from one box type.
@@ -46,7 +46,7 @@ type becomes a choice: if the Carrot is hot today, Speed boxes are worth more.
   - Mystery-only rolls: Stampede chance `PASS3_CHANCE_PERCENT` 25 → 50, Thunderclap
     `THUNDERCLAP_CHANCE_PERCENT` 5 → 10 (×2, capped at 100).
 - **Extended:** the item's effect seconds × `HOT.extendedFactor = 1.5`: speed boosts, attack
-  slowdowns, Lucky Bubble immunity, Stampede's sprint window, each Golden Carrot burst.
+  slowdowns, Lucky Bubble immunity, each Golden Carrot burst. Never Stampede, Shield or Mirror.
 - `validateRaceInput`: at most 3 entries, distinct items, no duds, buff valid, Extended only on
   items with `EFFECTS[item].seconds > 0`.
 - Numbers in `config.ts` under `HOT` (`count: 3`, `maxPerType: 2`, `luckyWeight: 2`,
@@ -58,7 +58,7 @@ One migration:
 - `rooms.hot_items_enabled boolean not null default true`; `races.hot_items jsonb not null default '[]'`.
 - `set_phase` (SHOP insert) rolls the list: shuffle the 14 eligible items, take them in order while
   skipping any that would make a third of one type, stop at 3; buff `lucky`/`extended` at 50 %
-  except Shield/Mirror → `lucky`.
+  except Shield/Mirror/Stampede → `lucky`.
 - `private.race_input` returns `hot_items`.
 - `admin_set_hot_items(boolean)` (service role) and `admin_overview` returns `hot_items_enabled`;
   admin Edge Function action `hot_items`.
@@ -88,7 +88,7 @@ One migration:
 - Sim: no hot items → same fingerprint; Lucky doubles shares (chi-square vs doubled weights,
   incl. Stampede/Thunderclap chances); Extended effect windows 1.5×; validation rejects bad lists;
   odds receive `hot`.
-- DB: opening the shop gives 3 distinct eligible items, ≤ 2 per type, Shield/Mirror never Extended;
+- DB: opening the shop gives 3 distinct eligible items, ≤ 2 per type, Shield/Mirror/Stampede never Extended;
   switch off → `[]`; `race_input` carries the list; back-to-shop keeps it; admin switch is
   service-only.
 - UI: strip text and type flags; commentary line; 🔥 popup; effect durations for Extended.

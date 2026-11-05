@@ -339,6 +339,7 @@ describe('hot items', () => {
       [{ item: 'speed:self1', buff: 'golden' as never }],
       [{ item: 'defense:block1', buff: 'extended' }],
       [{ item: 'defense:reflect', buff: 'extended' }],
+      [{ item: 'speed:pass3', buff: 'extended' }],
     ];
     for (const hot of bad) expect(() => race({ hot })).toThrow(RangeError);
   });

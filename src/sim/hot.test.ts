@@ -40,7 +40,7 @@ describe('hot items', () => {
 describe('effectSeconds on more items', () => {
   const ext = (item: HotItem['item']): HotItem[] => [{ item, buff: 'extended' }];
 
-  it('Extended lengthens each Golden Carrot burst, the Stampede and the Lucky Bubble', () => {
+  it('Extended lengthens each Golden Carrot burst and the Lucky Bubble (and the pure helper, Stampede)', () => {
     expect(effectSeconds('speed:self3', ext('speed:self3'))).toBe(
       EFFECTS['speed:self3'].seconds * HOT.extendedFactor,
     );

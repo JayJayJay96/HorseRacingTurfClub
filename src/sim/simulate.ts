@@ -21,7 +21,7 @@ import {
   WEATHER,
 } from './config.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
-import { buffOf, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
+import { buffOf, effectSeconds, HOT_ELIGIBLE, HOT_LUCKY_ONLY } from './hot.ts';
 import { rollBox } from './items.ts';
 import { round2, round3 } from './math.ts';
 import { createSeededRng, type Rng } from './rng.ts';
@@ -107,7 +107,7 @@ export function validateRaceInput(input: RaceInput): void {
     if (!HOT_ELIGIBLE.includes(item)) throw new RangeError(`${String(item)} can't be a hot item`);
     if (buff !== 'lucky' && buff !== 'extended')
       throw new RangeError(`unknown hot buff ${String(buff)}`);
-    if (buff === 'extended' && EFFECTS[item].seconds <= 0)
+    if (buff === 'extended' && (EFFECTS[item].seconds <= 0 || HOT_LUCKY_ONLY.includes(item)))
       throw new RangeError(`${item} has no duration to extend`);
   }
   for (const [id, trait] of Object.entries(input.traits ?? {})) {

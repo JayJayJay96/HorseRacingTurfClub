@@ -42,6 +42,8 @@ function cueOf(e: RaceEvent): SfxName | null {
   }
 }
 
+export const RAIN_BED_SECONDS = 3;
+
 /** Sounds for race time (from, to]: the 3-2-1 countdown, "go" at 0, then timeline events. */
 export function raceCues(timeline: Timeline, from: number, to: number): SfxName[] {
   const out: SfxName[] = [];
@@ -50,6 +52,13 @@ export function raceCues(timeline: Timeline, from: number, to: number): SfxName[
   for (const e of eventsBetween(timeline, from, to)) {
     const cue = cueOf(e);
     if (cue && out.at(-1) !== cue) out.push(cue);
+  }
+  if (timeline.weather === 'rain') {
+    const end = Math.max(...Object.values(timeline.finishTimes));
+    for (let k = Math.max(0, Math.ceil(from / RAIN_BED_SECONDS)); k * RAIN_BED_SECONDS <= to; k++) {
+      const at = k * RAIN_BED_SECONDS;
+      if (at > from && at <= end) out.push('rain');
+    }
   }
   if (cutinsOf(timeline).some((c) => from < c.t && c.t <= to)) out.push('cutin');
   return out;

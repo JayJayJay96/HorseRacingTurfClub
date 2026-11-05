@@ -62,6 +62,10 @@ function itemJoke(e: RaceEvent, name: (h: HorseId) => string): Line | null {
       return [LINES.reflect, { h: name(e.horse), by: name(e.by) }];
     case 'blocked':
       return [e.reason === 'immune' ? LINES.bubble : LINES.shield, { h: name(e.horse) }];
+    case 'slip':
+      return [LINES.slip, { h: name(e.horse) }];
+    case 'bump':
+      return [LINES.bump, { a: name(e.horse), b: name(e.with) }];
     default:
       return null;
   }
@@ -119,6 +123,8 @@ export function createCommentator(
       if (!saidStart && t >= 0) {
         saidStart = true;
         say(LINES.off);
+        if (timeline.weather === 'rain') say(LINES.rainStart);
+        else if (timeline.weather === 'fog') say(LINES.fogStart);
       }
       for (const e of timeline.events) {
         if (e.t > last && e.t <= t) {

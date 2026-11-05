@@ -120,3 +120,21 @@ describe('createCommentator', () => {
     ).toBe('Cal cashes in 63 coins!');
   });
 });
+
+describe('weather lines', () => {
+  it('calls the weather at the gun', () => {
+    const tl = { ...fakeTimeline({ a: 10, b: 5 }, 100), weather: 'rain' as const };
+    const c = createCommentator(tl, (h) => h, -0.5, { rand: () => 0 });
+    expect(c.linesUpTo(0.1)).toContain('Wet track today! Watch those puddles!');
+  });
+
+  it('jokes about slips and bumps', () => {
+    const tl = fakeTimeline({ a: 10, b: 5 }, 100, [
+      { t: 5, type: 'slip', horse: 'a' },
+      { t: 15, type: 'bump', horse: 'a', with: 'b' },
+    ]);
+    const c = createCommentator(tl, (h) => h, 0, { rand: () => 0 });
+    expect(c.linesUpTo(6)).toContain('Splash! a slips in a puddle!');
+    expect(c.linesUpTo(16)).toContain('Bonk! a and b bump in the fog!');
+  });
+});

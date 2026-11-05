@@ -61,3 +61,22 @@ describe('prioritise', () => {
     expect(prioritise(['hit', 'speed', 'go', 'attack'], 3)).toEqual(['go', 'hit', 'speed']);
   });
 });
+
+describe('raceCues weather', () => {
+  it('splashes on a slip and bonks on a bump', () => {
+    const wet = fakeTimeline({ a: 10, b: 5 }, 100, [
+      { t: 2, type: 'slip', horse: 'a' },
+      { t: 3, type: 'bump', horse: 'a', with: 'b' },
+    ]);
+    expect(raceCues(wet, 1, 4)).toEqual(['splash', 'bonk']);
+  });
+
+  it('keeps a rain bed going every 3 s while a rain race runs', () => {
+    const rain = { ...fakeTimeline({ a: 10, b: 5 }, 100), weather: 'rain' as const };
+    expect(raceCues(rain, -0.1, 0)).toEqual(['go', 'rain']);
+    expect(raceCues(rain, 0, 2.9)).toEqual([]);
+    expect(raceCues(rain, 2.9, 3)).toEqual(['rain']);
+    expect(raceCues(fakeTimeline({ a: 10 }, 100), 2.9, 3)).toEqual([]);
+    expect(prioritise(['hit', 'speed', 'shield', 'rain'], 3)).not.toContain('rain');
+  });
+});

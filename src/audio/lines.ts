@@ -6,6 +6,10 @@ export const LINES = {
     '{n} horses, one big prize. Here we go!',
   ],
   prize: ["Today's prize: {p}!", 'They are racing for {p}!'],
+  rainStart: ['Wet track today! Watch those puddles!', 'Rain on the course! Hold on tight!'],
+  fogStart: ['Fog rolling in! Mind your neighbours!', "It's a foggy one out there!"],
+  slip: ['Splash! {h} slips in a puddle!', 'Whoa! {h} skids on the wet track!'],
+  bump: ['Bonk! {a} and {b} bump in the fog!', '{a} and {b} knock shoulders!'],
   off: ["And they're off!", "The gates open and they're away!", 'Here we go! The race is on!'],
   lead: [
     '{h} takes the lead!',

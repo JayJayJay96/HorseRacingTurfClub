@@ -303,8 +303,25 @@ export function createSoundEngine(
         osc(c, bus, 'square', 330, 260, now, 0.08, 0.25);
         osc(c, bus, 'square', 260, 200, now + 0.07, 0.1, 0.2);
         break;
-      case 'rain': // the rain bed, Task 8
+      case 'rain': {
+        if (!noise) break;
+        const src = c.createBufferSource();
+        src.buffer = noise;
+        src.loop = true;
+        const f = c.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = 5000;
+        f.Q.value = 0.5;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.06, now + 0.6);
+        g.gain.setValueAtTime(0.06, now + 3);
+        g.gain.linearRampToValueAtTime(0, now + 3.6);
+        src.connect(f).connect(g).connect(bus);
+        src.start(now);
+        src.stop(now + 3.7);
         break;
+      }
       case 'shield':
         osc(c, bus, 'sine', 880, 880, now, 0.35, 0.3);
         osc(c, bus, 'sine', 1320, 1320, now + 0.05, 0.35, 0.2);

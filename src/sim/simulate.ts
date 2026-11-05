@@ -16,6 +16,8 @@ import {
   PASS3_PLACES,
   SELF3_GAP_SECONDS,
   TICK_HZ,
+  TRAIT_CODES,
+  TRAITS,
   WEATHER,
 } from './config.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
@@ -30,8 +32,10 @@ import type {
   RaceEvent,
   RaceInput,
   Timeline,
+  Trait,
   Weather,
 } from './types.ts';
+import { earlyPaceOf, kickBoostOf, kickExtraSecondsOf, toughen } from './traits.ts';
 import { placePuddles, puddlesByLane } from './weather.ts';
 
 interface Mod {
@@ -44,6 +48,10 @@ interface Mod {
 interface Horse {
   readonly id: HorseId;
   readonly index: number;
+  readonly trait: Trait;
+  readonly kickBoost: number;
+  /** Pace factor while progress < distance / 3 (Sprinter, Stayer). */
+  readonly earlyPace: number;
   readonly knots: readonly number[];
   readonly kickAt: number;
   readonly kickTicks: number;
@@ -102,6 +110,10 @@ export function validateRaceInput(input: RaceInput): void {
     if (buff === 'extended' && EFFECTS[item].seconds <= 0)
       throw new RangeError(`${item} has no duration to extend`);
   }
+  for (const [id, trait] of Object.entries(input.traits ?? {})) {
+    if (!input.horses.includes(id)) throw new RangeError(`trait for unknown horse ${id}`);
+    if (!TRAIT_CODES.includes(trait)) throw new RangeError(`unknown trait ${String(trait)}`);
+  }
 }
 
 /**
@@ -127,24 +139,36 @@ export function simulateRace(input: RaceInput): Timeline {
     distance,
     MYSTERY_PER_LANE[input.length],
   );
-  const horses: Horse[] = input.horses.map((id, index) => ({
-    id,
-    index,
-    knots: Array.from({ length: Math.ceil(maxTicks / knotTicks) + 2 }, () => fraction(rng) * 2 - 1),
-    kickAt: distance * (KICK.fromFraction + fraction(rng) * (KICK.toFraction - KICK.fromFraction)),
-    kickTicks:
-      toTicks(KICK.minSeconds) +
-      rng.nextInt(toTicks(KICK.maxSeconds) - toTicks(KICK.minSeconds) + 1),
-    progress: 0,
-    kickStart: null,
-    mods: [],
-    immuneUntil: 0,
-    held: null,
-    stampede: null,
-    nextBox: 0,
-    finishTime: null,
-    finishExact: 0,
-  }));
+  const horses: Horse[] = input.horses.map((id, index) => {
+    const trait: Trait = input.traits?.[id] ?? 'normal';
+    return {
+      id,
+      index,
+      trait,
+      // Draw order (knots, kickAt, kickTicks) is unchanged: traits add no draws here.
+      knots: Array.from(
+        { length: Math.ceil(maxTicks / knotTicks) + 2 },
+        () => fraction(rng) * 2 - 1,
+      ),
+      kickAt:
+        distance * (KICK.fromFraction + fraction(rng) * (KICK.toFraction - KICK.fromFraction)),
+      kickTicks:
+        toTicks(KICK.minSeconds) +
+        rng.nextInt(toTicks(KICK.maxSeconds) - toTicks(KICK.minSeconds) + 1) +
+        toTicks(kickExtraSecondsOf(trait)),
+      kickBoost: kickBoostOf(trait),
+      earlyPace: earlyPaceOf(trait),
+      progress: 0,
+      kickStart: null,
+      mods: [],
+      immuneUntil: 0,
+      held: null,
+      stampede: null,
+      nextBox: 0,
+      finishTime: null,
+      finishExact: 0,
+    };
+  });
   const weather: Weather = input.weather ?? 'clear';
   // Weather draws only happen off-clear, so clear races and old replays are unchanged.
   const puddles =
@@ -162,8 +186,10 @@ export function simulateRace(input: RaceInput): Timeline {
   /** Per neighbour pair (lane i and i + 1): the tick of its last bump. */
   const lastBump = horses.map(() => -Infinity);
   const bumpOdds = Math.round((WEATHER.bumpPerSecond / TICK_HZ) * 1_000_000);
+  /** Tough (spec D): every slowdown and boost on this horse is weaker; Normal untouched. */
+  const tough = (h: Horse, mult: number): number => (h.trait === 'tough' ? toughen(mult) : mult);
   const weatherMod = (h: Horse, e: { mult: number; seconds: number }, tick: number) =>
-    h.mods.push({ mult: e.mult, from: tick + 1, until: tick + 1 + toTicks(e.seconds) });
+    h.mods.push({ mult: tough(h, e.mult), from: tick + 1, until: tick + 1 + toTicks(e.seconds) });
   const progress: Record<HorseId, number[]> = Object.fromEntries(
     input.horses.map((id) => [id, [0]]),
   );
@@ -177,16 +203,19 @@ export function simulateRace(input: RaceInput): Timeline {
     const a = h.knots[i]!;
     const b = h.knots[i + 1]!;
     const noise = 1 + (a + (b - a) * f) * NOISE.amplitude;
-    const kick = h.kickStart !== null && tick < h.kickStart + h.kickTicks ? 1 + KICK.boost : 1;
+    const kick = h.kickStart !== null && tick < h.kickStart + h.kickTicks ? 1 + h.kickBoost : 1;
     // A Stampede is not immune: hits landed during the sprint still slow it.
-    let mult = h.stampede ? EFFECTS['speed:pass3'].mult : 1;
+    let mult = h.stampede ? tough(h, EFFECTS['speed:pass3'].mult) : 1;
     for (const m of h.mods) if (m.from <= tick && tick < m.until) mult *= m.mult;
-    return BASE_SPEED * noise * kick * mult;
+    // Traits: Sprinter/Stayer over the first third, Mudder on a clear day. Normal multiplies by 1.
+    const early = h.progress < distance / 3 ? h.earlyPace : 1;
+    const mud = h.trait === 'mudder' && weather === 'clear' ? TRAITS.mudder.clearPace : 1;
+    return BASE_SPEED * noise * kick * mult * early * mud;
   };
 
   const addMod = (h: Horse, item: ItemCode, from: number): void => {
     const e = EFFECTS[item];
-    h.mods.push({ mult: e.mult, from, until: from + toTicks(secondsOf(item)) });
+    h.mods.push({ mult: tough(h, e.mult), from, until: from + toTicks(secondsOf(item)) });
   };
 
   const hit = (
@@ -300,7 +329,9 @@ export function simulateRace(input: RaceInput): Timeline {
           lane[nextPuddle[h.index]!]!.at <= h.progress
         ) {
           nextPuddle[h.index]!++;
-          if (rng.nextInt(100) < WEATHER.slipChancePercent) {
+          const slipChance =
+            h.trait === 'mudder' ? TRAITS.mudder.slipChancePercent : WEATHER.slipChancePercent;
+          if (rng.nextInt(100) < slipChance) {
             weatherMod(h, WEATHER.slip, tick);
             events.push({ t: round2(tick / TICK_HZ), type: 'slip', horse: h.id });
           }
@@ -313,7 +344,9 @@ export function simulateRace(input: RaceInput): Timeline {
         if (a.finishTime !== null || b.finishTime !== null) continue;
         if (Math.abs(a.progress - b.progress) > WEATHER.bumpRangeM) continue;
         if (tick - lastBump[i]! < toTicks(WEATHER.bumpCooldownS)) continue;
-        if (rng.nextInt(1_000_000) >= bumpOdds) continue;
+        // Each Mudder in the pair scales the chance; still exactly one draw.
+        const mud = (x: Horse) => (x.trait === 'mudder' ? TRAITS.mudder.bumpFactor : 1);
+        if (rng.nextInt(1_000_000) >= bumpOdds * mud(a) * mud(b)) continue;
         lastBump[i] = tick;
         weatherMod(a, WEATHER.bump, tick);
         weatherMod(b, WEATHER.bump, tick);
@@ -342,6 +375,7 @@ export function simulateRace(input: RaceInput): Timeline {
           rank: ranked.indexOf(h),
           count: horses.length,
           lucky,
+          charmed: h.trait === 'charmed',
           canTarget: {
             behind1: targets.behind1.length > 0,
             behind3: targets.behind3.length > 0,
@@ -377,6 +411,7 @@ export function simulateRace(input: RaceInput): Timeline {
     weather,
     puddles,
     hot: [...hot],
+    traits: Object.fromEntries(horses.map((h) => [h.id, h.trait])),
     progress,
     events,
     finishOrder,

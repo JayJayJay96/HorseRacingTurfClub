@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { DISTANCE, EFFECTS, MYSTERY_PER_LANE, TICK_HZ, WEATHER } from './config.ts';
+import { DISTANCE, EFFECTS, MYSTERY_PER_LANE, TICK_HZ, TRAITS, WEATHER } from './config.ts';
 import { simulateRace } from './simulate.ts';
-import type { BoxType, HotItem, ItemCode, RaceInput, Timeline } from './types.ts';
+import { earlyPaceOf, toughen } from './traits.ts';
+import type { BoxType, HotItem, ItemCode, RaceInput, Timeline, Trait } from './types.ts';
 
 const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `h${i}`);
 const race = (over: Partial<RaceInput> = {}): Timeline =>
@@ -175,7 +176,7 @@ const fingerprint = (over: Partial<RaceInput> = {}) => {
       ...over,
     });
     // Old timelines have none of these fields: drop them so the fingerprint compares the race itself.
-    const { weather: _w, puddles: _p, hot: _h, ...rest } = tl;
+    const { weather: _w, puddles: _p, hot: _h, traits: _t, ...rest } = tl;
     const s = JSON.stringify(rest);
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
   }
@@ -411,5 +412,149 @@ describe('hot items', () => {
       }
     }
     expect(late).toBeGreaterThan(0); // some blocks land in the extra 3 s
+  });
+});
+
+const allOf = (trait: Trait, n = 12): Record<string, Trait> =>
+  Object.fromEntries(ids(n).map((h) => [h, trait]));
+
+describe('traits', () => {
+  it('an all-Normal field races exactly as before', () => {
+    expect(fingerprint({ traits: allOf('normal') })).toBe(2438717223);
+    expect(fingerprint({ traits: {} })).toBe(2438717223);
+  });
+
+  it('rejects unknown traits and unknown horses', () => {
+    expect(() => race({ traits: { h0: 'lucky' as never } })).toThrow(RangeError);
+    expect(() => race({ traits: { nobody: 'tough' } })).toThrow(RangeError);
+  });
+
+  it("records every horse's trait, Normal by default", () => {
+    expect(race({ traits: { h1: 'stayer' } }).traits).toEqual({
+      ...allOf('normal', 8),
+      h1: 'stayer',
+    });
+  });
+
+  it('Sprinter and Stayer change the pace over the first third', () => {
+    const at10s = (trait: Trait) => {
+      let sum = 0;
+      for (let seed = 1; seed <= 10; seed++) {
+        const tl = race({ seed, horses: ids(12), traits: allOf(trait) });
+        for (const h of ids(12)) sum += tl.progress[h]![100]!; // ~150 m, well inside 600 m
+      }
+      return sum;
+    };
+    const normal = at10s('normal');
+    for (const trait of ['sprinter', 'stayer'] as const) {
+      const want = earlyPaceOf(trait);
+      expect(Math.abs(at10s(trait) / normal - want)).toBeLessThan(Math.abs(want - 1) / 2 + 0.002);
+    }
+  });
+
+  it('Charmed: fewer duds, never Stampede or Thunderclap', () => {
+    const count = (trait: Trait) => {
+      let duds = 0;
+      let rare = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        for (const e of race({ seed, horses: ids(12), traits: allOf(trait) }).events) {
+          if (e.type !== 'pickup') continue;
+          if (e.item?.startsWith('dud:')) duds++;
+          if (e.item === 'speed:pass3' || e.item === 'attack:all') rare++;
+        }
+      }
+      return { duds, rare };
+    };
+    const normal = count('normal');
+    const charmed = count('charmed');
+    expect(normal.rare).toBeGreaterThan(0);
+    expect(charmed.rare).toBe(0);
+    const keep = 1 - TRAITS.charmed.rerollPercent / 100;
+    expect(Math.abs(charmed.duds / normal.duds - keep)).toBeLessThan(0.12);
+  });
+
+  it('Tough: the Golden Lasso only slows it', () => {
+    let checked = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const tl = race({ seed, horses: ids(12), traits: allOf('tough') });
+      for (const e of tl.events) {
+        if (e.type !== 'hit' || e.item !== 'attack:leader') continue;
+        const tick = Math.round(e.t * TICK_HZ);
+        const p = tl.progress[e.horse]!;
+        expect(p[tick + 2 * TICK_HZ]!).toBeGreaterThan(p[tick]!);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('Tough: a rain slip slows it less', () => {
+    // Noise takes at most 6 % off; a Normal slip tops out near 15 * 0.5 * 1.17, below this floor.
+    const floor = 15 * toughen(WEATHER.slip.mult) * 0.9;
+    let checked = 0;
+    for (let seed = 1; seed <= 80; seed++) {
+      const tl = race({ seed, weather: 'rain', horses: ids(12), traits: allOf('tough') });
+      for (const slip of tl.events) {
+        if (slip.type !== 'slip') continue;
+        // Clean slips only: no other event for this horse from 4 s before to just after.
+        const busy = tl.events.some(
+          (e) =>
+            e !== slip &&
+            e.type !== 'finish' &&
+            e.horse === slip.horse &&
+            e.t > slip.t - 4 &&
+            e.t <= slip.t + 1.6,
+        );
+        const tick = Math.round(slip.t * TICK_HZ);
+        const p = tl.progress[slip.horse]!;
+        if (busy || p[tick + 15]! >= tl.distance) continue;
+        expect((p[tick + 15]! - p[tick + 1]!) / 1.4).toBeGreaterThan(floor);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(10);
+  });
+
+  it('Mudder: slips at its own chance', () => {
+    let entries = 0;
+    let slips = 0;
+    for (let seed = 1; seed <= 150; seed++) {
+      const tl = race({ seed, weather: 'rain', horses: ids(12), traits: allOf('mudder') });
+      entries += tl.horses.reduce(
+        (n, _, lane) =>
+          n + tl.puddles!.filter((p) => p.lanes[0] <= lane && lane <= p.lanes[1]).length,
+        0,
+      );
+      slips += tl.events.filter((e) => e.type === 'slip').length;
+    }
+    expect(Math.abs(slips / entries - TRAITS.mudder.slipChancePercent / 100)).toBeLessThan(0.025);
+  });
+
+  it('Mudder: each Mudder in a fog pair scales its bump chance', () => {
+    const bumps = (traits: Record<string, Trait>) => {
+      let n = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        n += race({ seed, weather: 'fog', horses: ids(12), traits }).events.filter(
+          (e) => e.type === 'bump',
+        ).length;
+      }
+      return n;
+    };
+    const ratio = bumps(allOf('mudder')) / bumps(allOf('normal'));
+    expect(Math.abs(ratio - TRAITS.mudder.bumpFactor ** 2)).toBeLessThan(0.12);
+  });
+
+  it('Mudder: slower on a clear day', () => {
+    const meanWinner = (trait: Trait) => {
+      let sum = 0;
+      for (let seed = 1; seed <= 30; seed++) {
+        const tl = race({ seed, horses: ids(12), traits: allOf(trait) });
+        sum += tl.finishTimes[tl.finishOrder[0]!]!;
+      }
+      return sum;
+    };
+    const want = 1 / TRAITS.mudder.clearPace;
+    const ratio = meanWinner('mudder') / meanWinner('normal');
+    expect(Math.abs(ratio - want)).toBeLessThan(Math.max((want - 1) / 2, 0.002));
   });
 });

@@ -137,6 +137,59 @@ button.primary {
   display: grid;
   gap: 8px;
 }
+/* Looks shop (spec 2026-11-05 cosmetics shop). */
+.shop-preview {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 4px;
+  min-height: calc(22px * 4 + 16px);
+  padding: 8px;
+  background: var(--raised);
+}
+.shop-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.shop-tabs button {
+  flex: 1 1 auto;
+  min-height: 44px;
+}
+.shop-tabs button[aria-pressed='true'] {
+  color: var(--bg);
+  background: var(--gold);
+}
+.shop-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.shop-card {
+  display: grid;
+  gap: 4px;
+}
+.shop-card button {
+  min-height: 44px;
+}
+.shop-try {
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+.trail-marks {
+  display: inline-flex;
+  flex-direction: row-reverse; /* newest mark next to the horse, which faces right */
+  align-items: center;
+  gap: 2px;
+}
+.trail-marks i {
+  width: 4px;
+  height: 4px;
+}
 .box-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

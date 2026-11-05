@@ -281,7 +281,14 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         <>
           <p>💰 {props.balance} coins</p>
           <MyRecord stats={stats} id={mine.id} />
-          <HorsePanel roomId={room.id} mine={mine} balance={props.balance} act={act} busy={busy} />
+          <HorsePanel
+            roomId={room.id}
+            mine={mine}
+            colors={horseColors(state.players, state.race?.horses ?? [], mine.id)}
+            balance={props.balance}
+            act={act}
+            busy={busy}
+          />
           <p>
             <button
               type="button"

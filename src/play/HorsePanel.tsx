@@ -1,10 +1,17 @@
 import { useState, type FormEvent } from 'react';
 import { setMyHorse, type RoomPlayer } from '../net/rooms.ts';
-import { COAT_COLORS, SILK_COLORS } from '../render/palette.ts';
+import { COAT_COLORS, SILK_COLORS, type HorseColors } from '../render/palette.ts';
 import { LooksShop } from './LooksShop.tsx';
 
 type Act = (fn: () => Promise<unknown>) => void;
-type Props = { roomId: string; mine: RoomPlayer; balance: number; act: Act; busy: boolean };
+type Props = {
+  roomId: string;
+  mine: RoomPlayer;
+  colors: HorseColors;
+  balance: number;
+  act: Act;
+  busy: boolean;
+};
 
 function Swatches(props: {
   label: string;
@@ -44,7 +51,7 @@ function Swatches(props: {
 }
 
 /** Office LOBBY: coat, silk colour and horse name (cosmetic only), plus the looks shop. */
-export function HorsePanel({ roomId, mine, balance, act, busy }: Props) {
+export function HorsePanel({ roomId, mine, colors, balance, act, busy }: Props) {
   const [coat, setCoat] = useState<number | null>(mine.coat);
   const [silk, setSilk] = useState<number | null>(mine.silk);
   const [name, setName] = useState(mine.horse_name ?? '');
@@ -71,7 +78,14 @@ export function HorsePanel({ roomId, mine, balance, act, busy }: Props) {
           Save horse
         </button>
       </form>
-      <LooksShop roomId={roomId} mine={mine} balance={balance} act={act} busy={busy} />
+      <LooksShop
+        roomId={roomId}
+        mine={mine}
+        colors={colors}
+        balance={balance}
+        act={act}
+        busy={busy}
+      />
     </>
   );
 }

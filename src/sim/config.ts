@@ -1,4 +1,13 @@
-import type { AttackTarget, Band, BoxType, ItemCode, MysteryType, RaceLength, Trait, Weather } from './types.ts';
+import type {
+  AttackTarget,
+  Band,
+  BoxType,
+  ItemCode,
+  MysteryType,
+  RaceLength,
+  Trait,
+  Weather,
+} from './types.ts';
 
 /** Simulation steps per second. Timelines store one progress sample per step. */
 export const TICK_HZ = 10;

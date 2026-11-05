@@ -14,7 +14,11 @@ export const earlyPaceOf = (t: Trait): number =>
 
 /** Finishing-kick boost (KICK.boost for everyone but Sprinter and Stayer). */
 export const kickBoostOf = (t: Trait): number =>
-  t === 'sprinter' ? TRAITS.sprinter.kickBoost : t === 'stayer' ? TRAITS.stayer.kickBoost : KICK.boost;
+  t === 'sprinter'
+    ? TRAITS.sprinter.kickBoost
+    : t === 'stayer'
+      ? TRAITS.stayer.kickBoost
+      : KICK.boost;
 
 /** Extra kick seconds (Stayer). */
 export const kickExtraSecondsOf = (t: Trait): number =>

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ATTACK_WEIGHTS, MYSTERY_TYPE_WEIGHTS } from './config.ts';
+import {
+  ATTACK_WEIGHTS,
+  HOT,
+  MYSTERY_TYPE_WEIGHTS,
+  PASS3_CHANCE_PERCENT,
+  THUNDERCLAP_CHANCE_PERCENT,
+} from './config.ts';
 import { bandOf, rollAttack, rollBox, type RollContext } from './items.ts';
 import { createSeededRng } from './rng.ts';
 import { chiSquare } from './testStats.ts';
@@ -117,5 +123,94 @@ describe('rollBox', () => {
       if (rollBox(rng, 'mystery', ctx(9)) === 'attack:all') seen.last = true;
     }
     expect(seen).toEqual({ second: false, last: true });
+  });
+});
+
+describe('Lucky hot items', () => {
+  const lucky = (...items: ItemCode[]) => ({ lucky: new Set(items) });
+
+  it('a Lucky Carrot comes out of a Speed box 2 times in 4', () => {
+    const rng = createSeededRng(11);
+    const items: ItemCode[] = ['speed:self1', 'speed:self3', 'speed:star'];
+    const counts = [0, 0, 0];
+    for (let i = 0; i < 20_000; i++) {
+      counts[items.indexOf(rollBox(rng, 'speed', { ...ctx(i % 10), ...lucky('speed:self1') })!)]!++;
+    }
+    expect(chiSquare(counts, [0.5, 0.25, 0.25])).toBeLessThan(13.82); // df = 2, p = 0.001
+  });
+
+  it('a Lucky Mirror Saddle doubles in a Defense box', () => {
+    const rng = createSeededRng(12);
+    const items: ItemCode[] = ['defense:block1', 'defense:immune', 'defense:reflect'];
+    const counts = [0, 0, 0];
+    for (let i = 0; i < 20_000; i++) {
+      counts[
+        items.indexOf(rollBox(rng, 'defense', { ...ctx(i % 10), ...lucky('defense:reflect') })!)
+      ]!++;
+    }
+    expect(chiSquare(counts, [0.25, 0.25, 0.5])).toBeLessThan(13.82);
+  });
+
+  it('a Lucky attack doubles its band weight', () => {
+    const rng = createSeededRng(13);
+    const targets = Object.keys(ATTACK_WEIGHTS.middle) as AttackTarget[];
+    const weights = targets.map((t) =>
+      t === 'top3' ? ATTACK_WEIGHTS.middle[t] * HOT.luckyWeight : ATTACK_WEIGHTS.middle[t],
+    );
+    const total = weights.reduce((a, b) => a + b, 0);
+    const counts = targets.map(() => 0);
+    for (let i = 0; i < 20_000; i++) {
+      const item = rollAttack(rng, { ...ctx(4), ...lucky('attack:top3') })!;
+      counts[targets.indexOf(item.slice('attack:'.length) as AttackTarget)]!++;
+    }
+    expect(
+      chiSquare(
+        counts,
+        weights.map((w) => w / total),
+      ),
+    ).toBeLessThan(20.52); // df = 5
+  });
+
+  it('a Lucky Stampede or Thunderclap doubles its chance', () => {
+    const rng = createSeededRng(14);
+    let speed = 0;
+    let pass3 = 0;
+    let attack = 0;
+    let all = 0;
+    for (let i = 0; i < 40_000; i++) {
+      const back = rollBox(rng, 'mystery', { ...ctx(8), ...lucky('speed:pass3') });
+      if (back?.startsWith('speed:')) speed++;
+      if (back === 'speed:pass3') pass3++;
+      const last = rollBox(rng, 'mystery', { ...ctx(9), ...lucky('attack:all') });
+      if (last?.startsWith('attack:')) attack++;
+      if (last === 'attack:all') all++;
+    }
+    const p = Math.min(100, PASS3_CHANCE_PERCENT * HOT.luckyWeight) / 100;
+    expect(chiSquare([pass3, speed - pass3], [p, 1 - p])).toBeLessThan(10.83); // df = 1
+    const q = Math.min(100, THUNDERCLAP_CHANCE_PERCENT * HOT.luckyWeight) / 100;
+    expect(chiSquare([all, attack - all], [q, 1 - q])).toBeLessThan(10.83);
+  });
+
+  it('draws exactly as before unless the roll holds a Lucky item', () => {
+    // A Lucky item of another box type must not touch this roll's draws.
+    const other = {
+      speed: 'defense:block1',
+      attack: 'speed:self1',
+      defense: 'attack:leader',
+    } as const;
+    for (const kind of ['speed', 'attack', 'defense'] as const) {
+      const a = createSeededRng(21);
+      const b = createSeededRng(21);
+      for (let i = 0; i < 2000; i++) {
+        const c = ctx(i % 10);
+        expect(rollBox(b, kind, { ...c, ...lucky(other[kind]) })).toBe(rollBox(a, kind, c));
+      }
+    }
+    const a = createSeededRng(22);
+    const b = createSeededRng(22);
+    for (let i = 0; i < 2000; i++) {
+      const c = ctx(i % 10);
+      expect(rollBox(b, 'mystery', { ...c, lucky: new Set() })).toBe(rollBox(a, 'mystery', c));
+    }
   });
 });

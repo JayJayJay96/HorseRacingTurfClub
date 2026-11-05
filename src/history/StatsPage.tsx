@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '../app/TopBar.tsx';
+import { HotStrip } from '../app/HotItems.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -204,6 +205,7 @@ function Replay(props: { stats: OfficeStats; race: string; onClose: () => void }
       </button>
       <SoundToggle settings={settings} update={update} />
       <WeatherBadge weather={timeline?.weather} />
+      <HotStrip hot={timeline?.hot} />
       {timeline ? (
         <RaceView timeline={timeline} startAtMs={gun} names={names} colors={colors} track={track} />
       ) : (

@@ -20,7 +20,7 @@ type RaceRow = {
   finished: boolean;
   current: boolean;
 };
-type Overview = { room: { phase: string; weather_enabled: boolean }; members: Member[]; races: RaceRow[] };
+type Overview = { room: { phase: string; weather_enabled: boolean; hot_items_enabled: boolean }; members: Member[]; races: RaceRow[] };
 
 const KEY = 'hrtc-admin';
 const loadPassword = () => {
@@ -159,6 +159,17 @@ export function AdminPage() {
             onChange={(e) => run('weather', { on: e.target.checked })}
           />{' '}
           Weather (rain and fog races)
+        </label>
+      </p>
+      <p>
+        <label>
+          <input
+            type="checkbox"
+            checked={data?.room.hot_items_enabled ?? true}
+            disabled={busy || !data}
+            onChange={(e) => run('hot_items', { on: e.target.checked })}
+          />{' '}
+          Hot items (3 buffed powerups per race)
         </label>
       </p>
       <h2>People</h2>

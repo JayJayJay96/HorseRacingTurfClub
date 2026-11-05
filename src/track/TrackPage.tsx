@@ -18,6 +18,8 @@ import {
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
 import { TopBar } from '../app/TopBar.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
+import { HotStrip, hotOf } from '../app/HotItems.tsx';
+import { TRAIT_LEGEND, TraitIcon, asTrait, traitOf } from '../app/Traits.tsx';
 import { formatForm } from '../history/badges.ts';
 import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
@@ -295,19 +297,22 @@ function HorseMark({ ready }: { ready: boolean }) {
 
 const percent = (p: number | undefined) => (p === undefined ? '…' : `${Math.round(p * 100)}%`);
 
-function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) {
+function ShopBoard({ room, players, race, purchases, online, act, busy }: BoardProps) {
   const racing = players.filter((p) => p.ticked);
   const ids = racing.map((p) => p.id);
   const chances = useChances({
     horses: ids,
     bought: Object.fromEntries(ids.map((id) => [id, boxesOf(purchases, id)])),
     length: room.race_length as RaceLength,
+    hot: hotOf(race?.hot_items),
+    traits: Object.fromEntries(racing.map((p) => [p.id, asTrait(p.trait)])),
   });
   const office = room.kind === 'office';
   const { stats } = useOfficeStats(room.race_id, office);
   return (
     <section>
       <h1>Shop open · room {room.code}</h1>
+      <HotStrip hot={race?.hot_items} />
       <p>
         Phones: up to 3 boxes for your own lane —{' '}
         {BOX_TYPES.map((b) => `${BOX_ICON[b]} ${BOX_NAME[b]} ${PRICES[b]}`).join(' · ')}
@@ -328,7 +333,8 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
             {racing.map((p) => (
               <tr key={p.id}>
                 <td>
-                  <HorseMark ready={p.ready} /> {horseName(p)}
+                  <HorseMark ready={p.ready} /> <TraitIcon trait={asTrait(p.trait)} />{' '}
+                  {horseName(p)}
                   {p.uid && !online.has(p.id) && ' (offline)'}
                 </td>
                 <td>{boxIcons(purchases, p.id)}</td>
@@ -344,7 +350,7 @@ function ShopBoard({ room, players, purchases, online, act, busy }: BoardProps) 
       </div>
       <p>
         <small>
-          Chances from {chances?.sims ?? '…'} simulated races with these boxes. Luck still counts: a
+          Chances from {chances?.sims ?? '…'} simulated races with these boxes, traits and hot items. Luck still counts: a
           horse with no boxes often makes the top 3.
         </small>
       </p>
@@ -390,6 +396,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
     <section>
       <h1>Place your bets · room {room.code}</h1>
       <WeatherBadge weather={race?.weather} />
+      <HotStrip hot={race?.hot_items} />
       <div className="panel">
         <table className="odds board">
           <thead>
@@ -397,6 +404,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
               <th>#</th>
               <th>Horse</th>
               {office && <th>Form</th>}
+              <th>Trait</th>
               <th>Boxes</th>
               <th>Win</th>
               {canPlace(horses) && <th>Place</th>}
@@ -413,6 +421,9 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
                 {office && (
                   <td>{formatForm(stats?.horses.find((h) => h.id === id)?.last5 ?? [])}</td>
                 )}
+                <td>
+                  <TraitIcon trait={traitOf(race?.traits, id)} />
+                </td>
                 <td>{boxIcons(purchases, id)}</td>
                 <td className="pixel">{formatOdds(odds[id]?.win)}</td>
                 {canPlace(horses) && <td className="pixel">{formatOdds(odds[id]?.place)}</td>}
@@ -421,6 +432,9 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
           </tbody>
         </table>
       </div>
+      <p>
+        <small>Traits: {TRAIT_LEGEND}</small>
+      </p>
       {GROUP_KINDS.some((g) => groupOdds[g] !== undefined) && (
         <p className="pixel">
           Winner's number:{' '}
@@ -517,6 +531,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
     <section>
       <h1 className="visually-hidden">Race · room {room.code}</h1>
       <WeatherBadge weather={race?.weather} />
+      <HotStrip hot={race?.hot_items} />
       {timeline && race?.started_at ? (
         <RaceView
           timeline={timeline}

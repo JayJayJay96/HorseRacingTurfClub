@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { raceAnnouncement } from '../app/announce.ts';
+import { TraitIcon, asTrait } from '../app/Traits.tsx';
 import { standingsAt } from '../sim/playback.ts';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { CutInOverlay } from './CutInOverlay.tsx';
@@ -161,7 +162,9 @@ export function RaceView({
           const lane = timeline.horses.indexOf(h);
           return (
             <li key={h}>
-              <Silk color={(colors ?? defaultColors)(h, lane).silk} /> #{lane + 1} {names[h] ?? '?'}
+              <Silk color={(colors ?? defaultColors)(h, lane).silk} /> #{lane + 1}{' '}
+              {timeline.traits && <TraitIcon trait={asTrait(timeline.traits[h])} />}{' '}
+              {names[h] ?? '?'}
               {time <= t && ` · ${time.toFixed(2)} s`}
             </li>
           );

@@ -145,12 +145,12 @@ export const TRAIT_CODES = [
 /** Horse traits (spec 2026-11-05 D). Tuned by the balance test (Task 7); final values in PROJECT_STATUS. */
 export const TRAITS = {
   /** This share of a Charmed horse's dud type rolls is rolled again without the dud (50 = half the duds). */
-  charmed: { rerollPercent: 50 },
+  charmed: { rerollPercent: 10 },
   /** Slowdowns keep `hitFactor` of their strength, boosts `boostFactor`; durations unchanged. */
-  tough: { hitFactor: 0.7, boostFactor: 0.7 },
+  tough: { hitFactor: 0.9, boostFactor: 0.7 },
   /** `earlyPace` applies while progress < distance / 3; `kickBoost` replaces KICK.boost. */
-  sprinter: { earlyPace: 1.04, kickBoost: 0.05 },
-  stayer: { earlyPace: 0.97, kickBoost: 0.15, kickExtraSeconds: 1 },
+  sprinter: { earlyPace: 1.05, kickBoost: 0.09 },
+  stayer: { earlyPace: 0.9, kickBoost: 0.105, kickExtraSeconds: 1 },
   /** `bumpFactor` per Mudder in a fog pair; `clearPace` all race on a clear day. */
-  mudder: { slipChancePercent: 5, bumpFactor: 0.5, clearPace: 0.985 },
+  mudder: { slipChancePercent: 5, bumpFactor: 0.5, clearPace: 0.996 },
 } as const;

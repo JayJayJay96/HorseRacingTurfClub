@@ -547,7 +547,7 @@ describe('traits', () => {
   it('Mudder: slower on a clear day', () => {
     const meanWinner = (trait: Trait) => {
       let sum = 0;
-      for (let seed = 1; seed <= 30; seed++) {
+      for (let seed = 1; seed <= 200; seed++) {
         const tl = race({ seed, horses: ids(12), traits: allOf(trait) });
         sum += tl.finishTimes[tl.finishOrder[0]!]!;
       }

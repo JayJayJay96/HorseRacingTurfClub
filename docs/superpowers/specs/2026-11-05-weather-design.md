@@ -34,7 +34,7 @@ the odds include it, and sets a mood on the big screen without ever hiding the h
    `races.weather text not null default 'clear'`. A retried lock re-rolls; safe, nobody saw the odds.
 3. **Race start:** `private.race_input` returns `races.weather`; `start-race` passes it to
    `simulateRace`. Odds and race always share the weather.
-4. **Clients:** `races.weather` is read with the race (badge from `ODDS_LOCKED` on); playback reads
+4. **Clients:** `races.weather` is read with the race (badge from `BETTING` on); playback reads
    `timeline.weather`.
 
 ## Simulation (`src/sim`)
@@ -78,11 +78,11 @@ One migration:
 ## UI
 
 - **Badge:** "🌧️ Rain · horses may slip" / "🌫️ Fog · horses may bump" beside the race title on the
-  track page and the phone play page, from `ODDS_LOCKED`. Clear shows nothing.
+  track page and the phone play page, once the odds are up (`BETTING`). Clear shows nothing.
 - **Admin page:** a "Weather" on/off switch for the office.
 - **Commentary:** a line at the gun for rain/fog; occasional lines on slip/bump (existing
   commentator throttling).
-- **History / replays:** weather icon from `races.weather` / the timeline.
+- **History / replays:** the replay shows the badge from `timeline.weather` (stats lists unchanged).
 - Phones' mini oval: no weather visuals.
 
 ## Rendering
@@ -116,7 +116,7 @@ Light touch everywhere; the pack and leaders are never obscured.
 
 - `weather.test.ts` / `simulate.test.ts`:
   - clear race timeline identical to before for a fixed seed (no extra RNG draws);
-  - puddles span 3 lanes, sit in `BOX_ZONE`, avoid boxes, per-lane counts within ±1;
+  - puddles span 3 lanes, sit in `BOX_ZONE`, avoid boxes, per-lane counts within 2 of each other;
   - slip rate ≈ 15 % over many entries; slips only inside puddles;
   - bumps only between neighbouring lanes within range, cooldown respected;
   - `rollWeather` weights (chi-square, existing helper) and off → always clear.

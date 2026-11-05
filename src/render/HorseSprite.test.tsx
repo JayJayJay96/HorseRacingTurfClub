@@ -90,4 +90,9 @@ describe('sameColors', () => {
   it('the trail is not drawn, so it never triggers a redraw', () => {
     expect(sameColors(c, { ...c, trail: 'trail:dust' })).toBe(true);
   });
+  it('a different cap redraws; a celebration does not (it is not drawn on the sprite)', () => {
+    expect(sameColors(c, { ...c, cap: 'cap:crown' })).toBe(false);
+    expect(sameColors({ ...c, cap: null }, c)).toBe(true);
+    expect(sameColors(c, { ...c, celebration: 'celebration:spin' })).toBe(true);
+  });
 });

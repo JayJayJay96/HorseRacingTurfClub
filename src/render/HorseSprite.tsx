@@ -61,12 +61,13 @@ function Sprite({ colors, size, animated = false, className }: Props) {
   );
 }
 
-/** Colours that change what is drawn. `trail` is not drawn on a sprite, so it is ignored. */
+/** Colours that change what is drawn. `trail` and `celebration` are not drawn on a sprite, so they are ignored. */
 export const sameColors = (a: HorseColors, b: HorseColors) =>
   a.coat === b.coat &&
   a.mane === b.mane &&
   a.silk === b.silk &&
-  (a.pattern ?? null) === (b.pattern ?? null);
+  (a.pattern ?? null) === (b.pattern ?? null) &&
+  (a.cap ?? null) === (b.cap ?? null);
 
 /**
  * The 2D pixel horse beside a horse's name (spec 2026-11-05 polish section 1). Decorative: the

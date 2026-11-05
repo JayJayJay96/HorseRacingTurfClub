@@ -23,6 +23,10 @@ export interface HorseColors {
   /** Bought looks, as `player_cosmetics` codes (`pattern:hoops`, `trail:dust`, ...). */
   readonly pattern?: string | null;
   readonly trail?: string | null;
+  /** Drawn on the jockey's head by drawHorse (`cap:crown`, ...). */
+  readonly cap?: string | null;
+  /** Podium winner animation only (`celebration:spin`, ...); never drawn on a sprite. */
+  readonly celebration?: string | null;
 }
 
 type Choice = {
@@ -30,6 +34,8 @@ type Choice = {
   silk: number | null;
   pattern?: string | null;
   trail?: string | null;
+  cap?: string | null;
+  celebration?: string | null;
 };
 
 /** 6 coats × 11 silks (coprime), so the first 66 lanes all differ. */
@@ -38,7 +44,7 @@ export function colorsOf(lane: number): HorseColors {
   return { coat: COAT_COLORS[c]!, mane: MANES[c]!, silk: SILK_COLORS[lane % SILK_COLORS.length]! };
 }
 
-/** A member's chosen coat/silk (null = lane default) and worn pattern/trail. */
+/** A member's chosen coat/silk (null = lane default) and worn looks. */
 export function colorsFor(lane: number, choice?: Choice): HorseColors {
   const base = colorsOf(lane);
   if (!choice) return base;
@@ -48,6 +54,8 @@ export function colorsFor(lane: number, choice?: Choice): HorseColors {
     silk: choice.silk === null ? base.silk : SILK_COLORS[choice.silk]!,
     pattern: choice.pattern,
     trail: choice.trail,
+    cap: choice.cap,
+    celebration: choice.celebration,
   };
 }
 
@@ -77,7 +85,11 @@ export function horseColors(
       .sort((a, b) => cmp(a.joined_at ?? '', b.joined_at ?? '') || cmp(a.id, b.id))
       .findIndex((p) => p.id === id);
   }
-  if (lane < 0) lane = Math.max(0, players.findIndex((p) => p.id === id));
+  if (lane < 0)
+    lane = Math.max(
+      0,
+      players.findIndex((p) => p.id === id),
+    );
   return colorsByPlayer(players)(id, lane);
 }
 

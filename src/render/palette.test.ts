@@ -42,6 +42,17 @@ describe('colorsByPlayer', () => {
     expect(colors('b', 1)).toMatchObject({ pattern: null, trail: null });
     expect(colors('c', 2)).toEqual(colorsOf(2));
   });
+  it('passes the worn cap and celebration through', () => {
+    const colors = colorsByPlayer([
+      { id: 'a', coat: 1, silk: 2, cap: 'cap:crown', celebration: 'celebration:spin' },
+      { id: 'b', coat: null, silk: null, cap: null, celebration: null },
+    ]);
+    expect(colors('a', 0)).toMatchObject({ cap: 'cap:crown', celebration: 'celebration:spin' });
+    expect(colors('b', 1)).toMatchObject({ cap: null, celebration: null });
+    expect(horseColors([{ id: 'a', coat: null, silk: null, cap: 'cap:halo' }], [], 'a').cap).toBe(
+      'cap:halo',
+    );
+  });
 });
 
 describe('contrastOf', () => {

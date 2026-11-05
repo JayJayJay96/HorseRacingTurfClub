@@ -4,12 +4,13 @@ import { TRAIL_STYLES } from '../render/trails.ts';
 import type { Cosmetic, CosmeticSlot } from '../shop/cosmetics.ts';
 import { Celebration } from '../track/Podium.tsx';
 
-export type ShopTab = CosmeticSlot;
+export type ShopTab = CosmeticSlot | 'crate';
 export const TABS: readonly { readonly id: ShopTab; readonly label: string }[] = [
   { id: 'pattern', label: 'Patterns' },
   { id: 'trail', label: 'Trails' },
   { id: 'cap', label: 'Caps' },
   { id: 'celebration', label: 'Celebrations' },
+  { id: 'crate', label: '🎁 Crate' },
 ];
 
 /** The horse wearing `item` on top of what it already wears. */

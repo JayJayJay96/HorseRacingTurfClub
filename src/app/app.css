@@ -190,6 +190,69 @@ button.primary {
   width: 4px;
   height: 4px;
 }
+/* Crate reveal: shakes twice, pops open, then the horse wearing the prize appears. */
+.crate {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.crate button {
+  min-height: 44px;
+}
+.crate-reveal {
+  display: grid;
+  justify-items: center;
+  justify-self: stretch;
+}
+.crate-box,
+.crate-prize {
+  grid-area: 1 / 1;
+}
+.crate-box {
+  font-size: 4rem;
+  line-height: 1;
+  animation:
+    crate-shake 0.6s ease-in-out 2,
+    crate-open 0.3s ease-in 1.2s forwards;
+}
+@keyframes crate-shake {
+  25% {
+    transform: rotate(-12deg);
+  }
+  75% {
+    transform: rotate(12deg);
+  }
+}
+@keyframes crate-open {
+  to {
+    opacity: 0;
+    transform: scale(1.6) translateY(-16px);
+  }
+}
+.crate-prize {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  animation: crate-prize 0.4s ease-out 1.3s both;
+}
+@keyframes crate-prize {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .crate-box {
+    display: none;
+  }
+  .crate-prize {
+    animation: none;
+  }
+}
 .box-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

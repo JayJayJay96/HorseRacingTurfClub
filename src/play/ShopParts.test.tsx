@@ -34,7 +34,13 @@ describe('ShopTabs', () => {
   it('a labelled group of toggle buttons, the open one pressed', () => {
     const html = renderToStaticMarkup(<ShopTabs tab="cap" onTab={() => {}} />);
     expect(html).toMatch(/^<div class="shop-tabs" role="group" aria-label="Shop sections">/);
-    expect(TABS.map((t) => t.label)).toEqual(['Patterns', 'Trails', 'Caps', 'Celebrations']);
+    expect(TABS.map((t) => t.label)).toEqual([
+      'Patterns',
+      'Trails',
+      'Caps',
+      'Celebrations',
+      '🎁 Crate',
+    ]);
     expect(html.match(/<button/g)).toHaveLength(TABS.length);
     expect(html).toContain('<button type="button" aria-pressed="true">Caps</button>');
     expect(html.match(/aria-pressed="false"/g)).toHaveLength(TABS.length - 1);

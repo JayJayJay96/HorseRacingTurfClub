@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
-import { buyCosmetic, equipCosmetic, fetchOwnedCosmetics, type RoomPlayer } from '../net/rooms.ts';
+import {
+  buyCosmetic,
+  equipCosmetic,
+  fetchOwnedCosmetics,
+  openCrate,
+  type RoomPlayer,
+} from '../net/rooms.ts';
 import type { HorseColors } from '../render/palette.ts';
 import { COSMETICS, type Cosmetic } from '../shop/cosmetics.ts';
+import { CrateTab } from './CrateTab.tsx';
 import { ShopCard, ShopPreview, ShopTabs, cardState, wearing, type ShopTab } from './ShopParts.tsx';
 
 type Act = (fn: () => Promise<unknown>) => void;
@@ -15,19 +22,21 @@ type Props = {
   busy: boolean;
 };
 
-/** Office LOBBY: preview your horse, try looks on, buy them with coins, then wear or remove them. */
+/** Office LOBBY: preview your horse, try looks on, buy them or open a crate, then wear or remove them. */
 export function LooksShop({ roomId, mine, colors, balance, act, busy }: Props) {
   const [owned, setOwned] = useState<readonly string[]>([]);
   const [tab, setTab] = useState<ShopTab>('pattern');
   const [trying, setTrying] = useState<Cosmetic | null>(null);
   const [replay, setReplay] = useState(0);
   const [confirming, setConfirming] = useState<Cosmetic | null>(null);
+  const [crateAsk, setCrateAsk] = useState(false);
+  const [prize, setPrize] = useState<Cosmetic | null>(null);
   useEffect(() => {
     fetchOwnedCosmetics(mine.id).then(setOwned, () => {}); // a failed load only hides Wear
   }, [mine.id]);
 
   const gained = (code: string) => {
-    // The buy went through; a failed refetch of the owned list must not report it as failed.
+    // The purchase went through; a failed refetch of the owned list must not report it as failed.
     setOwned((prev) => [...prev, code]);
     fetchOwnedCosmetics(mine.id).then(setOwned, () => {});
   };
@@ -38,10 +47,21 @@ export function LooksShop({ roomId, mine, colors, balance, act, busy }: Props) {
       gained(c.code);
     });
   };
+  const open = () => {
+    setCrateAsk(false);
+    act(async () => {
+      const code = await openCrate(roomId);
+      if (!code) return; // the RPC always returns a code; this only narrows the generated type
+      gained(code);
+      setPrize(COSMETICS.find((c) => c.code === code) ?? null);
+    });
+  };
   const pickTab = (t: ShopTab) => {
     setTab(t);
     setTrying(null);
     setConfirming(null);
+    setCrateAsk(false);
+    setPrize(null);
   };
 
   return (
@@ -53,26 +73,41 @@ export function LooksShop({ roomId, mine, colors, balance, act, busy }: Props) {
         replay={replay}
       />
       <ShopTabs tab={tab} onTab={pickTab} />
-      <ul className="shop-cards">
-        {COSMETICS.filter((c) => c.slot === tab).map((c) => (
-          <ShopCard
-            key={c.code}
-            item={c}
-            state={cardState(c, owned, colors)}
-            colors={colors}
-            trying={trying?.code === c.code}
-            busy={busy}
-            balance={balance}
-            onTry={() => {
-              setTrying(c);
-              setReplay((n) => n + 1); // tapping a celebration again plays it again
-            }}
-            onBuy={() => setConfirming(c)}
-            onWear={() => act(() => equipCosmetic(roomId, c.slot, c.code))}
-            onRemove={() => act(() => equipCosmetic(roomId, c.slot, null))}
-          />
-        ))}
-      </ul>
+      {tab === 'crate' ? (
+        <CrateTab
+          left={COSMETICS.filter((c) => !owned.includes(c.code)).length}
+          balance={balance}
+          busy={busy}
+          confirming={crateAsk}
+          prize={prize}
+          colors={colors}
+          onAsk={() => setCrateAsk(true)}
+          onCancel={() => setCrateAsk(false)}
+          onOpen={open}
+          onWear={(c) => act(() => equipCosmetic(roomId, c.slot, c.code))}
+        />
+      ) : (
+        <ul className="shop-cards">
+          {COSMETICS.filter((c) => c.slot === tab).map((c) => (
+            <ShopCard
+              key={c.code}
+              item={c}
+              state={cardState(c, owned, colors)}
+              colors={colors}
+              trying={trying?.code === c.code}
+              busy={busy}
+              balance={balance}
+              onTry={() => {
+                setTrying(c);
+                setReplay((n) => n + 1); // tapping a celebration again plays it again
+              }}
+              onBuy={() => setConfirming(c)}
+              onWear={() => act(() => equipCosmetic(roomId, c.slot, c.code))}
+              onRemove={() => act(() => equipCosmetic(roomId, c.slot, null))}
+            />
+          ))}
+        </ul>
+      )}
       {confirming && (
         <p>
           {`Buy ${confirming.name} for ${confirming.price} coins? `}

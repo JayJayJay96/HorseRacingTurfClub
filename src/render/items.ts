@@ -34,6 +34,10 @@ export function popupOf(event: RaceEvent): string {
       return event.reason === 'immune' ? '🫧 Immune' : '🛡️ Blocked';
     case 'reflected':
       return '🪞 Reflected!';
+    case 'slip':
+      return '💦 Slip!';
+    case 'bump':
+      return '💥 Bump!';
     case 'finish':
       return `🏁 ${ordinal(event.place)}`;
   }

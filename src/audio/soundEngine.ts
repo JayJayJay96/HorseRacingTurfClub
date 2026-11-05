@@ -295,6 +295,16 @@ export function createSoundEngine(
         osc(c, bus, 'sine', 160, 50, now, 0.25, 0.8);
         noiseHit(c, bus, now, 0.15, 0.4, 'lowpass', 1200);
         break;
+      case 'splash': // slip in a puddle
+        noiseHit(c, bus, now, 0.25, 0.35, 'bandpass', 2500);
+        osc(c, bus, 'triangle', 600, 200, now, 0.2, 0.2);
+        break;
+      case 'bonk': // fog bump
+        osc(c, bus, 'square', 330, 260, now, 0.08, 0.25);
+        osc(c, bus, 'square', 260, 200, now + 0.07, 0.1, 0.2);
+        break;
+      case 'rain': // the rain bed, Task 8
+        break;
       case 'shield':
         osc(c, bus, 'sine', 880, 880, now, 0.35, 0.3);
         osc(c, bus, 'sine', 1320, 1320, now + 0.05, 0.35, 0.2);

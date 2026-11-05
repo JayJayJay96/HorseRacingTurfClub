@@ -8,6 +8,8 @@ export type MysteryType = BoxType | 'dud';
 export type Band = 'front' | 'middle' | 'back';
 export type AttackTarget = 'behind1' | 'behind3' | 'front1' | 'front3' | 'leader' | 'top3';
 
+export type Weather = 'clear' | 'rain' | 'fog';
+
 export type ItemCode =
   | 'speed:self1'
   | 'speed:self3'
@@ -30,12 +32,22 @@ export interface RaceInput {
   /** Bought boxes per horse (max 3 each); horses without purchases may be omitted. */
   readonly bought: Readonly<Record<HorseId, readonly BoxType[]>>;
   readonly length: RaceLength;
+  /** Spec 2026-11-05 weather; missing = clear (no extra RNG draws). */
+  readonly weather?: Weather;
 }
 
 export interface BoxSpot {
   /** Metres from the start along the race distance. */
   readonly at: number;
   readonly kind: BoxKind;
+}
+
+/** A rain puddle across adjacent lanes. */
+export interface Puddle {
+  /** Metres from the start to the puddle's near edge. */
+  readonly at: number;
+  /** First and last lane covered, inclusive. */
+  readonly lanes: readonly [number, number];
 }
 
 /** `t` is seconds since the start. Events are listed in simulation order. */
@@ -46,6 +58,10 @@ export type RaceEvent =
   | { t: number; type: 'blocked'; horse: HorseId; by: HorseId; item: ItemCode; reason: 'immune' | 'shield' }
   /** `horse` held the Mirror Saddle and sent the attack back to `by`. */
   | { t: number; type: 'reflected'; horse: HorseId; by: HorseId; item: ItemCode }
+  /** Rain: the horse slipped in a puddle. */
+  | { t: number; type: 'slip'; horse: HorseId }
+  /** Fog: `horse` (lower lane) and `with` (the next lane out) bumped. */
+  | { t: number; type: 'bump'; horse: HorseId; with: HorseId }
   | { t: number; type: 'finish'; horse: HorseId; place: number };
 
 export interface Timeline {
@@ -56,6 +72,9 @@ export interface Timeline {
   readonly tickHz: number;
   readonly horses: readonly HorseId[];
   readonly boxes: Readonly<Record<HorseId, readonly BoxSpot[]>>;
+  /** Missing on timelines stored before weather existed: read as 'clear' / []. */
+  readonly weather?: Weather;
+  readonly puddles?: readonly Puddle[];
   /** Metres from the start, one sample per tick; index 0 is the start. Finished horses stay at `distance`. */
   readonly progress: Readonly<Record<HorseId, readonly number[]>>;
   readonly events: readonly RaceEvent[];

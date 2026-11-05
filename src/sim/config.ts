@@ -1,4 +1,4 @@
-import type { AttackTarget, Band, BoxType, ItemCode, MysteryType, RaceLength } from './types.ts';
+import type { AttackTarget, Band, BoxType, ItemCode, MysteryType, RaceLength, Weather } from './types.ts';
 
 /** Simulation steps per second. Timelines store one progress sample per step. */
 export const TICK_HZ = 10;
@@ -98,3 +98,25 @@ export const ATTACK_WEIGHTS: Readonly<Record<Band, Readonly<Record<AttackTarget,
 export const PASS3_CHANCE_PERCENT = 25;
 /** Mystery Attack roll by the last-placed horse becomes a Thunderclap this often. */
 export const THUNDERCLAP_CHANCE_PERCENT = 5;
+
+/** Weather odds per race when the office switch is on (owner 2026-11-05). */
+export const WEATHER_WEIGHTS: Readonly<Record<Weather, number>> = { clear: 50, rain: 25, fog: 25 };
+
+/** Spec 2026-11-05. Slips and bumps stack with item effects; defenses never block them. */
+export const WEATHER = {
+  /** Each puddle spans this many lanes and this many metres. */
+  puddleLanes: 3,
+  puddleLengthM: 4,
+  /** Puddles each lane meets per race. */
+  puddlesPerLane: { short: 3, long: 5 } as Readonly<Record<RaceLength, number>>,
+  /** Clear distance from any box in the puddle's lanes, metres. */
+  boxClearM: 2,
+  placeTries: 20,
+  slipChancePercent: 15,
+  slip: { mult: 0.5, seconds: 1.5 },
+  bumpRangeM: 2,
+  /** Chance per second for each close neighbour pair. */
+  bumpPerSecond: 0.02,
+  bumpCooldownS: 3,
+  bump: { mult: 0.7, seconds: 1 },
+} as const;

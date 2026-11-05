@@ -67,7 +67,7 @@ export function effectsOf(events: readonly RaceEvent[]): Effect[] {
       if (e.item?.startsWith('dud:')) out.push({ kind: 'dud', horse: e.horse, t0: e.t });
       continue;
     }
-    if (e.type === 'finish') continue;
+    if (e.type === 'finish' || e.type === 'slip' || e.type === 'bump') continue; // Task 9 adds these
     const special = SPECIAL_ATTACK[e.item];
     if (special) {
       const miss = e.type === 'hit' ? {} : { seconds: MISS_SECONDS[special] };

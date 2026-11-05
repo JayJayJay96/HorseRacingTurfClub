@@ -15,7 +15,10 @@ export type SfxName =
   | 'fizzle'
   | 'coin'
   | 'cheer'
-  | 'cutin';
+  | 'cutin'
+  | 'splash'
+  | 'bonk'
+  | 'rain';
 
 function cueOf(e: RaceEvent): SfxName | null {
   switch (e.type) {
@@ -30,6 +33,10 @@ function cueOf(e: RaceEvent): SfxName | null {
     case 'blocked':
     case 'reflected':
       return 'shield';
+    case 'slip':
+      return 'splash';
+    case 'bump':
+      return 'bonk';
     case 'finish':
       return e.place === 1 ? 'bell' : null;
   }

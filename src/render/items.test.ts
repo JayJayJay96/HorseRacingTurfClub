@@ -48,3 +48,10 @@ describe('items', () => {
     expect(popupOf({ t: 1, type: 'finish', horse: 'a', place: 2 })).toBe('🏁 2nd');
   });
 });
+
+describe('popupOf weather', () => {
+  it('labels slips and bumps', () => {
+    expect(popupOf({ t: 1, type: 'slip', horse: 'a' })).toBe('💦 Slip!');
+    expect(popupOf({ t: 1, type: 'bump', horse: 'a', with: 'b' })).toBe('💥 Bump!');
+  });
+});

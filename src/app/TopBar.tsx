@@ -5,6 +5,8 @@ type Props = {
   code?: string;
   /** Coins chip (phone). */
   coins?: number;
+  /** Replaces the brand (phone: sprite + player name). */
+  title?: ReactNode;
   /** Right-hand controls, e.g. the sound toggle. */
   children?: ReactNode;
 };
@@ -13,10 +15,12 @@ type Props = {
  * Thin bar on every page: brand on the left; room code, coins and sound on the right. The brand
  * links home only outside a room, so a stray tap can't drop a live race.
  */
-export function TopBar({ code, coins, children }: Props) {
+export function TopBar({ code, coins, title, children }: Props) {
   return (
     <header className="topbar">
-      {code ? (
+      {title ? (
+        <div className="topbar-title">{title}</div>
+      ) : code ? (
         <span className="brand">TURF CLUB</span>
       ) : (
         <a className="brand" href="/">

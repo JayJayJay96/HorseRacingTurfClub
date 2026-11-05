@@ -6,10 +6,12 @@ type Props = {
   update: (patch: Partial<AudioSettings>) => void;
   /** Phones only get on/off; the big screen also gets volumes and the commentator. */
   full?: boolean;
+  /** Phone header: just the icon (the accessible name stays "Sound"). */
+  icon?: boolean;
 };
 
 /** 🔊/🔇 plus an optional volume panel. Clicking it also unlocks browser audio. */
-export function SoundToggle({ settings, update, full = false }: Props) {
+export function SoundToggle({ settings, update, full = false, icon = false }: Props) {
   const [open, setOpen] = useState(false);
   const slider = (label: string, key: 'music' | 'sfx' | 'voice' | 'crowd') => (
     <label>
@@ -28,11 +30,13 @@ export function SoundToggle({ settings, update, full = false }: Props) {
     <div className="sound">
       <button
         type="button"
+        className={icon ? 'icon' : undefined}
         aria-label="Sound"
         aria-pressed={!settings.muted}
         onClick={() => update({ muted: !settings.muted })}
       >
-        {settings.muted ? '🔇 Sound' : '🔊 Sound'}
+        {settings.muted ? '🔇' : '🔊'}
+        {!icon && ' Sound'}
       </button>
       {full && (
         <>

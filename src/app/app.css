@@ -816,3 +816,33 @@ a.button.primary {
     animation: phase-fade 0.4s ease-out both;
   }
 }
+
+/* Phone header: one row of sprite + name, coins, sound. */
+.play .topbar {
+  flex-wrap: nowrap;
+  margin-bottom: 4px;
+}
+.topbar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.topbar-title h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.room-line {
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+.sound button.icon {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 1.25rem;
+}

@@ -240,11 +240,21 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         {announcement}
       </p>
       <PhaseBanner phase={room.phase} />
-      <TopBar code={room.code} coins={props.balance}>
-        <SoundToggle settings={settings} update={update} />
+      <TopBar
+        coins={props.balance}
+        title={
+          <>
+            <HorseSprite
+              colors={horseColors(state.players, state.race?.horses ?? [], mine.id)}
+              size="md"
+            />
+            <h1>{mine.name}</h1>
+          </>
+        }
+      >
+        <SoundToggle settings={settings} update={update} icon />
       </TopBar>
-      <h1>{mine.name}</h1>
-      <p>
+      <p className="room-line">
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
         {room.prize && ` · Prize: ${room.prize}`}
       </p>

@@ -592,15 +592,29 @@ a.button.primary {
   color: var(--gold);
   margin: 8px 0;
 }
-.place-card {
-  font-family: var(--font-pixel);
-  font-size: 1.5rem;
-  text-align: center;
+.result-card {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
   padding: 24px 16px;
+  text-align: center;
+  font-family: var(--font-pixel);
 }
-.place-card strong {
+.result-place {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.result-place strong {
   display: block;
   font-size: 4rem;
+  color: var(--gold);
+}
+.result-coins {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.result-coins.win {
+  font-size: 2rem;
   color: var(--gold);
 }
 .my-bets {

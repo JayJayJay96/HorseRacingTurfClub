@@ -46,7 +46,7 @@ import { useOfficeStats, type OfficeStats } from '../net/stats.ts';
 import { ensureSignedIn } from '../net/supabase.ts';
 import { useRoom } from '../net/useRoom.ts';
 import { useTimeline } from '../net/useTimeline.ts';
-import { BOX_COLOR, colorsByPlayer } from '../render/palette.ts';
+import { BOX_COLOR, colorsByPlayer, horseColors } from '../render/palette.ts';
 import { HorseSprite } from '../render/HorseSprite.tsx';
 import { trackById } from '../render/track.ts';
 import { useRaceTime } from '../render/useRaceTime.ts';
@@ -55,6 +55,7 @@ import { gunMs, standingsAt } from '../sim/playback.ts';
 import { HorsePanel } from './HorsePanel.tsx';
 import { MiniOval } from './MiniOval.tsx';
 import { OfficeLogin } from './OfficeLogin.tsx';
+import { ResultCard } from './ResultCard.tsx';
 
 /** Coin sound after a successful buy or bet; a sound problem must never look like a failed action. */
 function playCoin() {
@@ -620,13 +621,14 @@ function RunningPanel({ room, players, race, bets, mine }: PanelProps) {
 function ResultPanel({ players, race, bets, mine, balance }: PanelProps) {
   const place = (race?.finish_order ?? []).indexOf(mine.id);
   const myBets = bets.filter((b) => b.player_id === mine.id);
+  const won = myBets.reduce((sum, b) => sum + (b.payout ?? 0), 0);
   return (
     <>
-      {place >= 0 && (
-        <p className="panel place-card">
-          Your horse finished <strong>{ordinal(place + 1)}.</strong>
-        </p>
-      )}
+      <ResultCard
+        colors={horseColors(players, race?.horses ?? [], mine.id)}
+        place={place}
+        won={won}
+      />
       {myBets.length > 0 && (
         <ul className="my-bets">
           {myBets.map((b) => (

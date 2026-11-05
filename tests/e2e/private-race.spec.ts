@@ -80,8 +80,9 @@ test('private race: 3 phones, reload mid-race, podium matches phones', async ({ 
 
   const fromPhones: string[] = [];
   for (const [i, p] of phones.entries()) {
-    const text = await p.getByText(/Your horse finished/).textContent({ timeout: 30_000 });
-    const place = ORDINAL[/finished (\w+)\./.exec(text ?? '')![1]!]!;
+    // .result-place, not getByText: the live region also says "You finished ...".
+    const text = await p.locator('.result-place').textContent({ timeout: 30_000 });
+    const place = ORDINAL[/finished (\w+)/.exec(text ?? '')![1]!]!;
     fromPhones[place - 1] = names[i]!;
   }
   expect(podium).toEqual(fromPhones);

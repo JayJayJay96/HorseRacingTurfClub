@@ -9,6 +9,10 @@ export type Band = 'front' | 'middle' | 'back';
 export type AttackTarget = 'behind1' | 'behind3' | 'front1' | 'front3' | 'leader' | 'top3';
 
 export type Weather = 'clear' | 'rain' | 'fog';
+/** Hot-item buffs (spec 2026-11-05 C): 2x as likely from its box, or 50 % longer. */
+export type HotBuff = 'lucky' | 'extended';
+/** Horse traits (spec 2026-11-05 D), picked per race on the phone. */
+export type Trait = 'normal' | 'charmed' | 'tough' | 'sprinter' | 'stayer' | 'mudder';
 
 export type ItemCode =
   | 'speed:self1'
@@ -24,6 +28,11 @@ export type ItemCode =
   | 'dud:slow'
   | 'dud:trip';
 
+export interface HotItem {
+  readonly item: ItemCode;
+  readonly buff: HotBuff;
+}
+
 export interface RaceInput {
   /** Real races pass a crypto-random 32-bit integer. */
   readonly seed: number;
@@ -34,6 +43,10 @@ export interface RaceInput {
   readonly length: RaceLength;
   /** Spec 2026-11-05 weather; missing = clear (no extra RNG draws). */
   readonly weather?: Weather;
+  /** Spec C: up to 3 buffed items; missing or empty = none (no extra RNG draws). */
+  readonly hot?: readonly HotItem[];
+  /** Spec D: per-horse trait; a horse missing from the map (or no map) runs Normal. */
+  readonly traits?: Readonly<Record<HorseId, Trait>>;
 }
 
 export interface BoxSpot {
@@ -53,7 +66,8 @@ export interface Puddle {
 /** `t` is seconds since the start. Events are listed in simulation order. */
 export type RaceEvent =
   /** `item` is null when an attack had nobody to hit and fizzled. */
-  | { t: number; type: 'pickup'; horse: HorseId; kind: BoxKind; item: ItemCode | null }
+  /** `hot` is set only when the picked item is one of the race's hot items. */
+  | { t: number; type: 'pickup'; horse: HorseId; kind: BoxKind; item: ItemCode | null; hot?: HotBuff }
   | { t: number; type: 'hit'; horse: HorseId; by: HorseId; item: ItemCode }
   | { t: number; type: 'blocked'; horse: HorseId; by: HorseId; item: ItemCode; reason: 'immune' | 'shield' }
   /** `horse` held the Mirror Saddle and sent the attack back to `by`. */
@@ -75,6 +89,9 @@ export interface Timeline {
   /** Missing on timelines stored before weather existed: read as 'clear' / []. */
   readonly weather?: Weather;
   readonly puddles?: readonly Puddle[];
+  /** Missing on timelines stored before hot items / traits existed: read as [] / all Normal. */
+  readonly hot?: readonly HotItem[];
+  readonly traits?: Readonly<Record<HorseId, Trait>>;
   /** Metres from the start, one sample per tick; index 0 is the start. Finished horses stay at `distance`. */
   readonly progress: Readonly<Record<HorseId, readonly number[]>>;
   readonly events: readonly RaceEvent[];

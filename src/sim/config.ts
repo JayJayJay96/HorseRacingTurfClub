@@ -1,4 +1,4 @@
-import type { AttackTarget, Band, BoxType, ItemCode, MysteryType, RaceLength, Weather } from './types.ts';
+import type { AttackTarget, Band, BoxType, ItemCode, MysteryType, RaceLength, Trait, Weather } from './types.ts';
 
 /** Simulation steps per second. Timelines store one progress sample per step. */
 export const TICK_HZ = 10;
@@ -119,4 +119,29 @@ export const WEATHER = {
   bumpPerSecond: 0.02,
   bumpCooldownS: 3,
   bump: { mult: 0.7, seconds: 1 },
+} as const;
+
+/** Hot items (spec 2026-11-05 C). Rolled in SQL (private.roll_hot_items) with the same rules. */
+export const HOT = { count: 3, maxPerType: 2, luckyWeight: 2, extendedFactor: 1.5 } as const;
+
+export const TRAIT_CODES = [
+  'normal',
+  'charmed',
+  'tough',
+  'sprinter',
+  'stayer',
+  'mudder',
+] as const satisfies readonly Trait[];
+
+/** Horse traits (spec 2026-11-05 D). Tuned by the balance test (Task 7); final values in PROJECT_STATUS. */
+export const TRAITS = {
+  /** This share of a Charmed horse's dud type rolls is rolled again without the dud (50 = half the duds). */
+  charmed: { rerollPercent: 50 },
+  /** Slowdowns keep `hitFactor` of their strength, boosts `boostFactor`; durations unchanged. */
+  tough: { hitFactor: 0.7, boostFactor: 0.7 },
+  /** `earlyPace` applies while progress < distance / 3; `kickBoost` replaces KICK.boost. */
+  sprinter: { earlyPace: 1.04, kickBoost: 0.05 },
+  stayer: { earlyPace: 0.97, kickBoost: 0.15, kickExtraSeconds: 1 },
+  /** `bumpFactor` per Mudder in a fog pair; `clearPace` all race on a clear day. */
+  mudder: { slipChancePercent: 5, bumpFactor: 0.5, clearPace: 0.985 },
 } as const;

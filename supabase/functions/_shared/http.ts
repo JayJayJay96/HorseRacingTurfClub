@@ -1,11 +1,13 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { HorseHistory } from '../../../src/sim/odds.ts';
-import type { BoxType, RaceLength } from '../../../src/sim/types.ts';
+import type { BoxType, RaceLength, Weather } from '../../../src/sim/types.ts';
 
 /** What lock_odds_begin / start_race_begin return (private.race_input in SQL). */
 export interface RaceInputRow {
   race_id: string;
   length: RaceLength;
+  weather: Weather;
+  weather_enabled: boolean;
   horses: string[];
   bought: Record<string, BoxType[]>;
   history: Record<string, HorseHistory> | null;

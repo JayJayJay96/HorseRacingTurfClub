@@ -9,7 +9,13 @@ import { rpc, serve, type RaceInputRow } from '../_shared/http.ts';
 serve(async ({ room }, user, admin) => {
   const input = await rpc<RaceInputRow>(user, 'start_race_begin', { p_room: room });
   const seed = createCryptoRng().nextInt(2 ** 32);
-  const timeline = simulateRace({ seed, horses: input.horses, bought: input.bought, length: input.length });
+  const timeline = simulateRace({
+    seed,
+    horses: input.horses,
+    bought: input.bought,
+    length: input.length,
+    weather: input.weather,
+  });
   await rpc(admin, 'start_race_finish', {
     p_race: input.race_id,
     p_timeline: packTimeline(timeline),

@@ -68,6 +68,24 @@ describe('lock-odds and start-race', () => {
     expect(span).toBeCloseTo(playbackSeconds(stored.timeline as PackedTimeline), 2);
   });
 
+  it(
+    'prices the odds with a weather and races with the same one',
+    { timeout: 60_000 },
+    async () => {
+      const r = await shopRoom();
+      const locked = await invoke<{ weather: string }>(r.host, 'lock-odds', { room: r.room.id });
+      expect(['clear', 'rain', 'fog']).toContain(locked.weather);
+      const [race] = await ok(r.host.from('races').select('weather').eq('id', r.raceId));
+      expect(race.weather).toBe(locked.weather);
+      await invoke(r.host, 'start-race', { room: r.room.id });
+      const [row] = await ok(
+        adminClient().from('race_timelines').select('timeline').eq('race_id', r.raceId),
+      );
+      const timeline = unpackTimeline(row.timeline as PackedTimeline);
+      expect(timeline.weather).toBe(race.weather);
+    },
+  );
+
   it('refuses non-hosts, signed-out callers and wrong phases', { timeout: 60_000 }, async () => {
     const r = await shopRoom();
     expect(await failsInvoke(r.ali.client, 'lock-odds', { room: r.room.id })).toBe('not_host');

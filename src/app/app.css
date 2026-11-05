@@ -189,7 +189,7 @@ button.primary {
   align-items: end;
   gap: 16px;
   max-width: 900px;
-  margin: 24px auto;
+  margin: 160px auto 24px;
   padding: 0;
   list-style: none;
   font-size: 2rem;
@@ -659,5 +659,94 @@ a.button.primary {
 @media (prefers-reduced-motion: reduce) {
   .horse-sprite.is-animated canvas {
     animation: none;
+  }
+}
+
+/* Podium celebration (spec 2026-11-05 polish section 2). */
+.podium-stage {
+  position: relative;
+}
+/* Horses stand on the steps: above the "1st" label, hooves on the step's top edge. */
+.podium-horse {
+  order: -1;
+  line-height: 0;
+  margin-top: -104px; /* lg sprite 88px + the step's 16px padding */
+}
+.podium li:nth-child(1) .podium-horse {
+  margin-top: -148px; /* winner at 6x: 132px + 16px */
+}
+.podium li:nth-child(1) .horse-sprite {
+  --px: 6;
+}
+.podium-hop {
+  transform-origin: 50% 100%;
+  animation: podium-hop 1.2s ease-in-out infinite;
+}
+@keyframes podium-hop {
+  0%,
+  55%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateY(-18px) rotate(-10deg);
+  }
+  35% {
+    transform: translateY(0) rotate(-4deg);
+  }
+}
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.confetti i {
+  position: absolute;
+  top: -12px;
+  width: 10px;
+  height: 10px;
+  animation: confetti-fall 2.4s ease-in both;
+}
+@keyframes confetti-fall {
+  from {
+    opacity: 1;
+    transform: translateY(0) rotate(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(80vh) rotate(540deg);
+  }
+}
+.prize-banner {
+  margin: 0 auto 24px;
+  font-family: var(--font-pixel);
+  font-size: 2rem;
+  text-align: center;
+  color: var(--gold);
+  text-shadow: 0 2px 0 var(--edge);
+}
+.payout-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  font-size: 1.5rem;
+}
+.payout-lines .best {
+  color: var(--gold);
+  font-weight: 700;
+}
+.field-list {
+  columns: 2;
+  font-size: 1.1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .podium-hop {
+    animation: none;
+  }
+  .confetti {
+    display: none;
   }
 }

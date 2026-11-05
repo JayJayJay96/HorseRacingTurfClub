@@ -3,7 +3,6 @@ import {
   BOX_ICON,
   BOX_NAME,
   BOX_TYPES,
-  betOn,
   boxesOf,
   canPlace,
   formatOdds,
@@ -54,6 +53,7 @@ import { podiumLine } from '../audio/commentator.ts';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
 import { JoinQr } from './JoinQr.tsx';
 import { OfficeHostLogin } from './OfficeHostLogin.tsx';
+import { Confetti, Payouts } from './Podium.tsx';
 import { useChances } from './useChances.ts';
 import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 
@@ -565,11 +565,12 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
 
 function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
   const { timeline } = useTimeline(race?.id ?? null);
-  const top3 = (race?.finish_order ?? []).slice(0, 3);
+  const horses = race?.horses ?? [];
+  const order = race?.finish_order ?? [];
+  const top3 = order.slice(0, 3);
   const winners = bets
     .filter((b) => (b.payout ?? 0) > 0)
     .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0));
-  const best = winners[0];
   const raceId = race?.id;
   const banter = useRef('');
   useEffect(() => {
@@ -583,43 +584,43 @@ function PodiumBoard({ room, players, race, bets, act, busy }: BoardProps) {
     const timer = setTimeout(() => soundEngine().say(banter.current), PODIUM_BANTER_MS);
     return () => clearTimeout(timer);
   }, [raceId]);
+  const timeOf = (id: string) => (timeline ? ` · ${timeline.finishTimes[id]?.toFixed(2)} s` : '');
   return (
-    <section>
+    <section className="podium-stage">
       <h1>Results</h1>
+      <Confetti colors={top3.map((id) => horseColors(players, horses, id).silk)} />
+      {/* li text stays "name · time" (the private-race E2E reads it). */}
       <ol className="podium">
-        {top3.map((id) => (
+        {top3.map((id, i) => (
           <li key={id}>
-            <HorseSprite colors={horseColors(players, race?.horses ?? [], id)} size="lg" />{' '}
+            <span className={i === 0 ? 'podium-horse podium-hop' : 'podium-horse'}>
+              <HorseSprite colors={horseColors(players, horses, id)} size="lg" animated={i === 0} />
+            </span>
             {horseNameOf(players, id)}
-            {timeline && ` · ${timeline.finishTimes[id]?.toFixed(2)} s`}
+            {timeOf(id)}
           </li>
         ))}
       </ol>
       {race?.prize && top3.length > 0 && (
-        <p>
+        <p className="prize-banner">
           🏆 {horseNameOf(players, top3[0])}: {race.prize}
         </p>
       )}
       <section className="panel">
         <h2>Payouts</h2>
-        {best && (
-          <p>
-            🎉 Biggest win: {nameOf(players, best.player_id)} won {best.payout} on{' '}
-            {betOn(best, players)}
-          </p>
-        )}
-        {winners.length === 0 ? (
-          <p>No winning bets.</p>
-        ) : (
-          <ul>
-            {winners.map((b) => (
-              <li key={b.id}>
-                {nameOf(players, b.player_id)} won {b.payout} on {betOn(b, players)}
-              </li>
-            ))}
-          </ul>
-        )}
+        <Payouts bets={bets} players={players} horses={horses} />
       </section>
+      {order.length > 3 && (
+        <ol className="field-list" start={4}>
+          {order.slice(3).map((id) => (
+            <li key={id}>
+              <HorseSprite colors={horseColors(players, horses, id)} size="sm" />{' '}
+              {horseNameOf(players, id)}
+              {timeOf(id)}
+            </li>
+          ))}
+        </ol>
+      )}
       <button
         type="button"
         className="primary"

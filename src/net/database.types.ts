@@ -318,6 +318,7 @@ export type Database = {
           ends_at: string | null;
           finish_order: string[] | null;
           horses: string[];
+          hot_items: NonNullable<Json>;
           id: string;
           length: string;
           odds: Json | null;
@@ -325,6 +326,7 @@ export type Database = {
           room_id: string;
           started_at: string | null;
           track: string;
+          traits: NonNullable<Json>;
           weather: string;
         };
         ComputedFields: never;
@@ -333,6 +335,7 @@ export type Database = {
           ends_at?: string | null;
           finish_order?: string[] | null;
           horses?: string[];
+          hot_items?: NonNullable<Json>;
           id?: string;
           length: string;
           odds?: Json | null;
@@ -340,6 +343,7 @@ export type Database = {
           room_id: string;
           started_at?: string | null;
           track?: string;
+          traits?: NonNullable<Json>;
           weather?: string;
         };
         Update: {
@@ -347,6 +351,7 @@ export type Database = {
           ends_at?: string | null;
           finish_order?: string[] | null;
           horses?: string[];
+          hot_items?: NonNullable<Json>;
           id?: string;
           length?: string;
           odds?: Json | null;
@@ -354,6 +359,7 @@ export type Database = {
           room_id?: string;
           started_at?: string | null;
           track?: string;
+          traits?: NonNullable<Json>;
           weather?: string;
         };
         Relationships: [
@@ -380,6 +386,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         ComputedFields: never;
@@ -396,6 +403,7 @@ export type Database = {
           silk?: number | null;
           ticked?: boolean;
           trail?: string | null;
+          trait?: string;
           uid?: string | null;
         };
         Update: {
@@ -411,6 +419,7 @@ export type Database = {
           silk?: number | null;
           ticked?: boolean;
           trail?: string | null;
+          trait?: string;
           uid?: string | null;
         };
         Relationships: [
@@ -428,6 +437,7 @@ export type Database = {
           code: string;
           created_at: string;
           host_uid: string | null;
+          hot_items_enabled: boolean;
           id: string;
           kind: string;
           last_activity_at: string;
@@ -443,6 +453,7 @@ export type Database = {
           code: string;
           created_at?: string;
           host_uid?: string | null;
+          hot_items_enabled?: boolean;
           id?: string;
           kind?: string;
           last_activity_at?: string;
@@ -457,6 +468,7 @@ export type Database = {
           code?: string;
           created_at?: string;
           host_uid?: string | null;
+          hot_items_enabled?: boolean;
           id?: string;
           kind?: string;
           last_activity_at?: string;
@@ -497,6 +509,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -521,6 +534,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -555,6 +569,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -565,6 +580,7 @@ export type Database = {
         };
       };
       admin_reset_pin: { Args: { p_pin: string; p_player: string }; Returns: undefined };
+      admin_set_hot_items: { Args: { p_on: boolean }; Returns: undefined };
       admin_set_weather: { Args: { p_on: boolean }; Returns: undefined };
       buy_box: {
         Args: { p_box: string; p_room: string };
@@ -593,6 +609,7 @@ export type Database = {
           code: string;
           created_at: string;
           host_uid: string | null;
+          hot_items_enabled: boolean;
           id: string;
           kind: string;
           last_activity_at: string;
@@ -625,6 +642,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -640,6 +658,7 @@ export type Database = {
           code: string;
           created_at: string;
           host_uid: string | null;
+          hot_items_enabled: boolean;
           id: string;
           kind: string;
           last_activity_at: string;
@@ -672,6 +691,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -749,6 +769,7 @@ export type Database = {
           silk: number | null;
           ticked: boolean;
           trail: string | null;
+          trait: string;
           uid: string | null;
         };
         SetofOptions: {
@@ -764,6 +785,7 @@ export type Database = {
           code: string;
           created_at: string;
           host_uid: string | null;
+          hot_items_enabled: boolean;
           id: string;
           kind: string;
           last_activity_at: string;
@@ -783,6 +805,31 @@ export type Database = {
       };
       set_ready: { Args: { p_ready: boolean; p_room: string }; Returns: undefined };
       set_ticked: { Args: { p_player: string; p_ticked: boolean }; Returns: undefined };
+      set_trait: {
+        Args: { p_room: string; p_trait: string };
+        Returns: {
+          archived_at: string | null;
+          coat: number | null;
+          horse_name: string | null;
+          id: string;
+          joined_at: string;
+          name: string;
+          pattern: string | null;
+          ready: boolean;
+          room_id: string;
+          silk: number | null;
+          ticked: boolean;
+          trail: string | null;
+          trait: string;
+          uid: string | null;
+        };
+        SetofOptions: {
+          from: '*';
+          to: 'room_players';
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       start_race_begin: { Args: { p_room: string }; Returns: Json };
       start_race_finish: {
         Args: {
@@ -800,6 +847,7 @@ export type Database = {
           code: string;
           created_at: string;
           host_uid: string | null;
+          hot_items_enabled: boolean;
           id: string;
           kind: string;
           last_activity_at: string;

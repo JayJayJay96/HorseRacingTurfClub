@@ -14,6 +14,13 @@ describe('lock_odds', () => {
       length: 'short',
       weather: 'clear',
       weather_enabled: true,
+      hot_items: expect.any(Array), // rolled at random
+      traits: {
+        [r.ali.player.id]: 'normal',
+        [r.bea.player.id]: 'normal',
+        [r.siti.id]: 'normal',
+        [r.dan.id]: 'normal',
+      },
       horses: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
       bought: {},
       history: null,

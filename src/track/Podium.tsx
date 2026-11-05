@@ -77,32 +77,53 @@ export const CELEBRATIONS: Readonly<Record<string, string>> = {
 export const celebrationClass = (code?: string | null) =>
   (code && CELEBRATIONS[code]) || 'podium-hop';
 
-const FX_COLORS = ['#ffd54f', '#e53935', '#29b6f6', '#66bb6a', '#ffffff', '#d81b60'];
+const FX_COLORS = ['#ffd54f', '#ffffff', '#ff5252', '#40c4ff', '#69f0ae', '#ff4081', '#ffab40'];
 
-/** Particle start/offset: two firework bursts of 8, or a cannon fan of 14 to the upper right. */
+/** Deterministic 0..1 jitter, so the markup is stable (tests, SSR). */
+const jit = (i: number, k: number) => ((i * 7919 + k * 104729) % 1000) / 1000;
+
+/**
+ * Winner particles, 6-10 px squares positioned against the sprite box: three firework bursts of 12
+ * above the winner, or a 36-piece confetti cone shooting up from the step and falling back.
+ */
 function particles(code: string): CSSProperties[] {
+  const base = (i: number) => {
+    const color = FX_COLORS[i % FX_COLORS.length]!;
+    return {
+      width: `${12 + Math.round(jit(i, 1) * 6)}px`,
+      height: `${12 + Math.round(jit(i, 2) * 6)}px`,
+      background: color,
+      boxShadow: `0 0 10px 2px ${color}`,
+    };
+  };
   if (code === 'celebration:fireworks') {
-    return Array.from({ length: 16 }, (_, i) => {
-      const a = (i % 8) * (Math.PI / 4);
+    const bursts = [
+      { left: '-10%', top: '0%' },
+      { left: '110%', top: '-30%' },
+      { left: '50%', top: '-60%' },
+    ];
+    return Array.from({ length: 36 }, (_, i) => {
+      const b = bursts[Math.floor(i / 12)]!;
+      const a = ((i % 12) / 12) * Math.PI * 2;
+      const r = 90 + jit(i, 3) * 80;
       return {
-        left: i < 8 ? '25%' : '75%',
-        top: i < 8 ? '10%' : '0%',
-        '--dx': `${Math.round(Math.cos(a) * 40)}px`,
-        '--dy': `${Math.round(Math.sin(a) * 40)}px`,
-        background: FX_COLORS[i % FX_COLORS.length],
-        animationDelay: i < 8 ? '0.3s' : '0.8s',
+        ...base(i),
+        ...b,
+        '--dx': `${Math.round(Math.cos(a) * r)}px`,
+        '--dy': `${Math.round(Math.sin(a) * r)}px`,
+        animationDelay: `${Math.floor(i / 12) * 0.4}s`,
       } as CSSProperties;
     });
   }
   if (code === 'celebration:cannon') {
-    return Array.from({ length: 14 }, (_, i) => {
-      const a = ((-20 - i * 5) * Math.PI) / 180;
-      const r = 80 + (i % 4) * 25;
+    return Array.from({ length: 36 }, (_, i) => {
+      const a = ((-90 + (jit(i, 3) - 0.5) * 80) * Math.PI) / 180; // a cone straight up
+      const r = 170 + jit(i, 4) * 120;
       return {
+        ...base(i),
         '--dx': `${Math.round(Math.cos(a) * r)}px`,
         '--dy': `${Math.round(Math.sin(a) * r)}px`,
-        background: FX_COLORS[i % FX_COLORS.length],
-        animationDelay: `${(i % 3) * 0.05}s`,
+        animationDelay: `${(i % 6) * 0.05}s`,
       } as CSSProperties;
     });
   }

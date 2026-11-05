@@ -99,13 +99,13 @@ describe('Celebration', () => {
     expect(fw).toMatch(
       /^<span class="celebration celebrate-fireworks"><b>horse<\/b><span class="celebration-fx" aria-hidden="true">/,
     );
-    expect(fw.match(/<i /g)).toHaveLength(16);
+    expect(fw.match(/<i /g)).toHaveLength(36);
     const cannon = renderToStaticMarkup(
       <Celebration code="celebration:cannon">
         <b />
       </Celebration>,
     );
-    expect(cannon.match(/<i /g)).toHaveLength(14);
+    expect(cannon.match(/<i /g)).toHaveLength(36);
     expect(
       renderToStaticMarkup(
         <Celebration code="celebration:spin">

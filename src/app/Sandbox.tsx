@@ -9,7 +9,15 @@ import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
 import { fakeTimeline } from '../sim/testTimeline.ts';
-import type { HotBuff, HotItem, ItemCode, RaceLength, Timeline, Trait, Weather } from '../sim/types.ts';
+import type {
+  HotBuff,
+  HotItem,
+  ItemCode,
+  RaceLength,
+  Timeline,
+  Trait,
+  Weather,
+} from '../sim/types.ts';
 import { BUFF_TEXT, HotStrip, hotText } from './HotItems.tsx';
 import { TRAIT_INFO } from './Traits.tsx';
 import { TRACKS, type TrackId } from '../render/track.ts';
@@ -40,7 +48,12 @@ export function Sandbox() {
   const [run, setRun] = useState<{ timeline: Timeline; gun: number; at?: number } | null>(null);
   const [freeze, setFreeze] = useState<'' | 'band' | 'effect'>('');
   const [trackId, setTrackId] = useState<TrackId>('oval');
-  const [looks, setLooks] = useState<Record<CosmeticSlot, string>>({ pattern: '', trail: '' });
+  const [looks, setLooks] = useState<Record<CosmeticSlot, string>>({
+    pattern: '',
+    trail: '',
+    cap: '',
+    celebration: '',
+  });
   const [field, setField] = useState<6 | 22>(6);
   const [preset, setPreset] = useState<PresetId | ''>('');
   const [weather, setWeather] = useState<Weather>('clear');
@@ -97,7 +110,14 @@ export function Sandbox() {
   const moment = (item: (typeof MOMENTS)[number]['item']) => {
     for (let seed = 1; seed <= 5000; seed++) {
       const w = item === 'slip' ? 'rain' : item === 'bump' ? 'fog' : weather;
-      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short', weather: w, ...extras });
+      const timeline = simulateRace({
+        seed,
+        horses,
+        bought: {},
+        length: 'short',
+        weather: w,
+        ...extras,
+      });
       const at =
         item === 'slip' || item === 'bump'
           ? timeline.events.find((e) => e.type === item && e.t > 6)?.t

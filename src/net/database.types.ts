@@ -375,6 +375,8 @@ export type Database = {
       room_players: {
         Row: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -392,6 +394,8 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           archived_at?: string | null;
+          cap?: string | null;
+          celebration?: string | null;
           coat?: number | null;
           horse_name?: string | null;
           id?: string;
@@ -408,6 +412,8 @@ export type Database = {
         };
         Update: {
           archived_at?: string | null;
+          cap?: string | null;
+          celebration?: string | null;
           coat?: number | null;
           horse_name?: string | null;
           id?: string;
@@ -498,6 +504,8 @@ export type Database = {
         Args: { p_name: string; p_room: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -523,6 +531,8 @@ export type Database = {
         Args: { p_name: string; p_pin: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -558,6 +568,8 @@ export type Database = {
         Args: { p_name: string; p_player: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -631,6 +643,8 @@ export type Database = {
         Args: { p_code: string; p_room: string; p_slot: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -680,6 +694,8 @@ export type Database = {
         Args: { p_code: string; p_name: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -717,6 +733,7 @@ export type Database = {
         }[];
       };
       office_stats: { Args: Record<PropertyKey, never>; Returns: Json };
+      open_crate: { Args: { p_room: string }; Returns: string };
       place_bet: {
         Args: { p_horse: string; p_kind: string; p_room: string; p_stake: number };
         Returns: {
@@ -758,6 +775,8 @@ export type Database = {
         Args: { p_coat: number; p_horse_name: string; p_room: string; p_silk: number };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;
@@ -809,6 +828,8 @@ export type Database = {
         Args: { p_room: string; p_trait: string };
         Returns: {
           archived_at: string | null;
+          cap: string | null;
+          celebration: string | null;
           coat: number | null;
           horse_name: string | null;
           id: string;

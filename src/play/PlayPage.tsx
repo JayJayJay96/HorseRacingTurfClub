@@ -456,9 +456,46 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
             </label>
           ))}
         </fieldset>
+        {/* Win/Place belong to the horse bet, so they sit right under the horses. Picking one while
+            a number bet is selected switches back to a horse bet (own horse first). */}
+        <fieldset className="segmented">
+          <legend>Bet on that horse</legend>
+          <label htmlFor="kind-win">
+            <input
+              id="kind-win"
+              type="radio"
+              name="kind"
+              value="win"
+              checked={!group && kind === 'win'}
+              disabled={!group && line?.win === null}
+              onChange={() => {
+                setChoice('win');
+                if (group) setPick('');
+              }}
+            />
+            Win (1st)
+          </label>
+          {canPlace(horses) && (
+            <label htmlFor="kind-place">
+              <input
+                id="kind-place"
+                type="radio"
+                name="kind"
+                value="place"
+                checked={!group && kind === 'place'}
+                disabled={!group && line?.place === null}
+                onChange={() => {
+                  setChoice('place');
+                  if (group) setPick('');
+                }}
+              />
+              Place (top 3)
+            </label>
+          )}
+        </fieldset>
         {GROUP_KINDS.some((g) => groupOdds[g] !== undefined) && (
           <fieldset className="horse-pick">
-            <legend>Or the winner's number</legend>
+            <legend>Or bet on the winner's number</legend>
             {GROUP_KINDS.map((g) => (
               <label key={g} className="card" htmlFor={`group-${g}`}>
                 <input
@@ -479,37 +516,6 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
                 <span className="pixel odds-line">{formatOdds(groupOdds[g])}</span>
               </label>
             ))}
-          </fieldset>
-        )}
-        {!group && (
-          <fieldset className="segmented">
-            <legend>Bet</legend>
-            <label htmlFor="kind-win">
-              <input
-                id="kind-win"
-                type="radio"
-                name="kind"
-                value="win"
-                checked={kind === 'win'}
-                disabled={line?.win === null}
-                onChange={() => setChoice('win')}
-              />
-              Win (1st)
-            </label>
-            {canPlace(horses) && (
-              <label htmlFor="kind-place">
-                <input
-                  id="kind-place"
-                  type="radio"
-                  name="kind"
-                  value="place"
-                  checked={kind === 'place'}
-                  disabled={line?.place === null}
-                  onChange={() => setChoice('place')}
-                />
-                Place (top 3)
-              </label>
-            )}
           </fieldset>
         )}
         <label>

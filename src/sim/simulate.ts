@@ -3,6 +3,7 @@ import {
   BASE_SPEED,
   DISTANCE,
   EFFECTS,
+  HOT,
   KICK,
   MAX_BOUGHT,
   MAX_HORSES,
@@ -18,6 +19,7 @@ import {
   WEATHER,
 } from './config.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
+import { buffOf, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
 import { rollBox } from './items.ts';
 import { round2, round3 } from './math.ts';
 import { createSeededRng, type Rng } from './rng.ts';
@@ -89,6 +91,17 @@ export function validateRaceInput(input: RaceInput): void {
   const weathers: readonly Weather[] = ['clear', 'rain', 'fog'];
   if (input.weather !== undefined && !weathers.includes(input.weather))
     throw new RangeError(`unknown weather ${String(input.weather)}`);
+  const hot = input.hot ?? [];
+  if (hot.length > HOT.count) throw new RangeError(`at most ${HOT.count} hot items`);
+  if (new Set(hot.map((x) => x.item)).size !== hot.length)
+    throw new RangeError('hot items must be different items');
+  for (const { item, buff } of hot) {
+    if (!HOT_ELIGIBLE.includes(item)) throw new RangeError(`${String(item)} can't be a hot item`);
+    if (buff !== 'lucky' && buff !== 'extended')
+      throw new RangeError(`unknown hot buff ${String(buff)}`);
+    if (buff === 'extended' && EFFECTS[item].seconds <= 0)
+      throw new RangeError(`${item} has no duration to extend`);
+  }
 }
 
 /**
@@ -99,6 +112,12 @@ export function simulateRace(input: RaceInput): Timeline {
   validateRaceInput(input);
   const rng = createSeededRng(input.seed);
   const distance = DISTANCE[input.length];
+  // Hot items (spec C) only change weights and durations: they never add RNG draws.
+  const hot = input.hot ?? [];
+  const lucky: ReadonlySet<ItemCode> = new Set(
+    hot.flatMap((x) => (x.buff === 'lucky' ? [x.item] : [])),
+  );
+  const secondsOf = (item: ItemCode): number => effectSeconds(item, hot);
   const maxTicks = toTicks(NOMINAL_SECONDS[input.length] * MAX_RACE_FACTOR);
   const knotTicks = toTicks(NOISE.knotSeconds);
   const boxes = placeBoxes(
@@ -167,7 +186,7 @@ export function simulateRace(input: RaceInput): Timeline {
 
   const addMod = (h: Horse, item: ItemCode, from: number): void => {
     const e = EFFECTS[item];
-    h.mods.push({ mult: e.mult, from, until: from + toTicks(e.seconds) });
+    h.mods.push({ mult: e.mult, from, until: from + toTicks(secondsOf(item)) });
   };
 
   const hit = (
@@ -224,7 +243,7 @@ export function simulateRace(input: RaceInput): Timeline {
         const ahead = running[Math.max(0, running.indexOf(h) - PASS3_PLACES)]!;
         h.stampede = {
           target: Math.min(distance, ahead.progress + PASS3_MARGIN),
-          until: tick + toTicks(EFFECTS[item].seconds),
+          until: tick + toTicks(secondsOf(item)),
         };
         return;
       }
@@ -233,7 +252,7 @@ export function simulateRace(input: RaceInput): Timeline {
         h.held = item;
         return;
       case 'defense:immune':
-        h.immuneUntil = Math.max(h.immuneUntil, tick + 1 + toTicks(EFFECTS[item].seconds));
+        h.immuneUntil = Math.max(h.immuneUntil, tick + 1 + toTicks(secondsOf(item)));
         return;
       case 'attack:all':
         for (const other of running) if (other !== h) hit(other, h, item, tick, true);
@@ -322,6 +341,7 @@ export function simulateRace(input: RaceInput): Timeline {
         const item = rollBox(rng, spot.kind, {
           rank: ranked.indexOf(h),
           count: horses.length,
+          lucky,
           canTarget: {
             behind1: targets.behind1.length > 0,
             behind3: targets.behind3.length > 0,
@@ -331,12 +351,14 @@ export function simulateRace(input: RaceInput): Timeline {
             top3: targets.top3.length > 0,
           },
         });
+        const buff = buffOf(hot, item);
         events.push({
           t: round2(tick / TICK_HZ),
           type: 'pickup',
           horse: h.id,
           kind: spot.kind,
           item,
+          ...(buff ? { hot: buff } : {}),
         });
         if (item) use(h, item, tick, running, targets);
       }
@@ -354,6 +376,7 @@ export function simulateRace(input: RaceInput): Timeline {
     boxes,
     weather,
     puddles,
+    hot: [...hot],
     progress,
     events,
     finishOrder,

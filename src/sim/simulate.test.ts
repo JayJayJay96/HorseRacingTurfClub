@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DISTANCE, EFFECTS, MYSTERY_PER_LANE, TICK_HZ, WEATHER } from './config.ts';
 import { simulateRace } from './simulate.ts';
-import type { BoxType, ItemCode, RaceInput, Timeline } from './types.ts';
+import type { BoxType, HotItem, ItemCode, RaceInput, Timeline } from './types.ts';
 
 const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `h${i}`);
 const race = (over: Partial<RaceInput> = {}): Timeline =>
@@ -164,7 +164,7 @@ describe('simulateRace', () => {
   });
 });
 
-const fingerprint = (weather?: RaceInput['weather']) => {
+const fingerprint = (over: Partial<RaceInput> = {}) => {
   let h = 2166136261;
   for (const seed of [1, 2, 3, 42, 9999]) {
     const tl = simulateRace({
@@ -172,10 +172,10 @@ const fingerprint = (weather?: RaceInput['weather']) => {
       horses: ids(12),
       bought: { h0: ['speed', 'attack'] },
       length: 'short',
-      ...(weather ? { weather } : {}),
+      ...over,
     });
-    // Old timelines have no weather fields: drop them so the fingerprint compares the race itself.
-    const { weather: _w, puddles: _p, ...rest } = tl;
+    // Old timelines have none of these fields: drop them so the fingerprint compares the race itself.
+    const { weather: _w, puddles: _p, hot: _h, ...rest } = tl;
     const s = JSON.stringify(rest);
     for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619) >>> 0;
   }
@@ -185,7 +185,7 @@ const fingerprint = (weather?: RaceInput['weather']) => {
 describe('weather', () => {
   it('leaves clear races exactly as they were (no extra RNG draws)', () => {
     expect(fingerprint()).toBe(2438717223); // recorded before weather touched simulate.ts
-    expect(fingerprint('clear')).toBe(2438717223);
+    expect(fingerprint({ weather: 'clear' })).toBe(2438717223);
   });
 
   it('records weather and puddles on the timeline', () => {
@@ -311,5 +311,105 @@ describe('weather', () => {
         expect(tl.finishOrder).toHaveLength(22);
       }
     }
+  });
+});
+
+describe('hot items', () => {
+  const allBoxes = (box: BoxType) =>
+    Object.fromEntries(ids(12).map((h) => [h, [box, box, box] as BoxType[]]));
+
+  it('no hot items: exactly the old race (no extra RNG draws)', () => {
+    expect(fingerprint({ hot: [] })).toBe(2438717223);
+  });
+
+  it('rejects bad hot lists', () => {
+    const bad: HotItem[][] = [
+      [
+        { item: 'speed:self1', buff: 'lucky' },
+        { item: 'speed:star', buff: 'lucky' },
+        { item: 'attack:leader', buff: 'lucky' },
+        { item: 'defense:immune', buff: 'lucky' },
+      ],
+      [
+        { item: 'speed:self1', buff: 'lucky' },
+        { item: 'speed:self1', buff: 'extended' },
+      ],
+      [{ item: 'dud:stop', buff: 'lucky' }],
+      [{ item: 'speed:self1', buff: 'golden' as never }],
+      [{ item: 'defense:block1', buff: 'extended' }],
+      [{ item: 'defense:reflect', buff: 'extended' }],
+    ];
+    for (const hot of bad) expect(() => race({ hot })).toThrow(RangeError);
+  });
+
+  it('records the list and flags hot pickups only', () => {
+    const hot: HotItem[] = [{ item: 'speed:self1', buff: 'lucky' }];
+    const tl = race({ hot, horses: ids(12), bought: allBoxes('speed') });
+    expect(tl.hot).toEqual(hot);
+    expect(race().hot).toEqual([]);
+    let flagged = 0;
+    for (const e of tl.events) {
+      if (e.type !== 'pickup') continue;
+      if (e.item === 'speed:self1') {
+        expect(e.hot).toBe('lucky');
+        flagged++;
+      } else expect(e.hot).toBeUndefined();
+    }
+    expect(flagged).toBeGreaterThan(0);
+  });
+
+  it('a Lucky Carrot fills about half the bought Speed boxes', () => {
+    const hot: HotItem[] = [{ item: 'speed:self1', buff: 'lucky' }];
+    let speed = 0;
+    let carrots = 0;
+    for (let seed = 1; seed <= 100; seed++) {
+      for (const e of race({ seed, hot, horses: ids(12), bought: allBoxes('speed') }).events) {
+        if (e.type !== 'pickup' || e.kind !== 'speed') continue;
+        speed++;
+        if (e.item === 'speed:self1') carrots++;
+      }
+    }
+    expect(carrots / speed).toBeGreaterThan(0.46);
+    expect(carrots / speed).toBeLessThan(0.54);
+  });
+
+  it('an Extended Golden Lasso stops its victim for 3 s', () => {
+    const hot: HotItem[] = [{ item: 'attack:leader', buff: 'extended' }];
+    let checked = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const tl = race({ seed, horses: ids(12), hot });
+      for (const e of tl.events) {
+        if (e.type !== 'hit' || e.item !== 'attack:leader') continue;
+        const tick = Math.round(e.t * TICK_HZ);
+        const p = tl.progress[e.horse]!;
+        for (let k = 1; k <= 3 * TICK_HZ; k++) expect(p[tick + k]).toBe(p[tick]);
+        checked++;
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('an Extended Lucky Bubble keeps its horse immune for 9 s', () => {
+    const hot: HotItem[] = [{ item: 'defense:immune', buff: 'extended' }];
+    const longest = EFFECTS['defense:immune'].seconds * 1.5;
+    let late = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const tl = race({ seed, horses: ids(12), hot, bought: allBoxes('defense') });
+      for (const e of tl.events) {
+        if (e.type !== 'blocked' || e.reason !== 'immune') continue;
+        const bubble = tl.events
+          .filter(
+            (p) =>
+              p.type === 'pickup' &&
+              p.horse === e.horse &&
+              p.item === 'defense:immune' &&
+              p.t <= e.t,
+          )
+          .at(-1)!;
+        expect(e.t - bubble.t).toBeLessThanOrEqual(longest + 0.01);
+        if (e.t - bubble.t > EFFECTS['defense:immune'].seconds) late++;
+      }
+    }
+    expect(late).toBeGreaterThan(0); // some blocks land in the extra 3 s
   });
 });

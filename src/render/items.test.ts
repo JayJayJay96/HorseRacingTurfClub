@@ -8,6 +8,7 @@ describe('items', () => {
     for (const code of Object.keys(EFFECTS) as ItemCode[]) {
       expect(ITEM_INFO[code].name.length).toBeGreaterThan(0);
       expect(ITEM_INFO[code].icon.length).toBeGreaterThan(0);
+      expect(ITEM_INFO[code].desc).toMatch(/^[^\d]+\.$/);
     }
     expect(ITEM_INFO['attack:leader'].name).toBe('Golden Lasso');
   });

@@ -31,6 +31,8 @@ export interface RollContext {
   readonly lucky?: ReadonlySet<ItemCode>;
   /** The picking horse is Charmed (spec D). */
   readonly charmed?: boolean;
+  /** The picking horse is a Gambler (spec 2026-11-06 B). */
+  readonly gambler?: boolean;
 }
 
 /** A Lucky item's weight (or percent chance) is multiplied by HOT.luckyWeight. */
@@ -50,7 +52,7 @@ function pickItem<T extends ItemCode>(rng: Rng, items: readonly T[], ctx: RollCo
 
 /** Percent chance of a mystery-only upgrade; Lucky doubles the threshold, still one draw. */
 const chance = (ctx: RollContext, item: ItemCode, percent: number): number =>
-  Math.min(100, luckyWeight(ctx, item, percent));
+  Math.min(100, luckyWeight(ctx, item, percent) * (ctx.gambler ? TRAITS.gambler.rareFactor : 1));
 
 /** Attack item by position band, impossible targets removed. Null when nobody can be hit. */
 export function rollAttack(rng: Rng, ctx: RollContext): ItemCode | null {
@@ -67,7 +69,11 @@ export function rollAttack(rng: Rng, ctx: RollContext): ItemCode | null {
 /** The item inside a box at the moment it is picked up. Null = an attack with nobody to hit. */
 export function rollBox(rng: Rng, kind: BoxKind, ctx: RollContext): ItemCode | null {
   const mystery = kind === 'mystery';
-  const table = MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)];
+  const base = MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)];
+  // Gambler: heavier dud weight. Same single draw, so other horses' races are unchanged.
+  const table = ctx.gambler
+    ? { ...base, dud: Math.round(base.dud * TRAITS.gambler.dudFactor) }
+    : base;
   let type: MysteryType = mystery ? pickWeighted(rng, table) : kind;
   // Charmed: some dud rolls become another type. Extra draws only for a Charmed horse's dud.
   if (mystery && type === 'dud' && ctx.charmed && rng.nextInt(100) < TRAITS.charmed.rerollPercent) {

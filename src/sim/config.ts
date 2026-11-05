@@ -140,6 +140,10 @@ export const TRAIT_CODES = [
   'sprinter',
   'stayer',
   'mudder',
+  'closer',
+  'frontrunner',
+  'gambler',
+  'brawler',
 ] as const satisfies readonly Trait[];
 
 /** Horse traits (spec 2026-11-05 D). Tuned by the balance test; see PROJECT_STATUS. */
@@ -150,7 +154,14 @@ export const TRAITS = {
   tough: { hitFactor: 0.9, boostFactor: 0.7 },
   /** `earlyPace` applies while progress < distance / 3; `kickBoost` replaces KICK.boost. */
   sprinter: { earlyPace: 1.05, kickBoost: 0.09 },
-  stayer: { earlyPace: 0.9, kickBoost: 0.105, kickExtraSeconds: 1 },
-  /** `bumpFactor` per Mudder in a fog pair; `clearPace` all race on a clear day. */
-  mudder: { slipChancePercent: 5, bumpFactor: 0.5, clearPace: 0.996 },
+  stayer: { earlyPace: 0.9, kickBoost: 0.102, kickExtraSeconds: 1 },
+  /** `bumpFactor` per Mudder in a fog pair; `weatherPace` all race in rain or fog, `clearPace` when clear. */
+  mudder: { slipChancePercent: 5, bumpFactor: 0.5, weatherPace: 1.01, clearPace: 0.99 },
+  /** Pace while in the front / back third of the field (last tick's order, `bandOf`). */
+  closer: { frontPace: 0.995, backPace: 1.08 },
+  frontrunner: { frontPace: 1.015, backPace: 0.965 },
+  /** Mystery rare-upgrade chances times `rareFactor`, the dud weight times `dudFactor` (rounded). */
+  gambler: { rareFactor: 4, dudFactor: 1.05 },
+  /** Durations of attacks this horse lands times `attackFactor`; its own speed items times `speedFactor`. */
+  brawler: { attackFactor: 1.4, speedFactor: 0.8 },
 } as const;

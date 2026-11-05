@@ -136,10 +136,12 @@ describe('traits', () => {
   it('the lock snapshots every runner; the retry and the race keep it', async () => {
     const r = await shopRoom();
     await ok(r.ali.client.rpc('set_trait', { p_room: r.room.id, p_trait: 'tough' }));
-    await ok(r.bea.client.rpc('set_trait', { p_room: r.room.id, p_trait: 'mudder' }));
+    // Traits v2 codes (migration 0023) are accepted too; the last pick wins.
+    for (const t of ['closer', 'frontrunner', 'gambler', 'brawler'])
+      await ok(r.bea.client.rpc('set_trait', { p_room: r.room.id, p_trait: t }));
     const expected = {
       [r.ali.player.id]: 'tough',
-      [r.bea.player.id]: 'mudder',
+      [r.bea.player.id]: 'brawler',
       [r.siti.id]: 'normal',
       [r.dan.id]: 'normal',
     };

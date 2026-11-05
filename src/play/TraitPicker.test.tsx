@@ -17,18 +17,18 @@ function buttons(node: ReactNode, out: ReactElement<Props>[] = []) {
 }
 
 describe('TraitPicker', () => {
-  it('a grid of six icon + name buttons; the chosen effect under it', () => {
+  it('a grid of ten icon + name buttons; the chosen effect under it', () => {
     const html = renderToStaticMarkup(
       <TraitPicker current="tough" disabled={false} onPick={() => {}} />,
     );
-    expect(html.match(/<button/g)).toHaveLength(6);
+    expect(html.match(/<button/g)).toHaveLength(10);
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toMatch(/aria-pressed="true"><span aria-hidden="true">[^<]+<\/span> Tough</);
     expect(html).toContain(
-      '<p class="trait-effect" aria-hidden="true">hits hurt less, boosts help less</p>',
+      '<p class="trait-effect" aria-hidden="true"><span>✅ Attacks, bad items and bumps slow you less</span><span>⚠️ Speed items boost you less</span></p>',
     );
     // Screen readers still hear every effect, on its button.
-    expect(html.match(/class="visually-hidden"> · /g)).toHaveLength(6);
+    expect(html.match(/class="visually-hidden"> · /g)).toHaveLength(10);
     expect(html).not.toContain('<br');
     expect(html).toContain('Your trait');
   });
@@ -36,13 +36,13 @@ describe('TraitPicker', () => {
   it('tapping a button picks that trait', () => {
     const onPick = vi.fn();
     const bs = buttons(TraitPicker({ current: 'normal', disabled: false, onPick }));
-    expect(bs).toHaveLength(6);
+    expect(bs).toHaveLength(10);
     bs.forEach((b) => (b.props.onClick as () => void)());
     expect(onPick.mock.calls.map((c) => c[0])).toEqual([...TRAIT_CODES]);
     expect(bs.map((b) => b.props['aria-pressed'])).toEqual(TRAIT_CODES.map((t) => t === 'normal'));
   });
 
-  it('disabled disables all six', () => {
+  it('disabled disables all ten', () => {
     const bs = buttons(TraitPicker({ current: 'normal', disabled: true, onPick: () => {} }));
     expect(bs.every((b) => b.props.disabled === true)).toBe(true);
   });

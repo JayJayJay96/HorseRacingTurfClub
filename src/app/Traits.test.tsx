@@ -4,14 +4,18 @@ import { TRAIT_CODES } from '../sim/config.ts';
 import { TRAIT_INFO, TRAIT_LEGEND, TraitIcon, asTrait, traitLabel, traitOf } from './Traits.tsx';
 
 describe('traits UI', () => {
-  it('labels every trait with icon, name and a one-line effect', () => {
+  it('labels every trait with icon, name, an upside and a downside', () => {
     for (const t of TRAIT_CODES) {
-      expect(TRAIT_INFO[t].effect.length).toBeGreaterThan(0);
-      expect(TRAIT_INFO[t].effect).not.toMatch(/\d/);
+      for (const text of [TRAIT_INFO[t].plus, TRAIT_INFO[t].minus]) {
+        expect(text.length).toBeGreaterThan(0);
+        expect(text).not.toMatch(/\d/);
+      }
     }
-    expect(traitLabel('tough')).toBe('🛡️ Tough · hits hurt less, boosts help less');
+    expect(traitLabel('tough')).toBe(
+      '🛡️ Tough · ✅ Attacks, bad items and bumps slow you less · ⚠️ Speed items boost you less',
+    );
     expect(TRAIT_LEGEND).toBe(
-      '⚖️ Normal · 🧿 Charmed · 🛡️ Tough · ⚡ Sprinter · 🐢 Stayer · 🌧️ Mudder',
+      '⚖️ Normal · 🧿 Charmed · 🛡️ Tough · ⚡ Sprinter · 🐢 Stayer · 🌧️ Mudder · 🏹 Closer · 🚩 Front-runner · 🎲 Gambler · 🥊 Brawler',
     );
   });
 

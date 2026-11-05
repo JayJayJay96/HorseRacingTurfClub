@@ -63,14 +63,14 @@ describe.each(['short', 'long'] as const)('balance, %s race, 10 horses', (length
 });
 
 const TRAIT_RACES = 10_000;
-const TRAIT_FIELD = Array.from({ length: 12 }, (_, i) => `t${i}`);
+const TRAIT_FIELD = Array.from({ length: 2 * TRAIT_CODES.length }, (_, i) => `t${i}`);
 const WEATHER_MIX: readonly Weather[] = ['clear', 'clear', 'rain', 'fog'];
 
-describe('trait balance, 12 horses, weather 50/25/25, no hot items', () => {
+describe('trait balance, 2 horses per trait, weather 50/25/25, no hot items', () => {
   it("every trait's win share is within ±15 % of Normal's", () => {
     const wins = Object.fromEntries(TRAIT_CODES.map((t) => [t, 0])) as Record<Trait, number>;
     for (let k = 0; k < TRAIT_RACES; k++) {
-      // Weather, length and the lane rotation cycle independently (period 48), so each trait
+      // Weather, length and the lane rotation cycle independently (period 80), so each trait
       // meets every weather, both lengths and every lane equally; each trait runs 2 horses.
       const offset = Math.floor(k / 8) % TRAIT_CODES.length;
       const traits = Object.fromEntries(

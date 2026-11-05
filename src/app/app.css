@@ -635,7 +635,8 @@ a.button.primary {
 /* 2x3 grid of icon + name; the chosen trait's effect underneath. */
 .trait-pick {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /* Ten traits: two columns of five, no orphan. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .trait-pick button {
@@ -646,7 +647,9 @@ a.button.primary {
 .trait-effect {
   grid-column: 1 / -1;
   margin: 0;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   color: var(--muted);
 }
 /* Badges are chips; body font because the descriptions are small text. */
@@ -1151,4 +1154,54 @@ a.button.primary {
 .lobby-name {
   font-family: var(--font-pixel);
   font-size: 1.5rem;
+}
+
+/* Phone Guide (spec 2026-11-06 A): full-screen sheet, one collapsible section per topic. */
+.guide {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 640px;
+  height: 100%;
+  max-height: 100%;
+  margin: 0 auto;
+  padding: 0 16px 24px;
+  border: 0;
+  color: var(--ink);
+  background: var(--bg);
+}
+.guide::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+.guide header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  background: var(--bg);
+}
+.guide h2,
+.guide h3 {
+  margin: 8px 0 4px;
+}
+.guide-section {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+}
+.guide-section summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+.guide-section ul,
+.guide-section ol {
+  padding-left: 20px;
+}
+.guide-section li {
+  margin: 6px 0;
 }

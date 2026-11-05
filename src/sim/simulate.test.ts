@@ -558,4 +558,63 @@ describe('traits', () => {
     const ratio = meanWinner('mudder') / meanWinner('normal');
     expect(Math.abs(ratio - want)).toBeLessThan(Math.max((want - 1) / 2, 0.002));
   });
+
+  it('Mudder: faster in fog than a Normal field', () => {
+    const meanWinner = (trait: Trait) => {
+      let sum = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        const tl = race({ seed, weather: 'fog', horses: ids(12), traits: allOf(trait) });
+        sum += tl.finishTimes[tl.finishOrder[0]!]!;
+      }
+      return sum;
+    };
+    expect(meanWinner('mudder')).toBeLessThan(meanWinner('normal'));
+  });
+});
+
+describe('traits v2 (spec 2026-11-06 B)', () => {
+  it.each(['closer', 'frontrunner', 'gambler', 'brawler'] as const)(
+    '%s adds no RNG draws before the race starts and changes the race',
+    (trait) => {
+      const base = race({ seed: 11, bought: { h3: ['speed', 'attack'] } });
+      const tl = race({ seed: 11, bought: { h3: ['speed', 'attack'] }, traits: { h3: trait } });
+      expect(tl.boxes).toEqual(base.boxes);
+      expect(tl.traits!.h3).toBe(trait);
+      expect(tl.progress).not.toEqual(base.progress);
+    },
+  );
+
+  it('Gambler: more duds and more rare upgrades from mystery boxes', () => {
+    const count = (trait: Trait) => {
+      let duds = 0;
+      let rare = 0;
+      for (let seed = 1; seed <= 150; seed++) {
+        for (const e of race({ seed, horses: ids(12), traits: allOf(trait) }).events) {
+          if (e.type !== 'pickup' || e.kind !== 'mystery' || !e.item) continue;
+          if (e.item.startsWith('dud:')) duds++;
+          if (e.item === 'speed:pass3' || e.item === 'attack:all') rare++;
+        }
+      }
+      return { duds, rare };
+    };
+    const g = count('gambler');
+    const n = count('normal');
+    expect(g.duds).toBeGreaterThan(n.duds);
+    expect(g.rare).toBeGreaterThan(n.rare * 2);
+  });
+
+  it('a lone Closer or Front-runner finishes mid-field on average', () => {
+    const gain = (trait: Trait) => {
+      let sum = 0;
+      for (let seed = 1; seed <= 200; seed++) {
+        const tl = race({ seed, horses: ids(10), traits: { h0: trait } });
+        sum += tl.finishOrder.indexOf('h0');
+      }
+      return sum / 200;
+    };
+    for (const t of ['closer', 'frontrunner'] as const) {
+      expect(gain(t)).toBeGreaterThan(2.5);
+      expect(gain(t)).toBeLessThan(6.5);
+    }
+  });
 });

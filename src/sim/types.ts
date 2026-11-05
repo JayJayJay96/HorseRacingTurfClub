@@ -12,7 +12,17 @@ export type Weather = 'clear' | 'rain' | 'fog';
 /** Hot-item buffs (spec 2026-11-05 C): 2x as likely from its box, or 50 % longer. */
 export type HotBuff = 'lucky' | 'extended';
 /** Horse traits (spec 2026-11-05 D), picked per race on the phone. */
-export type Trait = 'normal' | 'charmed' | 'tough' | 'sprinter' | 'stayer' | 'mudder';
+export type Trait =
+  | 'normal'
+  | 'charmed'
+  | 'tough'
+  | 'sprinter'
+  | 'stayer'
+  | 'mudder'
+  | 'closer'
+  | 'frontrunner'
+  | 'gambler'
+  | 'brawler';
 
 export type ItemCode =
   | 'speed:self1'
@@ -78,7 +88,14 @@ export type RaceEvent =
       hot?: HotBuff;
     }
   | { t: number; type: 'hit'; horse: HorseId; by: HorseId; item: ItemCode }
-  | { t: number; type: 'blocked'; horse: HorseId; by: HorseId; item: ItemCode; reason: 'immune' | 'shield' }
+  | {
+      t: number;
+      type: 'blocked';
+      horse: HorseId;
+      by: HorseId;
+      item: ItemCode;
+      reason: 'immune' | 'shield';
+    }
   /** `horse` held the Mirror Saddle and sent the attack back to `by`. */
   | { t: number; type: 'reflected'; horse: HorseId; by: HorseId; item: ItemCode }
   /** Rain: the horse slipped in a puddle. */

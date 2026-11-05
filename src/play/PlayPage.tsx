@@ -24,6 +24,7 @@ import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { HotStrip, hotBoxTypes, hotOf } from '../app/HotItems.tsx';
 import { TRAIT_INFO, asTrait, traitOf } from '../app/Traits.tsx';
 import { TraitPicker } from './TraitPicker.tsx';
+import { GuideButton } from './Guide.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -253,6 +254,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
           </>
         }
       >
+        <GuideButton />
         <SoundToggle settings={settings} update={update} icon />
       </TopBar>
       <p className="room-line">

@@ -422,3 +422,13 @@ Specs C and D and plan: `docs/superpowers/plans/2026-11-05-hot-items-and-traits.
 - Migration `20261105000022_cosmetics_shop.sql`; no Edge Function change. The sim never reads cosmetics.
 - Bet slip: Win/Place under the horse list, number bets (Odd/Even/Low/High) below.
 - Checks: `npm test` 372, `npm run test:db` 147, `npm run test:e2e` 6/6, typecheck, lint, build clean.
+
+## Traits v2 + phone Guide (master, 2026-11-06)
+
+- Spec: `docs/superpowers/specs/2026-11-06-traits-guide-tracks-design.md` (A + B done; C terrain tracks next).
+- New traits: 🏹 Closer, 🚩 Front-runner (pace by last tick's field third), 🎲 Gambler (rare upgrades ×4, dud weight ×1.05), 🥊 Brawler (landed attacks ×1.4 longer, own speed items ×0.8). Mudder reworked: +1 % pace in rain/fog, −1 % when clear. No new RNG draws; races without the new traits replay as before. Stayer kickBoost 0.105 → 0.102 after the 10-trait balance run.
+- Wording: `TRAIT_INFO` is `{ plus, minus }`; picker shows ✅ / ⚠️ lines, two-column grid of ten. `ITEM_INFO` has a `desc` per power-up.
+- Phone 📖 Guide (top bar, every phase): full-screen dialog, collapsible sections (race day, boxes, power-ups, traits, weather, hot items, tracks, betting, coins/looks, badges). Lists come from the game tables. **Update the Guide prose whenever a feature changes.**
+- Migration `20261106000023_traits_v2.sql` (trait check + `set_trait`). Edge functions import the sim, so `lock-odds` and `start-race` must be redeployed.
+- Balance: trait test now runs 2 horses per trait (20-horse field), all within ±15 % of Normal.
+- Deploy order: `db push` (0023), `functions deploy lock-odds start-race`, push `master`.

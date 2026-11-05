@@ -1,4 +1,5 @@
 import { placeBoxes } from './boxes.ts';
+import { bandOf, rollBox } from './items.ts';
 import {
   BASE_SPEED,
   DISTANCE,
@@ -22,11 +23,11 @@ import {
 } from './config.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
 import { buffOf, canBeExtended, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
-import { rollBox } from './items.ts';
 import { round2, round3 } from './math.ts';
 import { createSeededRng, type Rng } from './rng.ts';
 import type {
   AttackTarget,
+  Band,
   HorseId,
   ItemCode,
   RaceEvent,
@@ -188,6 +189,16 @@ export function simulateRace(input: RaceInput): Timeline {
   const bumpOdds = Math.round((WEATHER.bumpPerSecond / TICK_HZ) * 1_000_000);
   /** Tough (spec D): every slowdown and boost on this horse is weaker; Normal untouched. */
   const tough = (h: Horse, mult: number): number => (h.trait === 'tough' ? toughen(mult) : mult);
+  /** Closer / Front-runner (spec 2026-11-06 B): each horse's third of the field at the last tick. */
+  const banded = horses.some((h) => h.trait === 'closer' || h.trait === 'frontrunner');
+  const bands: Band[] = horses.map(() => 'middle');
+  const bandPace = (h: Horse): number => {
+    if (h.trait !== 'closer' && h.trait !== 'frontrunner') return 1;
+    const t = TRAITS[h.trait];
+    const band = bands[h.index];
+    return band === 'front' ? t.frontPace : band === 'back' ? t.backPace : 1;
+  };
+  const mudPace = weather === 'clear' ? TRAITS.mudder.clearPace : TRAITS.mudder.weatherPace;
   const weatherMod = (h: Horse, e: { mult: number; seconds: number }, tick: number) =>
     h.mods.push({ mult: tough(h, e.mult), from: tick + 1, until: tick + 1 + toTicks(e.seconds) });
   const progress: Record<HorseId, number[]> = Object.fromEntries(
@@ -207,15 +218,23 @@ export function simulateRace(input: RaceInput): Timeline {
     // A Stampede is not immune: hits landed during the sprint still slow it.
     let mult = h.stampede ? tough(h, EFFECTS['speed:pass3'].mult) : 1;
     for (const m of h.mods) if (m.from <= tick && tick < m.until) mult *= m.mult;
-    // Traits: Sprinter/Stayer over the first third, Mudder on a clear day. Normal multiplies by 1.
+    // Traits: Sprinter/Stayer over the first third, Mudder by weather, Closer/Front-runner by
+    // position. Normal multiplies by 1.
     const early = h.progress < distance / 3 ? h.earlyPace : 1;
-    const mud = h.trait === 'mudder' && weather === 'clear' ? TRAITS.mudder.clearPace : 1;
-    return BASE_SPEED * noise * kick * mult * early * mud;
+    const mud = h.trait === 'mudder' ? mudPace : 1;
+    return BASE_SPEED * noise * kick * mult * early * mud * bandPace(h);
   };
 
-  const addMod = (h: Horse, item: ItemCode, from: number): void => {
+  /** Brawler: its landed attacks last longer, its own speed items shorter. */
+  const brawl = (h: Horse, kind: 'attack' | 'speed'): number =>
+    h.trait !== 'brawler'
+      ? 1
+      : kind === 'attack'
+        ? TRAITS.brawler.attackFactor
+        : TRAITS.brawler.speedFactor;
+  const addMod = (h: Horse, item: ItemCode, from: number, factor = 1): void => {
     const e = EFFECTS[item];
-    h.mods.push({ mult: tough(h, e.mult), from, until: from + toTicks(secondsOf(item)) });
+    h.mods.push({ mult: tough(h, e.mult), from, until: from + toTicks(secondsOf(item) * factor) });
   };
 
   const hit = (
@@ -245,7 +264,7 @@ export function simulateRace(input: RaceInput): Timeline {
         hit(by, target, item, tick, false);
         return;
       case 'hit':
-        addMod(target, item, tick + 1);
+        addMod(target, item, tick + 1, brawl(by, 'attack'));
         events.push({ t, type: 'hit', horse: target.id, by: by.id, item });
     }
   };
@@ -260,19 +279,22 @@ export function simulateRace(input: RaceInput): Timeline {
     switch (item) {
       case 'speed:self1':
       case 'speed:star':
+        addMod(h, item, tick + 1, brawl(h, 'speed'));
+        return;
       case 'dud:stop':
       case 'dud:slow':
       case 'dud:trip':
         addMod(h, item, tick + 1);
         return;
       case 'speed:self3':
-        for (let k = 0; k < 3; k++) addMod(h, item, tick + 1 + k * toTicks(SELF3_GAP_SECONDS));
+        for (let k = 0; k < 3; k++)
+          addMod(h, item, tick + 1 + k * toTicks(SELF3_GAP_SECONDS), brawl(h, 'speed'));
         return;
       case 'speed:pass3': {
         const ahead = running[Math.max(0, running.indexOf(h) - PASS3_PLACES)]!;
         h.stampede = {
           target: Math.min(distance, ahead.progress + PASS3_MARGIN),
-          until: tick + toTicks(secondsOf(item)),
+          until: tick + toTicks(secondsOf(item) * brawl(h, 'speed')),
         };
         return;
       }
@@ -297,6 +319,11 @@ export function simulateRace(input: RaceInput): Timeline {
     if (tick > maxTicks)
       throw new Error(`race did not finish within ${maxTicks} ticks (seed ${input.seed})`);
 
+    if (banded) {
+      // Rank over every horse, finished ones included, like box rolls do.
+      const order = [...horses].sort(byPosition);
+      order.forEach((h, rank) => (bands[h.index] = bandOf(rank, horses.length)));
+    }
     const finishedNow: Horse[] = [];
     for (const h of horses) {
       if (h.finishTime !== null) continue;
@@ -376,6 +403,7 @@ export function simulateRace(input: RaceInput): Timeline {
           count: horses.length,
           lucky,
           charmed: h.trait === 'charmed',
+          gambler: h.trait === 'gambler',
           canTarget: {
             behind1: targets.behind1.length > 0,
             behind3: targets.behind3.length > 0,

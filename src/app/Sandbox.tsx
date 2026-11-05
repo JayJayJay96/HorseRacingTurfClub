@@ -2,11 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { cutinsOf } from '../render/cutins.ts';
 import { RaceView } from '../render/RaceView.tsx';
 import type { PresetId } from '../render/hd2d/lighting.ts';
+import { ITEM_INFO } from '../render/items.ts';
+import { EFFECTS, HOT, TRAIT_CODES } from '../sim/config.ts';
+import { HOT_ELIGIBLE } from '../sim/hot.ts';
 import { COUNTDOWN_SECONDS } from '../sim/playback.ts';
 import { createCryptoRng } from '../sim/rng.ts';
 import { simulateRace } from '../sim/simulate.ts';
 import { fakeTimeline } from '../sim/testTimeline.ts';
-import type { RaceLength, Timeline, Weather } from '../sim/types.ts';
+import type { HotBuff, HotItem, ItemCode, RaceLength, Timeline, Trait, Weather } from '../sim/types.ts';
+import { BUFF_TEXT, HotStrip, hotText } from './HotItems.tsx';
+import { TRAIT_INFO } from './Traits.tsx';
 import { TRACKS, type TrackId } from '../render/track.ts';
 import { colorsOf } from '../render/palette.ts';
 import { COSMETICS, type CosmeticSlot } from '../shop/cosmetics.ts';
@@ -39,6 +44,10 @@ export function Sandbox() {
   const [field, setField] = useState<6 | 22>(6);
   const [preset, setPreset] = useState<PresetId | ''>('');
   const [weather, setWeather] = useState<Weather>('clear');
+  const [hot, setHot] = useState<HotItem[]>([]);
+  const [trait, setTrait] = useState<Trait>('normal');
+  // Lane 1 (the horse with the three bought boxes) runs the picked trait.
+  const extras = { hot, traits: { [SAMPLE_HORSES[0]!]: trait } };
   const [lookTest, setLookTest] = useState(false);
   const [frameMs, setFrameMs] = useState(0);
   const horses = field === 6 ? SAMPLE_HORSES : FULL_FIELD;
@@ -80,6 +89,7 @@ export function Sandbox() {
         bought: { [SAMPLE_HORSES[0]!]: ['speed', 'attack', 'defense'] },
         length,
         weather,
+        ...extras,
       }),
       gun: Date.now() + COUNTDOWN_SECONDS * 1000,
     });
@@ -87,7 +97,7 @@ export function Sandbox() {
   const moment = (item: (typeof MOMENTS)[number]['item']) => {
     for (let seed = 1; seed <= 5000; seed++) {
       const w = item === 'slip' ? 'rain' : item === 'bump' ? 'fog' : weather;
-      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short', weather: w });
+      const timeline = simulateRace({ seed, horses, bought: {}, length: 'short', weather: w, ...extras });
       const at =
         item === 'slip' || item === 'bump'
           ? timeline.events.find((e) => e.type === item && e.t > 6)?.t
@@ -167,6 +177,45 @@ export function Sandbox() {
             <option value="fog">Fog</option>
           </select>
         </label>{' '}
+        <label>
+          {' '}
+          Hot item{' '}
+          <select
+            value=""
+            onChange={(e) => {
+              const [item, buff] = e.target.value.split('|') as [ItemCode, HotBuff];
+              if (hot.length < HOT.count && !hot.some((x) => x.item === item))
+                setHot([...hot, { item, buff }]);
+            }}
+          >
+            <option value="">Add…</option>
+            {HOT_ELIGIBLE.flatMap((item) =>
+              (['lucky', 'extended'] as const)
+                .filter((buff) => buff === 'lucky' || EFFECTS[item].seconds > 0)
+                .map((buff) => (
+                  <option key={`${item}|${buff}`} value={`${item}|${buff}`}>
+                    {ITEM_INFO[item].name} {BUFF_TEXT[buff]}
+                  </option>
+                )),
+            )}
+          </select>
+        </label>{' '}
+        {hot.length > 0 && (
+          <button type="button" onClick={() => setHot([])}>
+            Clear hot ({hotText(hot)})
+          </button>
+        )}
+        <label>
+          {' '}
+          Lane 1 trait{' '}
+          <select value={trait} onChange={(e) => setTrait(e.target.value as Trait)}>
+            {TRAIT_CODES.map((t) => (
+              <option key={t} value={t}>
+                {TRAIT_INFO[t].icon} {TRAIT_INFO[t].name}
+              </option>
+            ))}
+          </select>
+        </label>{' '}
         <button type="button" aria-pressed={lookTest} onClick={() => setLookTest(!lookTest)}>
           Look test
         </button>{' '}
@@ -190,6 +239,7 @@ export function Sandbox() {
           ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events · ${run.timeline.weather ?? 'clear'}`}
         {import.meta.env.DEV && frameMs > 0 && ` · ${frameMs.toFixed(1)} ms/frame`}
       </p>
+      {shown && <HotStrip hot={shown.timeline.hot} />}
       {shown && (
         <RaceView
           key={`${shown.gun}-${lookTest}`}

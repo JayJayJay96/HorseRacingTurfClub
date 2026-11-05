@@ -10,7 +10,14 @@ serve(async ({ room }, user, admin) => {
   const rng = createCryptoRng();
   const weather = rollWeather(rng, input.weather_enabled);
   const { odds, groups, sims } = simulateOdds(
-    { horses: input.horses, bought: input.bought, length: input.length, weather },
+    {
+      horses: input.horses,
+      bought: input.bought,
+      length: input.length,
+      weather,
+      hot: input.hot_items,
+      traits: input.traits,
+    },
     rng,
     undefined,
     input.history ?? undefined,

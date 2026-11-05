@@ -86,6 +86,25 @@ describe('lock-odds and start-race', () => {
     },
   );
 
+  it('races with the hot items and the trait snapshot', { timeout: 60_000 }, async () => {
+    const r = await shopRoom();
+    await ok(r.ali.client.rpc('set_trait', { p_room: r.room.id, p_trait: 'tough' }));
+    await invoke(r.host, 'lock-odds', { room: r.room.id });
+    await invoke(r.host, 'start-race', { room: r.room.id });
+    const [race] = await ok(
+      adminClient().from('races').select('hot_items, traits').eq('id', r.raceId),
+    );
+    const [row] = await ok(
+      adminClient().from('race_timelines').select('timeline').eq('race_id', r.raceId),
+    );
+    const timeline = unpackTimeline(row.timeline as PackedTimeline);
+    expect(timeline.hot).toHaveLength(3);
+    expect(timeline.hot).toEqual(race.hot_items);
+    expect(timeline.traits).toEqual(race.traits);
+    expect(timeline.traits?.[r.ali.player.id]).toBe('tough');
+    expect(timeline.traits?.[r.siti.id]).toBe('normal');
+  });
+
   it('refuses non-hosts, signed-out callers and wrong phases', { timeout: 60_000 }, async () => {
     const r = await shopRoom();
     expect(await failsInvoke(r.ali.client, 'lock-odds', { room: r.room.id })).toBe('not_host');

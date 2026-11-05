@@ -4,6 +4,7 @@ import { rpc, serve, type Body } from '../_shared/http.ts';
 const RPC: Record<string, (b: Body) => [string, Record<string, unknown>]> = {
   overview: () => ['admin_overview', {}],
   weather: (b) => ['admin_set_weather', { p_on: b.on === true }],
+  hot_items: (b) => ['admin_set_hot_items', { p_on: b.on === true }],
   add: (b) => ['admin_add_member', { p_name: b.name, p_pin: b.pin }],
   rename: (b) => ['admin_rename', { p_player: b.player, p_name: b.name }],
   archive: (b) => ['admin_archive', { p_player: b.player }],

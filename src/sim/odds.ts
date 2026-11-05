@@ -63,7 +63,7 @@ export function priceOdds(p: number, range: OddsRange): number | null {
 /**
  * Finish counts from repeated runs of this exact field, bought boxes and length: how often each
  * horse won and finished top 3. Each run has a fresh seed, so box spots vary between runs.
- * Horses with the same bought boxes are interchangeable, so each such group gets its average:
+ * Horses with the same bought boxes and trait are interchangeable, so each such group gets its average:
  * equal horses show equal counts instead of simulation noise (counts may be fractional).
  */
 export function simulateShares(
@@ -83,7 +83,8 @@ export function simulateShares(
   }
   const groups = new Map<string, HorseId[]>();
   for (const h of race.horses) {
-    const key = [...(race.bought[h] ?? [])].sort().join();
+    // Same boxes and the same trait = interchangeable (spec D: the odds price traits in).
+    const key = `${race.traits?.[h] ?? 'normal'}|${[...(race.bought[h] ?? [])].sort().join()}`;
     groups.set(key, [...(groups.get(key) ?? []), h]);
   }
   for (const group of groups.values()) {

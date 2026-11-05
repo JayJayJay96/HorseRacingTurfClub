@@ -166,3 +166,33 @@ describe('weather in the odds', () => {
     expect(rain).not.toEqual(clear);
   });
 });
+
+describe('hot items and traits in the odds', () => {
+  it('passes the hot items to every simulated race', () => {
+    const race = {
+      horses: ids(6),
+      bought: { h0: ['attack', 'attack', 'attack'] },
+      length: 'short',
+    } as const;
+    const plain = simulateShares(race, createSeededRng(12), frozenClock);
+    const hot = simulateShares(
+      { ...race, hot: [{ item: 'attack:leader', buff: 'extended' }] },
+      createSeededRng(12),
+      frozenClock,
+    );
+    expect(hot).not.toEqual(plain);
+  });
+
+  it('prices each trait on its own instead of averaging it away', () => {
+    const race = {
+      horses: ids(4),
+      bought: {},
+      length: 'short',
+      traits: { h0: 'sprinter' },
+    } as const;
+    const { wins } = simulateShares(race, createSeededRng(13), frozenClock);
+    expect(wins.get('h0')).not.toBe(wins.get('h1'));
+    expect(wins.get('h1')).toBe(wins.get('h2')); // the Normal horses are still averaged
+    expect(wins.get('h2')).toBe(wins.get('h3'));
+  });
+});

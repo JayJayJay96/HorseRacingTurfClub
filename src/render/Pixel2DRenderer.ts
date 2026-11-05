@@ -14,6 +14,7 @@ import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse, drawNumber, poseOf } from './sprites.ts';
 import type { RaceRenderer } from './renderer.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
+import { TRAIL_STYLES, drawMark } from './trails.ts';
 import { FOG, RAIN, puddleOutline, rainDrop } from './weatherFx.ts';
 
 export type { RaceRenderer } from './renderer.ts';
@@ -43,7 +44,6 @@ export const BOX_REVEAL = 0.1;
 /** Trail length in samples, and the on-screen gap between samples (px at size 1). */
 export const TRAIL = 8;
 const TRAIL_GAP = 3;
-const TRAIL_COLOR = { 'trail:dust': '#a39382', 'trail:sparkle': '#ffd54f' } as const;
 
 /** Count of sorted `times` that are <= t. */
 function countUpTo(times: readonly number[], t: number): number {
@@ -282,9 +282,9 @@ export class Pixel2DRenderer implements RaceRenderer {
     // Numbers, not name tags: a tight pack makes names unreadable; #n matches the standings list.
     // Trails under every horse, in world points mapped like screen() but without allocating.
     for (const h of drawn) {
-      const kind = h.colors.trail;
+      const style = h.colors.trail ? TRAIL_STYLES[h.colors.trail] : undefined;
       const count = this.trailCount[h.lane] ?? 0;
-      if (!count || (kind !== 'trail:dust' && kind !== 'trail:sparkle')) continue;
+      if (!count || !style) continue;
       const ring = this.trails[h.lane]!;
       const head = this.trailHead[h.lane]!;
       for (let i = 0; i < count; i++) {
@@ -292,14 +292,8 @@ export class Pixel2DRenderer implements RaceRenderer {
         const x = (ring[k]! - this.camera.x) * scale + VIEW.width / 2;
         const y = (ring[k + 1]! - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2;
         ctx.globalAlpha = 1 - (i + 1) / (TRAIL + 1);
-        if (kind === 'trail:dust') {
-          ctx.fillStyle = TRAIL_COLOR[kind];
-          ctx.fillRect(Math.round(x) - size, Math.round(y) - size, 2 * size, size);
-        } else {
-          // Gold/white flicker, lifted to the jockey's height.
-          ctx.fillStyle = (Math.floor(t * 12) + i) % 2 ? '#ffffff' : TRAIL_COLOR[kind];
-          ctx.fillRect(Math.round(x), Math.round(y) - (6 + (i % 3) * 2) * size, size, size);
-        }
+        ctx.fillStyle = style.color(i, t);
+        drawMark(ctx, style.shape, Math.round(x), Math.round(y) - style.lift(i) * size, size);
       }
       ctx.globalAlpha = 1;
     }

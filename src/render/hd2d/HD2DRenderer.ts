@@ -16,6 +16,7 @@ import {
 import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
 import { horsePoint, type Track } from '../track.ts';
+import { TRAIL_STYLES, type TrailStyle } from '../trails.ts';
 import { FOG, RAIN, puddleOutline, rainDrop } from '../weatherFx.ts';
 import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
 import {
@@ -60,6 +61,21 @@ const GHOST_POOL = 2 * GHOSTS_EACH;
 /** Puddle stencil value; horses write 0 over it so a reflection never paints over a horse. */
 const PUDDLE_STENCIL = 1;
 
+/** Parsed trail colours: THREE.Color parses a string on every set, and trails reuse a handful. */
+const trailColors = new Map<string, THREE.Color>();
+function trailColor(hex: string) {
+  let c = trailColors.get(hex);
+  if (!c) trailColors.set(hex, (c = new THREE.Color(hex)));
+  return c;
+}
+type TrailCloud = {
+  style: TrailStyle;
+  points: THREE.Points;
+  pos: THREE.BufferAttribute;
+  col: THREE.BufferAttribute;
+  n: number;
+};
+
 export class HD2DRenderer implements RaceRenderer {
   private readonly canvas: HTMLCanvasElement;
   private readonly colors: ColorsOf;
@@ -101,7 +117,7 @@ export class HD2DRenderer implements RaceRenderer {
   private badges: THREE.Sprite[] = [];
   private labels: THREE.Sprite[] = [];
   private readonly textCache = new Map<string, THREE.CanvasTexture>();
-  private trails: { dust: THREE.Points; sparkle: THREE.Points } | null = null;
+  private readonly trails = new Map<string, TrailCloud>();
   private effects: Effect[] = [];
   private fxPoints: THREE.Points | null = null;
   private fxBig: THREE.Points | null = null;
@@ -366,29 +382,33 @@ export class HD2DRenderer implements RaceRenderer {
       return s;
     });
 
-    // Trails: past positions from the timeline itself (no ring buffer needed).
-    const trailGeo = () => {
+    // Trails: past positions from the timeline itself (no ring buffer needed). One cloud per trail
+    // somebody in this race wears, so unworn trails cost nothing per frame.
+    this.trails.clear();
+    for (const code of new Set(timeline.horses.map((h, lane) => this.colors(h, lane).trail))) {
+      const style = code ? TRAIL_STYLES[code] : undefined;
+      if (!code || !style) continue;
       const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(lanes * TRAIL * 3), 3));
-      return g;
-    };
-    this.trails = {
-      dust: new THREE.Points(
-        trailGeo(),
-        new THREE.PointsMaterial({ color: '#a39382', size: 0.35, transparent: true, opacity: 0.6 }),
-      ),
-      sparkle: new THREE.Points(
-        trailGeo(),
+      const pos = new THREE.BufferAttribute(new Float32Array(lanes * TRAIL * 3), 3);
+      const col = new THREE.BufferAttribute(new Float32Array(lanes * TRAIL * 3), 3);
+      g.setAttribute('position', pos);
+      g.setAttribute('color', col);
+      const k = style.hd.glow ? 2 : 1; // over 1, so the bloom pass catches glowing trails
+      const points = new THREE.Points(
+        g,
         new THREE.PointsMaterial({
-          color: new THREE.Color('#ffd54f').multiplyScalar(2),
-          size: 0.25,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
+          size: style.hd.size,
+          vertexColors: true,
+          color: new THREE.Color(k, k, k),
+          transparent: true,
+          opacity: style.hd.opacity,
+          ...(style.hd.glow ? { blending: THREE.AdditiveBlending, depthWrite: false } : {}),
         }),
-      ),
-    };
-    this.trails.dust.frustumCulled = this.trails.sparkle.frustumCulled = false;
-    scene.add(this.trails.dust, this.trails.sparkle);
+      );
+      points.frustumCulled = false;
+      scene.add(points);
+      this.trails.set(code, { style, points, pos, col, n: 0 });
+    }
 
     this.effects = effectsOf(timeline.events, timeline.hot);
     // Two clouds: ordinary effects, and the special items drawn bigger (spec 2026-11-05).
@@ -745,26 +765,26 @@ export class HD2DRenderer implements RaceRenderer {
     }
     for (let i = used; i < this.labels.length; i++) this.labels[i]!.visible = false;
 
-    // Trails from the horse's own past positions.
-    if (this.trails) {
-      const fill = (points: THREE.Points, kind: string, lift: (i: number) => number) => {
-        const arr = points.geometry.getAttribute('position') as THREE.BufferAttribute;
-        let k = 0;
-        timeline.horses.forEach((horse, lane) => {
-          if (this.colors(horse, lane).trail !== kind) return;
-          const finished = timeline.finishTimes[horse] ?? Infinity;
-          if (t <= 0 || t >= finished) return;
-          for (let i = 1; i <= TRAIL; i++) {
-            const m = progressAt(timeline, horse, Math.max(0, t - i * 0.08));
-            const tp = horsePoint(track, d, m, lane);
-            arr.setXYZ(k++, tp.x, lift(i), tp.y);
-          }
-        });
-        points.geometry.setDrawRange(0, k);
-        arr.needsUpdate = true;
-      };
-      fill(this.trails.dust, 'trail:dust', () => 0.15);
-      fill(this.trails.sparkle, 'trail:sparkle', (i) => 1.5 + (i % 3) * 0.3);
+    // Trails from the horse's own past positions: one pass over the field for every worn trail.
+    if (this.trails.size) {
+      for (const tr of this.trails.values()) tr.n = 0;
+      timeline.horses.forEach((horse, lane) => {
+        const code = this.colors(horse, lane).trail;
+        const tr = code ? this.trails.get(code) : undefined;
+        const finished = timeline.finishTimes[horse] ?? Infinity;
+        if (!tr || t <= 0 || t >= finished) return;
+        for (let i = 1; i <= TRAIL; i++) {
+          const m = progressAt(timeline, horse, Math.max(0, t - i * 0.08));
+          const tp = horsePoint(track, d, m, lane);
+          const c = trailColor(tr.style.color(i - 1, t));
+          tr.pos.setXYZ(tr.n, tp.x, tr.style.hd.lift(i), tp.y);
+          tr.col.setXYZ(tr.n++, c.r, c.g, c.b);
+        }
+      });
+      for (const tr of this.trails.values()) {
+        tr.points.geometry.setDrawRange(0, tr.n);
+        tr.pos.needsUpdate = tr.col.needsUpdate = true;
+      }
     }
 
     // Item effects: pure particles in each horse's running frame.
@@ -890,7 +910,7 @@ export class HD2DRenderer implements RaceRenderer {
     if (this.overlay) disposeTree(this.overlay); // text textures again: a second dispose is a no-op
     this.overlay = null;
     this.boxMesh = null;
-    this.trails = null;
+    this.trails.clear(); // disposeTree(scene) frees their geometry
     this.fxPoints = null;
     this.fxBig = null;
     this.motes = null;

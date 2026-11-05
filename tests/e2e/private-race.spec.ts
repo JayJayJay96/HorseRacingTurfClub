@@ -38,7 +38,7 @@ test('private race: 3 phones, reload mid-race, podium matches phones', async ({ 
 
   await screen.getByRole('button', { name: 'Open shop' }).click();
   for (const p of phones) {
-    await p.getByRole('button', { name: /Attack/ }).click();
+    await p.getByRole('button', { name: /Attack.*coins/ }).click();
     await expect(p.getByText(/Your boxes: 💥/)).toBeVisible();
   }
 

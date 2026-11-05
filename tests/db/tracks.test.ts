@@ -1,3 +1,4 @@
+import { TRACK_IDS } from '../../src/sim/track.ts';
 import { describe, expect, it } from 'vitest';
 import { adminClient, anonClient, fails, ok } from './helpers.ts';
 
@@ -21,6 +22,8 @@ describe('track choice', () => {
   it('defaults to oval; the host can set it and null keeps it', async () => {
     const { host, room } = await lobbyRoom();
     expect(room.track).toBe('oval');
+    // Terrain tracks (migration 0024) are accepted too.
+    await ok(host.rpc('update_room_settings', { p_room: room.id, p_track: 'ice' }));
     const a = await ok(host.rpc('update_room_settings', { p_room: room.id, p_track: 'kidney' }));
     expect(a.track).toBe('kidney');
     const b = await ok(host.rpc('update_room_settings', { p_room: room.id, p_prize: 'Kopi' }));
@@ -54,12 +57,12 @@ describe('track choice', () => {
     const { host, room } = await lobbyRoom();
     await ok(host.rpc('update_room_settings', { p_room: room.id, p_track: 'random' }));
     const seen = new Set<string | undefined>();
-    for (let i = 0; i < 15; i++) {
+    for (let i = 0; i < 20; i++) {
       const shop = await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'SHOP' }));
       seen.add(await raceTrack(shop.race_id));
       await ok(host.rpc('set_phase', { p_room: room.id, p_phase: 'LOBBY' }));
     }
-    for (const t of seen) expect(['oval', 'speedway', 'kidney']).toContain(t);
-    expect(seen.size).toBeGreaterThan(1); // all 15 the same: ~1 in 5 million
+    for (const t of seen) expect(TRACK_IDS).toContain(t);
+    expect(seen.size).toBeGreaterThan(3); // 20 draws from 10 tracks: 3 or fewer is ~1 in 10 million
   });
 });

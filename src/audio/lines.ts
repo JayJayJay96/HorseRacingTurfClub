@@ -8,6 +8,7 @@ export const LINES = {
   prize: ["Today's prize: {p}!", 'They are racing for {p}!'],
   rainStart: ['Wet track today! Watch those puddles!', 'Rain on the course! Hold on tight!'],
   fogStart: ['Fog rolling in! Mind your neighbours!', "It's a foggy one out there!"],
+  hurdle: ['{h} clips a hurdle!', 'Ooh, {h} catches the top of that fence!'],
   slip: ['Splash! {h} slips in a puddle!', 'Whoa! {h} skids on the wet track!'],
   bump: ['Bonk! {a} and {b} bump in the fog!', '{a} and {b} knock shoulders!'],
   hot: ['Hot item! {h} grabs a {b} {i}!', '{h} picks up a hot one: {b} {i}!'],

@@ -17,10 +17,13 @@ import {
   PASS3_PLACES,
   SELF3_GAP_SECONDS,
   TICK_HZ,
+  TERRAIN,
   TRAIT_CODES,
   TRAITS,
   WEATHER,
 } from './config.ts';
+import { raceTerrain } from './terrain.ts';
+import { TRACKS, TRACK_IDS } from './track.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
 import { buffOf, canBeExtended, effectSeconds, HOT_ELIGIBLE } from './hot.ts';
 import { round2, round3 } from './math.ts';
@@ -111,6 +114,8 @@ export function validateRaceInput(input: RaceInput): void {
     if (buff === 'extended' && !canBeExtended(item))
       throw new RangeError(`${item} has no duration to extend`);
   }
+  if (input.track !== undefined && !TRACK_IDS.includes(input.track))
+    throw new RangeError(`unknown track ${String(input.track)}`);
   for (const [id, trait] of Object.entries(input.traits ?? {})) {
     if (!input.horses.includes(id)) throw new RangeError(`trait for unknown horse ${id}`);
     if (!TRAIT_CODES.includes(trait)) throw new RangeError(`unknown trait ${String(trait)}`);
@@ -171,6 +176,8 @@ export function simulateRace(input: RaceInput): Timeline {
     };
   });
   const weather: Weather = input.weather ?? 'clear';
+  const terrain = raceTerrain(TRACKS[input.track ?? 'oval'], distance);
+  const nextHurdle = horses.map(() => 0);
   // Weather draws only happen off-clear, so clear races and old replays are unchanged.
   const puddles =
     weather === 'rain'
@@ -222,7 +229,8 @@ export function simulateRace(input: RaceInput): Timeline {
     // position. Normal multiplies by 1.
     const early = h.progress < distance / 3 ? h.earlyPace : 1;
     const mud = h.trait === 'mudder' ? mudPace : 1;
-    return BASE_SPEED * noise * kick * mult * early * mud * bandPace(h);
+    const ground = terrain.pace ? terrain.pace[Math.min(distance, Math.floor(h.progress))]! : 1;
+    return BASE_SPEED * noise * kick * mult * early * mud * bandPace(h) * ground;
   };
 
   /** Brawler: its landed attacks last longer, its own speed items shorter. */
@@ -347,6 +355,23 @@ export function simulateRace(input: RaceInput): Timeline {
       events.push({ t: h.finishTime!, type: 'finish', horse: h.id, place: finishOrder.length });
     }
 
+    // Hurdles: one stumble draw per horse per hurdle, in lane order. Only hurdle tracks draw.
+    for (const h of horses) {
+      while (
+        h.finishTime === null &&
+        nextHurdle[h.index]! < terrain.hurdles.length &&
+        terrain.hurdles[nextHurdle[h.index]!]! <= h.progress
+      ) {
+        nextHurdle[h.index]!++;
+        const chance =
+          h.trait === 'tough' ? TERRAIN.toughStumblePercent : TERRAIN.hurdleStumblePercent;
+        if (rng.nextInt(100) < chance) {
+          weatherMod(h, TERRAIN.stumble, tick);
+          events.push({ t: round2(tick / TICK_HZ), type: 'stumble', horse: h.id });
+        }
+      }
+    }
+
     if (weather === 'rain') {
       for (const h of horses) {
         const lane = lanePuddles[h.index]!;
@@ -440,6 +465,7 @@ export function simulateRace(input: RaceInput): Timeline {
     puddles,
     hot: [...hot],
     traits: Object.fromEntries(horses.map((h) => [h.id, h.trait])),
+    ...(input.track ? { track: input.track } : {}),
     progress,
     events,
     finishOrder,

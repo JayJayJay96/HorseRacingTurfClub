@@ -77,7 +77,8 @@ describe.each(Object.values(TRACKS))('track $id', (track) => {
     }
   });
 
-  it('never crosses itself on the outer lane', () => {
+  // The figure eight crosses itself by design (over a bridge).
+  it.skipIf(track.id === 'figure8')('never crosses itself on the outer lane', () => {
     const pts = Array.from({ length: Math.ceil(track.lap / 4) }, (_, i) =>
       trackPoint(track, i * 4, OUTER),
     );
@@ -94,7 +95,8 @@ describe.each(Object.values(TRACKS))('track $id', (track) => {
     const f = trackPoint(track, finishS(track), 0);
     const ahead = trackPoint(track, finishS(track) + 5, 0);
     expect(ahead.x).toBeGreaterThan(f.x);
-    expect(ahead.y).toBeCloseTo(f.y);
+    // The figure eight's "straight" is the bottom of its lower loop: level within half a metre.
+    expect(ahead.y).toBeCloseTo(f.y, track.id === 'figure8' ? 0 : 2);
     expect(Math.abs(f.x)).toBeLessThan(1);
     expect(track.stands.y0).toBeGreaterThan(f.y);
     expect(track.stands.x0).toBeLessThan(f.x);

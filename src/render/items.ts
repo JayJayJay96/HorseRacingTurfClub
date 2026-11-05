@@ -87,6 +87,8 @@ export function popupOf(event: RaceEvent): string {
       return event.reason === 'immune' ? '🔮 Immune' : '🛡️ Blocked';
     case 'reflected':
       return '🔁 Reflected!';
+    case 'stumble':
+      return '🚧 Stumble!';
     case 'slip':
       return '💦 Slip!';
     case 'bump':

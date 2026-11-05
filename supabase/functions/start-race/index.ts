@@ -17,6 +17,7 @@ serve(async ({ room }, user, admin) => {
     weather: input.weather,
     hot: input.hot_items,
     traits: input.traits,
+    track: input.track,
   });
   await rpc(admin, 'start_race_finish', {
     p_race: input.race_id,

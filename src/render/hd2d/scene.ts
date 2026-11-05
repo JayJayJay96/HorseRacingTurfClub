@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { finishS, trackPoint, type Track } from '../track.ts';
+import { finishS, heightAt, trackPoint, type Track } from '../track.ts';
 import type { Preset } from './lighting.ts';
 import { PIXEL_M, TILE_M } from './look.ts';
 import { placeScenery, standsRect } from './scenery.ts';
@@ -46,7 +46,7 @@ function strip(track: Track, from: number, to: number, y: number, s0 = 0, s1 = t
   for (let s = s0; s <= s1 + 1e-6; s += step, n++) {
     for (const off of [from, to]) {
       const p = trackPoint(track, s, off);
-      pos.push(p.x, y, p.y);
+      pos.push(p.x, y + heightAt(track, s), p.y);
       uv.push(s / TILE_M, off / TILE_M);
     }
     if (n > 0) {
@@ -69,7 +69,9 @@ function band(track: Track, offset: number, y0: number, y1: number) {
   let n = 0;
   for (let s = 0; s <= track.lap + 1e-6; s += 2, n++) {
     const p = trackPoint(track, s, offset);
-    pos.push(p.x, y0, p.y, p.x, y1, p.y);
+    const h = heightAt(track, s);
+    // y0 < 0 means "from the grass": a skirt under raised track.
+    pos.push(p.x, y0 < 0 ? 0 : y0 + h, p.y, p.x, y1 + h, p.y);
     if (n > 0) {
       const a = (n - 1) * 2;
       index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
@@ -130,14 +132,48 @@ export function buildWorld(track: Track, lanes: number, seed: number, preset: Pr
     const m = new THREE.Matrix4();
     for (let i = 0; i < count; i++) {
       const p = trackPoint(track, i * 6, offset);
-      posts.setMatrixAt(i, m.makeTranslation(p.x, 0.5, p.y));
+      posts.setMatrixAt(i, m.makeTranslation(p.x, 0.5 + heightAt(track, i * 6), p.y));
     }
     posts.castShadow = true;
     group.add(posts);
   }
 
+  // Terrain (spec 2026-11-06 C): earth skirts under raised track, sand / ice, hurdles.
+  // The figure eight's bridge stands open: a skirt would wall off the road it crosses.
+  if (track.height && track.id !== 'figure8') {
+    const earth = new THREE.MeshLambertMaterial({ color: '#7a5a3a', side: THREE.DoubleSide });
+    for (const offset of [-2, outer + 2])
+      group.add(new THREE.Mesh(band(track, offset, -1, 0), earth));
+  }
+  for (const z of track.zones ?? []) {
+    const ground = new THREE.Mesh(
+      strip(track, -2, outer + 2, 0.035, z.from, z.to),
+      new THREE.MeshLambertMaterial({ color: z.kind === 'sand' ? '#e8d39b' : '#d6eef7' }),
+    );
+    ground.receiveShadow = true;
+    group.add(ground);
+  }
+  const hurdleMat = new THREE.MeshLambertMaterial({ color: '#f5f5f5' });
+  const brush = new THREE.MeshLambertMaterial({ color: '#3f6b35' });
+  for (const s of track.hurdles ?? []) {
+    const a = trackPoint(track, s, -2);
+    const b = trackPoint(track, s, outer + 2);
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const angle = Math.atan2(-(b.y - a.y), b.x - a.x);
+    const h = heightAt(track, s);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, 0.15), hurdleMat);
+    rail.position.set((a.x + b.x) / 2, h + 1.1, (a.y + b.y) / 2);
+    rail.rotation.y = angle;
+    const hedge = new THREE.Mesh(new THREE.BoxGeometry(len, 0.9, 0.5), brush);
+    hedge.position.set((a.x + b.x) / 2, h + 0.45, (a.y + b.y) / 2);
+    hedge.rotation.y = angle;
+    rail.castShadow = hedge.castShadow = true;
+    group.add(rail, hedge);
+  }
+
   // Finish line and post.
   const fs = finishS(track);
+  const fh = heightAt(track, fs);
   group.add(
     new THREE.Mesh(
       strip(track, -2, outer + 2, 0.03, fs - 0.3, fs + 0.3),
@@ -149,13 +185,13 @@ export function buildWorld(track: Track, lanes: number, seed: number, preset: Pr
     new THREE.BoxGeometry(0.3, 6, 0.3),
     new THREE.MeshLambertMaterial({ color: '#ffffff' }),
   );
-  post.position.set(postAt.x, 3, postAt.y);
+  post.position.set(postAt.x, fh + 3, postAt.y);
   post.castShadow = true;
   const board = new THREE.Mesh(
     new THREE.BoxGeometry(2, 1.2, 0.2),
     new THREE.MeshLambertMaterial({ color: '#e53935' }),
   );
-  board.position.set(postAt.x, 6.4, postAt.y);
+  board.position.set(postAt.x, fh + 6.4, postAt.y);
   board.castShadow = true;
   group.add(post, board);
 
@@ -175,7 +211,8 @@ export function buildWorld(track: Track, lanes: number, seed: number, preset: Pr
     side: THREE.DoubleSide,
   });
   for (let i = 0; i < 4; i++) {
-    const h = 1.2 * (i + 1);
+    // Tiers stand on the grass but rise with the finish line on raised terrain.
+    const h = 1.2 * (i + 1) + fh;
     const tier = new THREE.Mesh(new THREE.BoxGeometry(width, h, 6), woodMat);
     const z = s.y0 + 4 + 3 + i * 6;
     tier.position.set(cx, h / 2, z);
@@ -260,7 +297,7 @@ export function buildWorld(track: Track, lanes: number, seed: number, preset: Pr
     group,
     crowd,
     billboards,
-    finishTop: new THREE.Vector3(postAt.x, 7, postAt.y),
+    finishTop: new THREE.Vector3(postAt.x, fh + 7, postAt.y),
     sky,
   };
 }

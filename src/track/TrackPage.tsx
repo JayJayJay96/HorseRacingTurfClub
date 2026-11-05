@@ -44,7 +44,7 @@ import { useTimeline } from '../net/useTimeline.ts';
 import { colorsByPlayer, horseColors, type HorseColors } from '../render/palette.ts';
 import { HorseSprite } from '../render/HorseSprite.tsx';
 import { RaceView } from '../render/RaceView.tsx';
-import { TRACKS, trackById } from '../render/track.ts';
+import { TRACK_IDS, TRACKS, trackById } from '../render/track.ts';
 import { MAX_HORSES, PRICES } from '../sim/config.ts';
 import { gunMs } from '../sim/playback.ts';
 import type { RaceLength } from '../sim/types.ts';
@@ -108,7 +108,11 @@ export function TrackPage() {
         <SoundToggle settings={settings} update={update} full />
       </TopBar>
       <PhaseBanner phase={state.room.phase} />
-      {state.race && <p>Track: {trackById(state.race.track).name}</p>}
+      {state.race && (
+        <p>
+          Track: {trackById(state.race.track).name} · {trackById(state.race.track).blurb}
+        </p>
+      )}
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />
       ) : (
@@ -162,7 +166,7 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
           </fieldset>
           <fieldset>
             <legend>Track</legend>
-            {(['oval', 'speedway', 'kidney', 'random'] as const).map((id) => (
+            {([...TRACK_IDS, 'random'] as const).map((id) => (
               <label key={id} htmlFor={`track-${id}`}>
                 <input
                   id={`track-${id}`}
@@ -175,6 +179,11 @@ function LobbyBoard({ room, players, balances, online, act, busy }: BoardProps) 
                 {id === 'random' ? 'Random' : TRACKS[id].name}{' '}
               </label>
             ))}
+            <small>
+              {room.track === 'random'
+                ? 'Any of the tracks, picked when the shop opens.'
+                : trackById(room.track).blurb}
+            </small>
           </fieldset>
           <label>
             Prize{' '}

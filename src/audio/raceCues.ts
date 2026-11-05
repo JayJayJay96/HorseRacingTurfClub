@@ -36,6 +36,8 @@ function cueOf(e: RaceEvent): SfxName | null {
       return 'shield';
     case 'slip':
       return 'splash';
+    case 'stumble':
+      return 'dud';
     case 'bump':
       return 'bonk';
     case 'finish':

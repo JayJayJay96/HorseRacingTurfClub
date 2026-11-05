@@ -17,6 +17,7 @@ serve(async ({ room }, user, admin) => {
       weather,
       hot: input.hot_items,
       traits: input.traits,
+      track: input.track,
     },
     rng,
     undefined,

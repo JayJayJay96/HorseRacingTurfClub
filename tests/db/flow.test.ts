@@ -21,6 +21,7 @@ describe('lock_odds', () => {
         [r.siti.id]: 'normal',
         [r.dan.id]: 'normal',
       },
+      track: 'oval',
       horses: [r.ali.player.id, r.bea.player.id, r.siti.id, r.dan.id],
       bought: {},
       history: null,

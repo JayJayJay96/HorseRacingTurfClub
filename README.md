@@ -54,7 +54,7 @@ Office mode:
 
 - The office is one permanent room, code `TURF`. People, PINs, coins and races are managed at `/admin`; the same admin password unlocks the office big screen (`/track?code=TURF`). Phones join at `/play?code=TURF` with their name and a 4-digit PIN (set on first sign-in). `/stats` shows leaderboards, horse records, badges and replays (office members and the big screen only).
 - Local admin password: put `ADMIN_PASSWORD=<anything>` in `supabase/functions/.env` (gitignored), then `npx supabase stop && npx supabase start`; the edge runtime loads that file automatically.
-- Before each race the host picks the track (Oval, Speedway, Kidney or Random); the shape is looks only. Office members can buy silk patterns and trails with coins in the phone's Looks shop (lobby only).
+- Before each race the host picks one of ten tracks or Random. Oval, Speedway and Kidney are flat; the other seven add terrain (hills, a bridge, hurdles, sand, ice) that changes everyone's pace. Office members can buy silk patterns and trails with coins in the phone's Looks shop (lobby only).
 - Hosted: the owner sets it once with `npx supabase secrets set ADMIN_PASSWORD=<long random password>` (never commit or share it). Deploy with `npx supabase db push --linked` and `npx supabase functions deploy admin lock-odds start-race`. 10 wrong passwords lock `/admin` for 10 minutes; to clear a lock, run `select public.admin_gate_reset();` in the SQL editor.
 
 Running it:

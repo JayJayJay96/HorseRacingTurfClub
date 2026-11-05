@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import type { HorseHistory } from '../../../src/sim/odds.ts';
+import type { TrackId } from '../../../src/sim/track.ts';
 import type { BoxType, HotItem, RaceLength, Trait, Weather } from '../../../src/sim/types.ts';
 
 /** What lock_odds_begin / start_race_begin return (private.race_input in SQL). */
@@ -11,6 +12,8 @@ export interface RaceInputRow {
   hot_items: HotItem[];
   /** Runner -> trait, snapshotted when the shop closed (spec D). */
   traits: Record<string, Trait>;
+  /** Missing until migration 0024 is pushed: run flat (Oval). */
+  track?: TrackId;
   horses: string[];
   bought: Record<string, BoxType[]>;
   history: Record<string, HorseHistory> | null;
@@ -30,7 +33,12 @@ export type Body = Record<string, unknown> & { room?: string };
  * Errors go back as 400 `{ error: code }`.
  */
 export function serve(
-  handler: (body: Body, user: SupabaseClient, admin: SupabaseClient, token: string) => Promise<unknown>,
+  handler: (
+    body: Body,
+    user: SupabaseClient,
+    admin: SupabaseClient,
+    token: string,
+  ) => Promise<unknown>,
 ) {
   Deno.serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -52,7 +60,11 @@ export function serve(
   });
 }
 
-export async function rpc<T>(client: SupabaseClient, fn: string, args: Record<string, unknown>): Promise<T> {
+export async function rpc<T>(
+  client: SupabaseClient,
+  fn: string,
+  args: Record<string, unknown>,
+): Promise<T> {
   const { data, error } = await client.rpc(fn, args);
   if (error) throw new Error(error.message);
   return data as T;

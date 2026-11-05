@@ -1,3 +1,5 @@
+import type { TrackId } from './track.ts';
+
 export type HorseId = string;
 export type RaceLength = 'short' | 'long';
 export type BoxType = 'speed' | 'attack' | 'defense';
@@ -57,6 +59,8 @@ export interface RaceInput {
   readonly hot?: readonly HotItem[];
   /** Spec D: per-horse trait; a horse missing from the map (or no map) runs Normal. */
   readonly traits?: Readonly<Record<HorseId, Trait>>;
+  /** Spec 2026-11-06 C: the track's terrain; missing = Oval (flat, no extra RNG draws). */
+  readonly track?: TrackId;
 }
 
 export interface BoxSpot {
@@ -100,6 +104,8 @@ export type RaceEvent =
   | { t: number; type: 'reflected'; horse: HorseId; by: HorseId; item: ItemCode }
   /** Rain: the horse slipped in a puddle. */
   | { t: number; type: 'slip'; horse: HorseId }
+  /** Steeplechase: the horse clipped a hurdle. */
+  | { t: number; type: 'stumble'; horse: HorseId }
   /** Fog: `horse` (lower lane) and `with` (the next lane out) bumped. */
   | { t: number; type: 'bump'; horse: HorseId; with: HorseId }
   | { t: number; type: 'finish'; horse: HorseId; place: number };
@@ -118,6 +124,8 @@ export interface Timeline {
   /** Missing on timelines stored before hot items / traits existed: read as [] / all Normal. */
   readonly hot?: readonly HotItem[];
   readonly traits?: Readonly<Record<HorseId, Trait>>;
+  /** Missing on timelines stored before terrain tracks: the race ran flat. */
+  readonly track?: TrackId;
   /** Metres from the start, one sample per tick; index 0 is the start. Finished horses stay at `distance`. */
   readonly progress: Readonly<Record<HorseId, readonly number[]>>;
   readonly events: readonly RaceEvent[];

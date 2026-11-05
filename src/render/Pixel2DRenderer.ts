@@ -9,11 +9,20 @@ import {
   particlesOf,
   type Effect,
 } from './hd2d/effects.ts';
+import { GROUND, groundPatches, hasTerrain, hurdleLines } from './ground.ts';
 import { ITEM_INFO, popupOf } from './items.ts';
 import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse, drawNumber, poseOf } from './sprites.ts';
 import type { RaceRenderer } from './renderer.ts';
-import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
+import {
+  finishS,
+  horsePoint,
+  hurdleHop,
+  trackBounds,
+  trackPoint,
+  type Point,
+  type Track,
+} from './track.ts';
 import { TRAIL_STYLES, drawMark } from './trails.ts';
 import { FOG, RAIN, puddleOutline, rainDrop } from './weatherFx.ts';
 
@@ -79,6 +88,9 @@ export class Pixel2DRenderer implements RaceRenderer {
   private weather: Weather = 'clear';
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
+  /** Terrain tracks: coloured surface paths (lowest first) and hurdles, world coordinates. */
+  private ground: { color: string; path: Path2D }[] = [];
+  private hurdles = new Path2D();
   private halfWidth = 1;
   /** Per lane: the last TRAIL world positions as x,y pairs, a ring written at `trailHead`. */
   private trails: Float64Array[] = [];
@@ -141,6 +153,22 @@ export class Pixel2DRenderer implements RaceRenderer {
       }
       this.ribbon.closePath();
     }
+    this.ground = hasTerrain(track)
+      ? groundPatches(track, outer).map(({ color, quads }) => {
+          const path = new Path2D();
+          for (const q of quads) {
+            path.moveTo(q[0]!.x, q[0]!.y);
+            for (const p of q.slice(1)) path.lineTo(p.x, p.y);
+            path.closePath();
+          }
+          return { color, path };
+        })
+      : [];
+    this.hurdles = new Path2D();
+    for (const [a, b] of hurdleLines(track, outer)) {
+      this.hurdles.moveTo(a.x, a.y);
+      this.hurdles.lineTo(b.x, b.y);
+    }
     const frame = () => {
       this.draw(ctx, timeline, track, (Date.now() - startAtMs) / 1000);
       this.raf = requestAnimationFrame(frame);
@@ -194,19 +222,35 @@ export class Pixel2DRenderer implements RaceRenderer {
     // Track ribbon between the rails: the cached world path under screen()'s affine map, stroked
     // under the identity transform so the rails stay 1 px wide.
     const ribbon = new Path2D();
-    ribbon.addPath(
-      this.ribbon,
-      new DOMMatrix([
-        scale,
-        0,
-        0,
-        scale * VIEW.tilt,
-        VIEW.width / 2 - this.camera.x * scale,
-        VIEW.height / 2 - this.camera.y * scale * VIEW.tilt,
-      ]),
-    );
-    ctx.fillStyle = DIRT;
-    ctx.fill(ribbon, 'evenodd');
+    const world = new DOMMatrix([
+      scale,
+      0,
+      0,
+      scale * VIEW.tilt,
+      VIEW.width / 2 - this.camera.x * scale,
+      VIEW.height / 2 - this.camera.y * scale * VIEW.tilt,
+    ]);
+    ribbon.addPath(this.ribbon, world);
+    if (this.ground.length === 0) {
+      ctx.fillStyle = DIRT;
+      ctx.fill(ribbon, 'evenodd');
+    }
+    for (const g of this.ground) {
+      const path = new Path2D();
+      path.addPath(g.path, world);
+      ctx.fillStyle = g.color;
+      ctx.fill(path);
+    }
+    if (this.ground.length > 0) {
+      const hurdles = new Path2D();
+      hurdles.addPath(this.hurdles, world);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = GROUND.hurdleWood;
+      ctx.stroke(hurdles);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = GROUND.hurdle;
+      ctx.stroke(hurdles);
+    }
     ctx.strokeStyle = RAIL;
     ctx.lineWidth = 1;
     ctx.stroke(ribbon);
@@ -271,14 +315,16 @@ export class Pixel2DRenderer implements RaceRenderer {
         const finished = timeline.finishTimes[horse] ?? Infinity;
         const m = progressAt(timeline, horse, t) + Math.max(0, t - finished) * COAST_SPEED;
         const here = horsePoint(track, timeline.distance, m, lane);
-        const p = screen(here);
+        const hop = hurdleHop(track, timeline.distance, m) * scale;
+        const ground = screen(here);
+        const p = { x: ground.x, y: ground.y - hop };
         const a = screen(horsePoint(track, timeline.distance, m + 1, lane));
         where.set(horse, p);
         const colors = this.colors(horse, lane);
         if (colors.trail) this.recordTrail(lane, here, t > 0 && t < finished, gap);
-        return { horse, lane, m, p, colors, pose: poseOf(a.x - p.x, a.y - p.y) };
+        return { horse, lane, m, p, ground, colors, pose: poseOf(a.x - ground.x, a.y - ground.y) };
       })
-      .sort((a, b) => a.p.y - b.p.y);
+      .sort((a, b) => a.ground.y - b.ground.y);
     // Numbers, not name tags: a tight pack makes names unreadable; #n matches the standings list.
     // Trails under every horse, in world points mapped like screen() but without allocating.
     for (const h of drawn) {

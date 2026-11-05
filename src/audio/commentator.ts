@@ -71,6 +71,8 @@ function itemJoke(e: RaceEvent, name: (h: HorseId) => string, trait: TraitOf): L
       return [e.reason === 'immune' ? LINES.bubble : LINES.shield, { h: name(e.horse) }];
     case 'slip':
       return [LINES.slip, { h: name(e.horse) }];
+    case 'stumble':
+      return [LINES.hurdle, { h: name(e.horse) }];
     case 'bump':
       return [LINES.bump, { a: name(e.horse), b: name(e.with) }];
     default:

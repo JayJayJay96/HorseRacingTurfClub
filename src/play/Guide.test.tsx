@@ -12,7 +12,7 @@ describe('Guide', () => {
     for (const i of Object.values(ITEM_INFO))
       expect(html).toContain(i.desc.replace(/'/g, '&#x27;'));
     for (const t of Object.values(TRAIT_INFO)) expect(html).toContain(t.minus);
-    for (const t of Object.values(TRACKS)) expect(html).toContain(t.name);
+    for (const t of Object.values(TRACKS)) expect(html).toContain(t.blurb.replace(/'/g, '&#x27;'));
     for (const b of Object.values(BADGES)) expect(html).toContain(b.name);
   });
 

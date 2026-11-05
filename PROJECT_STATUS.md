@@ -425,10 +425,22 @@ Specs C and D and plan: `docs/superpowers/plans/2026-11-05-hot-items-and-traits.
 
 ## Traits v2 + phone Guide (master, 2026-11-06)
 
-- Spec: `docs/superpowers/specs/2026-11-06-traits-guide-tracks-design.md` (A + B done; C terrain tracks next).
+- Spec: `docs/superpowers/specs/2026-11-06-traits-guide-tracks-design.md` (A, B and C done).
 - New traits: 🏹 Closer, 🚩 Front-runner (pace by last tick's field third), 🎲 Gambler (rare upgrades ×4, dud weight ×1.05), 🥊 Brawler (landed attacks ×1.4 longer, own speed items ×0.8). Mudder reworked: +1 % pace in rain/fog, −1 % when clear. No new RNG draws; races without the new traits replay as before. Stayer kickBoost 0.105 → 0.102 after the 10-trait balance run.
 - Wording: `TRAIT_INFO` is `{ plus, minus }`; picker shows ✅ / ⚠️ lines, two-column grid of ten. `ITEM_INFO` has a `desc` per power-up.
 - Phone 📖 Guide (top bar, every phase): full-screen dialog, collapsible sections (race day, boxes, power-ups, traits, weather, hot items, tracks, betting, coins/looks, badges). Lists come from the game tables. **Update the Guide prose whenever a feature changes.**
 - Migration `20261106000023_traits_v2.sql` (trait check + `set_trait`). Edge functions import the sim, so `lock-odds` and `start-race` must be redeployed.
 - Balance: trait test now runs 2 horses per trait (20-horse field), all within ±15 % of Normal.
 - Deploy order: `db push` (0023), `functions deploy lock-odds start-race`, push `master`.
+
+## Terrain tracks (master, 2026-11-06)
+
+- Spec C done. Track geometry moved to `src/sim/track.ts` (`src/render/track.ts` re-exports): terrain changes results, so the sim and Edge Functions need it.
+- Seven new tracks (all 1200 m laps except Figure-8, 2400 m): Rolling Downs (gentle hills), Summit Pass (70 % climb from the finish, steep drop home), Canyon Drop (plateau at the short-race start, plunge, canyon floor home), Figure-8 Bridge (Gerono curve, 5 m bridge over the crossing), Forest Steeplechase (6 hurdles/lap), Seaside (sand on the dented back stretch), Ice Ring (fast straights, slow bends by curvature).
+- Sim: `RaceInput.track` (missing = Oval, flat, no extra RNG). `src/sim/terrain.ts` builds a per-metre pace table per track+distance (cached): uphill `1 - 2·grade` (min 0.85), downhill `1 + grade` (max 1.06), sand 0.9, ice `1.05 - 24·curvature` (min 0.8). Hurdles: one stumble draw per horse (15 %, Tough 7 %), new `stumble` event (popup 🚧, commentator line, dud cue). `TERRAIN` in config.ts.
+- Renderers: 2D paints terrain tracks as coloured quads (height bands lighter, sand, ice), hurdles as bars, horses hop over hurdles; the bridge paints over the crossing. HD2D lifts track, rails, posts, horses, boxes, popups, trails, particles and the camera by height; earth skirts under raised track (not under the bridge); sand/ice overlays; hurdle hedges.
+- Host picker lists all ten tracks with a blurb; Random picks any of ten. Phone shows the race's track and blurb once the shop opens; the Guide lists every track.
+- Migration `20261106000024_terrain_tracks.sql` (track checks, `update_room_settings`, `set_phase` random, `race_input` returns `track`). `lock-odds` and `start-race` pass the track.
+- Guide fix: weather is rolled when the shop closes (the Guide said it showed before the trait pick).
+- Not done: hand-tuned scenery per track (trees/sea/snow), tilted horse sprites on slopes.
+- Deploy order: `db push` (0024), `functions deploy lock-odds start-race`, push `master`.

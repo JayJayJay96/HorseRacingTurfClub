@@ -62,7 +62,7 @@ export function Sandbox() {
   const [hot, setHot] = useState<HotItem[]>([]);
   const [trait, setTrait] = useState<Trait>('normal');
   // Lane 1 (the horse with the three bought boxes) runs the picked trait.
-  const extras = { hot, traits: { [SAMPLE_HORSES[0]!]: trait } };
+  const extras = { hot, traits: { [SAMPLE_HORSES[0]!]: trait }, track: trackId };
   const [lookTest, setLookTest] = useState(false);
   const [frameMs, setFrameMs] = useState(0);
   const horses = field === 6 ? SAMPLE_HORSES : FULL_FIELD;

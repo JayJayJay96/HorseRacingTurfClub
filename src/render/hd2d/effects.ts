@@ -81,6 +81,10 @@ export function effectsOf(events: readonly RaceEvent[], hot: readonly HotItem[] 
       continue;
     }
     if (e.type === 'finish') continue;
+    if (e.type === 'stumble') {
+      out.push({ kind: 'dud', horse: e.horse, t0: e.t });
+      continue;
+    }
     if (e.type === 'slip') {
       out.push({ kind: 'splash', horse: e.horse, t0: e.t });
       continue;

@@ -130,6 +130,25 @@ export const WEATHER = {
   bump: { mult: 0.7, seconds: 1 },
 } as const;
 
+/**
+ * Terrain tracks (spec 2026-11-06 C). Pace per metre of slope (grade = rise per metre), sand,
+ * ice (fast on straights, slower the tighter the bend) and hurdles (one stumble draw each).
+ */
+export const TERRAIN = {
+  upPerGrade: 2,
+  minUpPace: 0.85,
+  downPerGrade: 1,
+  maxDownPace: 1.06,
+  sandPace: 0.9,
+  iceStraightPace: 1.05,
+  /** Ice pace lost per unit of curvature (1 / radius in metres): about 0.88 on the Ice Ring's bends. */
+  icePerCurvature: 24,
+  iceMinPace: 0.8,
+  hurdleStumblePercent: 15,
+  toughStumblePercent: 7,
+  stumble: { mult: 0.4, seconds: 1.2 },
+} as const;
+
 /** Hot items (spec 2026-11-05 C). Rolled in SQL (private.roll_hot_items) with the same rules. */
 export const HOT = { count: 3, maxPerType: 2, luckyWeight: 2, extendedFactor: 1.5 } as const;
 

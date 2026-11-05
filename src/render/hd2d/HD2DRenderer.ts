@@ -15,7 +15,7 @@ import {
 } from '../Pixel2DRenderer.ts';
 import type { RaceRenderer } from '../renderer.ts';
 import { drawNumber, poseOf } from '../sprites.ts';
-import { horsePoint, type Track } from '../track.ts';
+import { horsePoint, hurdleHop, raceHeight, type Track } from '../track.ts';
 import { TRAIL_STYLES, type TrailStyle } from '../trails.ts';
 import { FOG, RAIN, puddleOutline, rainDrop } from '../weatherFx.ts';
 import { CONFETTI, CONFETTI_SECONDS, MOTES, confettiAt, moteAt } from './ambient.ts';
@@ -108,6 +108,8 @@ export class HD2DRenderer implements RaceRenderer {
   private readonly q = new THREE.Vector3();
   private shot: Shot | null = null;
   private tilt = 0;
+  /** Mean ground height of the field (terrain tracks), eased; the camera rides on it. */
+  private lift = 0;
   private shadowHalf = 0;
   private boxes: (readonly BoxSpot[])[] = [];
   private grabs: number[][] = [];
@@ -516,6 +518,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.resize.observe(this.canvas);
 
     this.shot = null;
+    this.lift = raceHeight(track, timeline.distance, 0);
     this.tilt = TILT_BLUR_PX.wide; // every race opens on the wide shot
     this.shadowHalf = 0;
 
@@ -631,8 +634,9 @@ export class HD2DRenderer implements RaceRenderer {
     };
     this.shot = shot;
     const pos = cameraPosition(shot);
-    camera.position.set(pos.x, pos.y, pos.z);
-    camera.lookAt(shot.x, 0, shot.y);
+    // Terrain: the camera rides at the field's height (last frame's mean, eased).
+    camera.position.set(pos.x, pos.y + this.lift, pos.z);
+    camera.lookAt(shot.x, this.lift, shot.y);
     this.tilt += (TILT_BLUR_PX[want.kind] - this.tilt) * k;
     post.setTilt(this.tilt);
     const foggy = this.weather === 'fog';
@@ -662,16 +666,19 @@ export class HD2DRenderer implements RaceRenderer {
     // Horses: position, facing, pose and gallop frame.
     const { p, q, where } = this;
     where.clear();
+    let liftSum = 0;
     for (const v of this.horses) {
       const m = this.metres(timeline, v.horse, t);
       const here = horsePoint(track, d, m, v.lane);
       const ahead = horsePoint(track, d, m + 1, v.lane);
-      v.mesh.position.set(here.x, 0, here.y);
+      const hy = raceHeight(track, d, m);
+      liftSum += hy;
+      v.mesh.position.set(here.x, hy + hurdleHop(track, d, m), here.y);
       where.set(v.horse, v.mesh.position);
-      this.badges[v.lane]?.position.set(here.x, 20 * PIXEL_M, here.y);
+      this.badges[v.lane]?.position.set(here.x, hy + 20 * PIXEL_M, here.y);
       v.mesh.rotation.y = yaw;
-      p.set(here.x, 0, here.y).project(camera);
-      q.set(ahead.x, 0, ahead.y).project(camera);
+      p.set(here.x, hy, here.y).project(camera);
+      q.set(ahead.x, raceHeight(track, d, m + 1), ahead.y).project(camera);
       const pose = poseOf(q.x - p.x, -(q.y - p.y));
       const uv = cellUv(timeline.horses.length, cellOf(v.lane, pose, Math.floor(m / 1.5)));
       v.map.offset.set(uv.offsetX, uv.offsetY);
@@ -685,11 +692,14 @@ export class HD2DRenderer implements RaceRenderer {
       r.mesh.visible = near;
       if (!near) continue;
       const wobble = this.motion ? Math.sin(t * 9 + v.lane) * 0.04 : 0;
-      r.mesh.position.set(here.x + wobble, 0, here.y);
+      r.mesh.position.set(here.x + wobble, hy, here.y);
       r.mesh.rotation.y = yaw;
       r.map.offset.copy(v.map.offset);
       r.map.repeat.copy(v.map.repeat);
     }
+
+    const liftWant = this.horses.length ? liftSum / this.horses.length : 0;
+    this.lift += (liftWant - this.lift) * (this.motion ? Math.min(1, dt * 2) : 1);
 
     // Effects live this frame, shared by the ghosts and the particle clouds.
     const live = activeAt(this.effects, t);
@@ -704,7 +714,7 @@ export class HD2DRenderer implements RaceRenderer {
       for (let k = 1; k <= GHOSTS_EACH; k++) {
         const ghost = this.ghosts[g++]!;
         const at = horsePoint(track, d, Math.max(0, m - k * GHOST_GAP_M), v.lane);
-        ghost.mesh.position.set(at.x, 0, at.y);
+        ghost.mesh.position.set(at.x, raceHeight(track, d, Math.max(0, m - k * GHOST_GAP_M)), at.y);
         ghost.mesh.rotation.y = yaw;
         ghost.map.offset.copy(v.map.offset);
         ghost.map.repeat.copy(v.map.repeat);
@@ -728,7 +738,7 @@ export class HD2DRenderer implements RaceRenderer {
         if (at > reach) break;
         const bp = horsePoint(track, d, at, lane);
         const bob = this.motion ? Math.sin(t * 3 + i) * 0.15 : 0;
-        mtx.compose(p.set(bp.x, 0.7 + bob, bp.y), rot, one);
+        mtx.compose(p.set(bp.x, raceHeight(track, d, at) + 0.7 + bob, bp.y), rot, one);
         box.setMatrixAt(n, mtx);
         box.setColorAt(n, col.set(BOX_COLOR[boxes[i]!.kind]).multiplyScalar(2));
         n++;
@@ -753,7 +763,7 @@ export class HD2DRenderer implements RaceRenderer {
     // Popups first so they win if the pool runs out.
     for (const e of eventsBetween(timeline, t - POPUP_SECONDS, t)) {
       const at = where.get(e.horse);
-      if (at) show(popupOf(e), at.x, 5 + (t - e.t) * 1.2, at.z, 1);
+      if (at) show(popupOf(e), at.x, at.y + 5 + (t - e.t) * 1.2, at.z, 1);
     }
     for (const e of this.held) {
       if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
@@ -761,7 +771,7 @@ export class HD2DRenderer implements RaceRenderer {
       if (!at) continue;
       const icon = `${e.hot ? '\u{1F525}' : ''}${e.item ? ITEM_INFO[e.item].icon : '\u{1F4A8}'}`;
       const spin = this.motion ? Math.abs(Math.cos(t * 2 * Math.PI * 1.5)) || 0.05 : 1;
-      show(icon, at.x, 4.2 + (this.motion ? Math.sin(t * 8) * 0.2 : 0), at.z, spin);
+      show(icon, at.x, at.y + 4.2 + (this.motion ? Math.sin(t * 8) * 0.2 : 0), at.z, spin);
     }
     for (let i = used; i < this.labels.length; i++) this.labels[i]!.visible = false;
 
@@ -777,7 +787,7 @@ export class HD2DRenderer implements RaceRenderer {
           const m = progressAt(timeline, horse, Math.max(0, t - i * 0.08));
           const tp = horsePoint(track, d, m, lane);
           const c = trailColor(tr.style.color(i - 1, t));
-          tr.pos.setXYZ(tr.n, tp.x, tr.style.hd.lift(i), tp.y);
+          tr.pos.setXYZ(tr.n, tp.x, raceHeight(track, d, m) + tr.style.hd.lift(i), tp.y);
           tr.col.setXYZ(tr.n++, c.r, c.g, c.b);
         }
       });
@@ -810,13 +820,14 @@ export class HD2DRenderer implements RaceRenderer {
         const here = horsePoint(track, d, m, lane);
         const next = horsePoint(track, d, m + 1, lane);
         const len = Math.hypot(next.x - here.x, next.y - here.y) || 1;
+        const hy = raceHeight(track, d, m);
         const ax = (next.x - here.x) / len;
         const az = (next.y - here.y) / len;
         for (const pt of pts) {
           out.pos.setXYZ(
             out.k,
             here.x + ax * pt.ahead - az * pt.side,
-            pt.up,
+            hy + pt.up,
             here.y + az * pt.ahead + ax * pt.side,
           );
           c.set(pt.color).multiplyScalar(pt.alpha * 2.5);

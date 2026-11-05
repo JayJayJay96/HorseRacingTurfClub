@@ -261,6 +261,12 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
         {room.prize && ` · Prize: ${room.prize}`}
       </p>
+      {state.race && room.phase !== 'LOBBY' && (
+        <p className="room-line">
+          <span aria-hidden="true">🗺️</span> {trackById(state.race.track).name} ·{' '}
+          {trackById(state.race.track).blurb}
+        </p>
+      )}
       <WeatherBadge weather={state.race?.weather} />
       {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
         <HotStrip hot={state.race?.hot_items} />

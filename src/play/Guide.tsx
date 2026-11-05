@@ -110,7 +110,9 @@ export function GuideContent() {
             🌫️ <b>Fog</b> · horses running side by side may bump.
           </li>
         </ul>
-        <p>The weather shows in the shop, before you pick a trait.</p>
+        <p>
+          The weather is rolled when the shop closes, so a weather trait like Mudder is a gamble.
+        </p>
       </Section>
       <Section title="🔥 Hot items">
         <p>
@@ -122,15 +124,17 @@ export function GuideContent() {
         </ul>
       </Section>
       <Section title="🗺️ Tracks">
-        <p>The host picks the track before each race.</p>
+        <p>
+          The host picks the track before each race; the phone shows it once the shop opens. Every
+          horse runs the same distance, but terrain changes the pace for everyone.
+        </p>
         <ul>
           {Object.values(TRACKS).map((t) => (
             <li key={t.id}>
-              <b>{t.name}</b>
+              <b>{t.name}</b> · {t.blurb}
             </li>
           ))}
         </ul>
-        <p>Shape is looks only: every horse runs the same distance.</p>
       </Section>
       <Section title="💰 Betting">
         <ul>

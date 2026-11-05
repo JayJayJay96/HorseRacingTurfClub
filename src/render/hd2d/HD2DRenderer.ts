@@ -161,7 +161,17 @@ export class HD2DRenderer implements RaceRenderer {
 
     const scene = new THREE.Scene();
     this.scene = scene;
-    const world = buildWorld(track, lanes, timeline.seed, preset);
+    // Fog races fade the sky toward the fog colour too, so the horizon has no seam.
+    const fogSky = (c: string) =>
+      `#${new THREE.Color(c).lerp(new THREE.Color(FOG.color), FOG.mix).getHexString()}`;
+    const world = buildWorld(
+      track,
+      lanes,
+      timeline.seed,
+      this.weather === 'fog'
+        ? { ...preset, sky: [fogSky(preset.sky[0]), fogSky(preset.sky[1])] }
+        : preset,
+    );
     this.world = world;
     scene.add(world.group);
     scene.background = world.sky;
@@ -202,11 +212,13 @@ export class HD2DRenderer implements RaceRenderer {
     this.horses = timeline.horses.map((horse, lane) => {
       const map = sheet.clone();
       const { material, depth } = cutoutMaterials(map);
-      // Horses clear the puddle mark where they stand (alphaTest texels write nothing).
-      material.stencilWrite = true;
-      material.stencilRef = 0;
-      material.stencilFunc = THREE.AlwaysStencilFunc;
-      material.stencilZPass = THREE.ReplaceStencilOp;
+      if (this.weather === 'rain') {
+        // Horses clear the puddle mark where they stand (alphaTest texels write nothing).
+        material.stencilWrite = true;
+        material.stencilRef = 0;
+        material.stencilFunc = THREE.AlwaysStencilFunc;
+        material.stencilZPass = THREE.ReplaceStencilOp;
+      }
       const mesh = new THREE.Mesh(geo, material);
       mesh.renderOrder = 2; // after the puddles (the opaque pass sorts by renderOrder)
       mesh.customDepthMaterial = depth;
@@ -246,9 +258,11 @@ export class HD2DRenderer implements RaceRenderer {
       const water = new THREE.Mesh(
         pg,
         new THREE.MeshStandardMaterial({
-          // No env map, so any metalness reads as black; a lit slate reads as water.
-          color: '#4f6272',
-          roughness: 0.15,
+          // No env map, so any metalness reads as black; a lit slate-blue with a small
+          // self-lift reads as water, not a pit, in every preset.
+          color: '#6d8494',
+          emissive: '#2a3a46',
+          roughness: 0.2,
           metalness: 0,
           side: THREE.DoubleSide,
           stencilWrite: true,
@@ -257,9 +271,10 @@ export class HD2DRenderer implements RaceRenderer {
           stencilZPass: THREE.ReplaceStencilOp,
           polygonOffset: true,
           polygonOffsetFactor: -1,
+          polygonOffsetUnits: -4,
         }),
       );
-      water.position.y = 0.02;
+      water.position.y = 0.04; // above the dirt strip (0.02)
       water.renderOrder = 1;
       water.receiveShadow = true;
       scene.add(water);
@@ -460,7 +475,9 @@ export class HD2DRenderer implements RaceRenderer {
       scene,
       camera,
       preset,
-      this.weather === 'rain' ? { tint: RAIN.tint, saturation: RAIN.saturation } : undefined,
+      this.weather === 'rain'
+        ? { tint: RAIN.tint, saturation: RAIN.saturation, stencil: true }
+        : undefined,
     );
 
     const fit = () => {
@@ -639,17 +656,16 @@ export class HD2DRenderer implements RaceRenderer {
       const uv = cellUv(timeline.horses.length, cellOf(v.lane, pose, Math.floor(m / 1.5)));
       v.map.offset.set(uv.offsetX, uv.offsetY);
       v.map.repeat.set(uv.repeatX, uv.repeatY);
-    }
-    // Puddle reflections: the horse mirrored at its feet while it is near water in its lane.
-    for (const v of this.horses) {
+      // Puddle reflection: the horse mirrored at its feet while it is near water in its lane.
       const r = this.reflections[v.lane];
       if (!r) continue;
-      const m = this.metres(timeline, v.horse, t);
-      const near = this.wet[v.lane]?.some(([a, b]) => m >= a && m <= b) ?? false;
+      const wet = this.wet[v.lane] ?? [];
+      let near = false;
+      for (let i = 0; i < wet.length && !near; i++) near = m >= wet[i]![0] && m <= wet[i]![1];
       r.mesh.visible = near;
       if (!near) continue;
       const wobble = this.motion ? Math.sin(t * 9 + v.lane) * 0.04 : 0;
-      r.mesh.position.set(v.mesh.position.x + wobble, 0, v.mesh.position.z);
+      r.mesh.position.set(here.x + wobble, 0, here.y);
       r.mesh.rotation.y = yaw;
       r.map.offset.copy(v.map.offset);
       r.map.repeat.copy(v.map.repeat);

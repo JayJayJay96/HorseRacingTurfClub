@@ -21,10 +21,10 @@ export const RAIN = {
 
 export const FOG = {
   /** HD: fog starts this many shot-distances out (clear uses 1.2 / 4). */
-  near: 1.15,
-  far: 2.6,
+  near: 1,
+  far: 2.3,
   /** HD fog colour mixes this much toward `color`; 2D haze peaks at `alpha2d`. */
-  mix: 0.55,
+  mix: 0.7,
   color: '#e3e8ec',
   alpha2d: 0.35,
 } as const;
@@ -64,6 +64,7 @@ export function rainDrop(i: number, t: number): { x: number; y: number; z: numbe
   const x = (hash(i, 1) * 2 - 1) * RAIN.half;
   const z = (hash(i, 2) * 2 - 1) * RAIN.half;
   const phase = hash(i, 3) * RAIN.top;
-  const y = RAIN.top - ((phase + t * RAIN.speed) % RAIN.top);
+  // Positive modulo: the countdown runs at negative t.
+  const y = RAIN.top - ((((phase + t * RAIN.speed) % RAIN.top) + RAIN.top) % RAIN.top);
   return { x, y, z };
 }

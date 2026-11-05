@@ -29,7 +29,7 @@ describe('puddleOutline', () => {
 
 describe('rainDrop', () => {
   it('stays in its box and loops', () => {
-    for (const t of [0, 0.3, 5, 100]) {
+    for (const t of [-3.2, -0.5, 0, 0.3, 5, 100]) {
       for (let i = 0; i < 20; i++) {
         const d = rainDrop(i, t);
         expect(Math.abs(d.x)).toBeLessThanOrEqual(RAIN.half);

@@ -53,16 +53,18 @@ export function buildPost(
   scene: THREE.Scene,
   camera: THREE.Camera,
   preset: Preset,
-  /** Weather grade on top of the preset (rain: cooler and a little greyer). */
-  weather: { tint: readonly [number, number, number]; saturation: number } = {
-    tint: [1, 1, 1],
-    saturation: 1,
-  },
+  /** Weather grade on top of the preset (rain: cooler and a little greyer, plus a stencil). */
+  weather: {
+    tint: readonly [number, number, number];
+    saturation: number;
+    /** Rain only: puddle reflections are clipped with the stencil (spec 2026-11-05). */
+    stencil: boolean;
+  } = { tint: [1, 1, 1], saturation: 1, stencil: false },
 ): Post {
   // EffectComposer clones this target for its second buffer, so both keep the stencil.
   const target = new THREE.WebGLRenderTarget(1, 1, {
     type: THREE.HalfFloatType,
-    stencilBuffer: true, // puddle reflections are clipped with the stencil (spec 2026-11-05)
+    stencilBuffer: weather.stencil,
   });
   const composer = new EffectComposer(renderer, target);
   composer.addPass(new RenderPass(scene, camera));

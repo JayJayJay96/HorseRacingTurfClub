@@ -74,8 +74,8 @@ export class Pixel2DRenderer implements RaceRenderer {
   private held: Extract<RaceEvent, { type: 'pickup' }>[] = [];
   /** Special-item animations only; the 2D view keeps its popups for the rest. */
   private effects: Effect[] = [];
-  /** World outlines of this race's puddles. */
-  private puddles: Point[][] = [];
+  /** World outlines of this race's puddles, with their world bounding boxes for culling. */
+  private puddles: { ring: Point[]; x0: number; y0: number; x1: number; y1: number }[] = [];
   private weather: Weather = 'clear';
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
@@ -107,7 +107,13 @@ export class Pixel2DRenderer implements RaceRenderer {
       (e) => SPECIAL_KINDS.has(e.kind) || e.kind === 'splash' || e.kind === 'bonk',
     );
     this.weather = timeline.weather ?? 'clear';
-    this.puddles = (timeline.puddles ?? []).map((p) => puddleOutline(track, timeline.distance, p));
+    this.puddles = (timeline.puddles ?? []).map((p) => {
+      const ring = puddleOutline(track, timeline.distance, p);
+      const xs = ring.map((pt) => pt.x);
+      const ys = ring.map((pt) => pt.y);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      return { ring, x0, y0, x1, y1 };
+    });
     this.grabs = timeline.horses.map((h) =>
       this.held
         .filter((e) => e.horse === h)
@@ -224,16 +230,18 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.fillStyle = '#6f8796';
     ctx.strokeStyle = '#a9bfcc';
     ctx.lineWidth = 1;
-    for (const ring of this.puddles) {
-      const first = screen(ring[0]!);
-      if (first.x < -60 || first.x > VIEW.width + 60 || first.y < -60 || first.y > VIEW.height + 60)
+    // screen() inlined: an affine map with positive scale, so a world box maps to a screen box.
+    const sx = (x: number) => (x - this.camera.x) * scale + VIEW.width / 2;
+    const sy = (y: number) => (y - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2;
+    for (const pd of this.puddles) {
+      if (sx(pd.x1) < 0 || sx(pd.x0) > VIEW.width || sy(pd.y1) < 0 || sy(pd.y0) > VIEW.height)
         continue;
       ctx.beginPath();
-      ring.forEach((pt, i) => {
-        const s = screen(pt);
-        if (i === 0) ctx.moveTo(s.x, s.y);
-        else ctx.lineTo(s.x, s.y);
-      });
+      for (let i = 0; i < pd.ring.length; i++) {
+        const pt = pd.ring[i]!;
+        if (i === 0) ctx.moveTo(sx(pt.x), sy(pt.y));
+        else ctx.lineTo(sx(pt.x), sy(pt.y));
+      }
       ctx.closePath();
       ctx.fill();
       ctx.stroke();

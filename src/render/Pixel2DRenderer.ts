@@ -103,7 +103,7 @@ export class Pixel2DRenderer implements RaceRenderer {
       [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
     );
     this.held = timeline.events.filter((e) => e.type === 'pickup');
-    this.effects = effectsOf(timeline.events).filter(
+    this.effects = effectsOf(timeline.events, timeline.hot).filter(
       (e) => SPECIAL_KINDS.has(e.kind) || e.kind === 'splash' || e.kind === 'bonk',
     );
     this.weather = timeline.weather ?? 'clear';
@@ -352,7 +352,7 @@ export class Pixel2DRenderer implements RaceRenderer {
       if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
       const p = where.get(e.horse);
       if (!p) continue;
-      const icon = e.item ? ITEM_INFO[e.item].icon : '💨';
+      const icon = `${e.hot ? '🔥' : ''}${e.item ? ITEM_INFO[e.item].icon : '💨'}`;
       const bob = this.motion ? Math.sin(t * 8) * 2 : 0;
       ctx.save();
       ctx.translate(p.x, above(p) + bob);

@@ -1,6 +1,7 @@
 import { raceAwards } from '../sim/awards.ts';
 import { progressAt, standingsAt } from '../sim/playback.ts';
-import type { HorseId, RaceEvent, Timeline } from '../sim/types.ts';
+import type { HorseId, RaceEvent, Timeline, Trait } from '../sim/types.ts';
+import { ITEM_INFO } from '../render/items.ts';
 import { line, LINES, type Rand } from './lines.ts';
 
 /**
@@ -26,10 +27,13 @@ export interface Commentator {
 }
 
 type Line = [pool: readonly string[], vars: Record<string, string>];
+type TraitOf = (h: HorseId) => Trait;
+const BUFF_NAME = { lucky: 'Lucky', extended: 'Extended' } as const;
 
-function bigMoment(e: RaceEvent, name: (h: HorseId) => string): Line | null {
+function bigMoment(e: RaceEvent, name: (h: HorseId) => string, trait: TraitOf): Line | null {
   if (e.type === 'hit' && e.item === 'attack:leader') {
-    return [LINES.lasso, { by: name(e.by), v: name(e.horse) }];
+    const vars = { by: name(e.by), v: name(e.horse) };
+    return [trait(e.horse) === 'tough' ? LINES.toughLasso : LINES.lasso, vars];
   }
   if (e.type === 'pickup' && e.item === 'attack:all')
     return [LINES.thunderclap, { h: name(e.horse) }];
@@ -39,10 +43,11 @@ function bigMoment(e: RaceEvent, name: (h: HorseId) => string): Line | null {
 }
 
 /** Item jokes (ordinary lines). A Hornet Swarm hits up to 3 horses at once; the gap says it once. */
-function itemJoke(e: RaceEvent, name: (h: HorseId) => string): Line | null {
+function itemJoke(e: RaceEvent, name: (h: HorseId) => string, trait: TraitOf): Line | null {
   switch (e.type) {
     case 'hit': {
       const vars = { v: name(e.horse), by: name(e.by) };
+      if (trait(e.horse) === 'tough') return [LINES.tough, { h: name(e.horse) }];
       if (e.item === 'attack:behind1') return [LINES.banana, vars];
       if (e.item === 'attack:front1') return [LINES.horseshoe, vars];
       if (e.item === 'attack:behind3' || e.item === 'attack:front3') return [LINES.mess, vars];
@@ -51,6 +56,8 @@ function itemJoke(e: RaceEvent, name: (h: HorseId) => string): Line | null {
     }
     case 'pickup': {
       const vars = { h: name(e.horse) };
+      if (e.hot && e.item)
+        return [LINES.hot, { h: name(e.horse), b: BUFF_NAME[e.hot], i: ITEM_INFO[e.item].name }];
       if (e.item === 'dud:stop') return [LINES.snack, vars];
       if (e.item === 'dud:slow') return [LINES.sleepy, vars];
       if (e.item === 'dud:trip') return [LINES.trip, vars];
@@ -87,6 +94,7 @@ export function createCommentator(
   } = {},
 ): Commentator {
   const rand = opts.rand ?? Math.random;
+  const trait: TraitOf = (h) => timeline.traits?.[h] ?? 'normal';
   const awards = raceAwards(timeline);
   const stretchAt = timeline.distance - (opts.finalStretchMetres ?? COMMENTARY.finalStretchMetres);
   const [winner, second, third] = timeline.finishOrder;
@@ -123,12 +131,15 @@ export function createCommentator(
       if (!saidStart && t >= 0) {
         saidStart = true;
         say(LINES.off);
-        if (timeline.weather === 'rain') say(LINES.rainStart);
-        else if (timeline.weather === 'fog') say(LINES.fogStart);
+        if (timeline.weather === 'rain') {
+          say(LINES.rainStart);
+          const mudder = timeline.horses.find((h) => trait(h) === 'mudder');
+          if (mudder) say(LINES.mudderRain, { h: name(mudder) });
+        } else if (timeline.weather === 'fog') say(LINES.fogStart);
       }
       for (const e of timeline.events) {
         if (e.t > last && e.t <= t) {
-          const pick = bigMoment(e, name) ?? (quiet() ? itemJoke(e, name) : null);
+          const pick = bigMoment(e, name, trait) ?? (quiet() ? itemJoke(e, name, trait) : null);
           if (pick) say(...pick);
         }
       }

@@ -26,7 +26,7 @@ export function popupOf(event: RaceEvent): string {
   switch (event.type) {
     case 'pickup':
       return event.item
-        ? `${ITEM_INFO[event.item].icon} ${ITEM_INFO[event.item].name}`
+        ? `${event.hot ? '🔥 ' : ''}${ITEM_INFO[event.item].icon} ${ITEM_INFO[event.item].name}`
         : '💨 Fizzled';
     case 'hit':
       return `${ITEM_INFO[event.item].icon} Hit!`;

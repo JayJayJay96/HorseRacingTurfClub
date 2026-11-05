@@ -390,7 +390,7 @@ export class HD2DRenderer implements RaceRenderer {
     this.trails.dust.frustumCulled = this.trails.sparkle.frustumCulled = false;
     scene.add(this.trails.dust, this.trails.sparkle);
 
-    this.effects = effectsOf(timeline.events);
+    this.effects = effectsOf(timeline.events, timeline.hot);
     // Two clouds: ordinary effects, and the special items drawn bigger (spec 2026-11-05).
     const cloud = (n: number, size: number) => {
       const g = new THREE.BufferGeometry();
@@ -739,7 +739,7 @@ export class HD2DRenderer implements RaceRenderer {
       if (t < e.t - ITEM_HOLD_SECONDS || t >= e.t) continue;
       const at = where.get(e.horse);
       if (!at) continue;
-      const icon = e.item ? ITEM_INFO[e.item].icon : '\u{1F4A8}';
+      const icon = `${e.hot ? '\u{1F525}' : ''}${e.item ? ITEM_INFO[e.item].icon : '\u{1F4A8}'}`;
       const spin = this.motion ? Math.abs(Math.cos(t * 2 * Math.PI * 1.5)) || 0.05 : 1;
       show(icon, at.x, 4.2 + (this.motion ? Math.sin(t * 8) * 0.2 : 0), at.z, spin);
     }

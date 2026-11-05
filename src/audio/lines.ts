@@ -10,6 +10,13 @@ export const LINES = {
   fogStart: ['Fog rolling in! Mind your neighbours!', "It's a foggy one out there!"],
   slip: ['Splash! {h} slips in a puddle!', 'Whoa! {h} skids on the wet track!'],
   bump: ['Bonk! {a} and {b} bump in the fog!', '{a} and {b} knock shoulders!'],
+  hot: ['Hot item! {h} grabs a {b} {i}!', '{h} picks up a hot one: {b} {i}!'],
+  mudderRain: ['Mudder {h} loves this rain!', '{h} is a Mudder. Bring on the puddles!'],
+  tough: ['Tough {h} shrugs it off!', '{h} is Tough. That barely hurt!'],
+  toughLasso: [
+    'Golden Lasso from {by}, but Tough {v} keeps moving!',
+    'Tough {v} drags the lasso along!',
+  ],
   off: ["And they're off!", "The gates open and they're away!", 'Here we go! The race is on!'],
   lead: [
     '{h} takes the lead!',

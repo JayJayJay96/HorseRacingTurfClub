@@ -1,5 +1,6 @@
 import { EFFECTS } from '../../sim/config.ts';
-import type { HorseId, ItemCode, RaceEvent } from '../../sim/types.ts';
+import { effectSeconds } from '../../sim/hot.ts';
+import type { HorseId, HotItem, ItemCode, RaceEvent } from '../../sim/types.ts';
 import { ITEM_HOLD_SECONDS } from '../Pixel2DRenderer.ts';
 
 export type EffectKind =
@@ -60,14 +61,23 @@ export interface Effect {
 
 export const durationOf = (e: Effect) => e.seconds ?? EFFECT_SECONDS[e.kind];
 
-/** Built once per race. A box opens when it is grabbed on screen (ITEM_HOLD_SECONDS early). */
-export function effectsOf(events: readonly RaceEvent[]): Effect[] {
+/**
+ * Built once per race. A box opens when it is grabbed on screen (ITEM_HOLD_SECONDS early).
+ * `hot` is the race's hot list: an Extended special item plays as long as it lasts in the sim.
+ */
+export function effectsOf(events: readonly RaceEvent[], hot: readonly HotItem[] = []): Effect[] {
+  /** The full effect of an Extended item runs longer by the extra sim seconds; {} otherwise. */
+  const longer = (kind: EffectKind, item: ItemCode): { seconds?: number } => {
+    const extra = effectSeconds(item, hot) - EFFECTS[item].seconds;
+    return extra > 0 ? { seconds: EFFECT_SECONDS[kind] + extra } : {};
+  };
   const out: Effect[] = [];
   for (const e of events) {
     if (e.type === 'pickup') {
       out.push({ kind: 'box', horse: e.horse, t0: e.t - ITEM_HOLD_SECONDS });
       if (e.item?.startsWith('speed:')) out.push({ kind: 'speed', horse: e.horse, t0: e.t });
-      if (e.item === 'speed:pass3') out.push({ kind: 'stampede', horse: e.horse, t0: e.t });
+      if (e.item === 'speed:pass3')
+        out.push({ kind: 'stampede', horse: e.horse, t0: e.t, ...longer('stampede', e.item) });
       if (e.item?.startsWith('dud:')) out.push({ kind: 'dud', horse: e.horse, t0: e.t });
       continue;
     }
@@ -82,7 +92,7 @@ export function effectsOf(events: readonly RaceEvent[]): Effect[] {
     }
     const special = SPECIAL_ATTACK[e.item];
     if (special) {
-      const miss = e.type === 'hit' ? {} : { seconds: MISS_SECONDS[special] };
+      const miss = e.type === 'hit' ? longer(special, e.item) : { seconds: MISS_SECONDS[special] };
       out.push({ kind: special, horse: e.horse, t0: e.t, ...miss });
     }
     if (e.type === 'hit') out.push({ kind: 'hit', horse: e.horse, t0: e.t });

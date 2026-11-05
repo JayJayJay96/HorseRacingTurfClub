@@ -55,3 +55,14 @@ describe('popupOf weather', () => {
     expect(popupOf({ t: 1, type: 'bump', horse: 'a', with: 'b' })).toBe('💥 Bump!');
   });
 });
+
+describe('popupOf hot items', () => {
+  it('marks a hot pickup with a flame', () => {
+    expect(
+      popupOf({ t: 1, type: 'pickup', horse: 'a', kind: 'speed', item: 'speed:self1', hot: 'lucky' }),
+    ).toBe('🔥 🥕 Carrot');
+    expect(popupOf({ t: 1, type: 'pickup', horse: 'a', kind: 'speed', item: 'speed:self1' })).toBe(
+      '🥕 Carrot',
+    );
+  });
+});

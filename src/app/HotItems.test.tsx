@@ -19,7 +19,7 @@ describe('hot items UI', () => {
 
   it('writes the strip text', () => {
     expect(hotText(HOT)).toBe(
-      '🥕 Carrot 🍀 Lucky · 🪢 Golden Lasso ⏱️ Extended · 🛡️ Horseshoe Shield 🍀 Lucky',
+      '🥕 Carrot 🍀 Lucky · ➰ Golden Lasso ⏱️ Extended · 🛡️ Horseshoe Shield 🍀 Lucky',
     );
     expect(hotText([])).toBeNull();
   });

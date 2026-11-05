@@ -10,12 +10,12 @@ export const ITEM_INFO: Readonly<Record<ItemCode, { name: string; icon: string }
   'attack:behind3': { name: 'Dust Kick', icon: '💨' },
   'attack:front1': { name: 'Horseshoe Toss', icon: '🧲' },
   'attack:front3': { name: 'Mud Cloud', icon: '🌫️' },
-  'attack:leader': { name: 'Golden Lasso', icon: '🪢' },
+  'attack:leader': { name: 'Golden Lasso', icon: '➰' },
   'attack:top3': { name: 'Hornet Swarm', icon: '🐝' },
   'attack:all': { name: 'Thunderclap', icon: '🌩️' },
   'defense:block1': { name: 'Horseshoe Shield', icon: '🛡️' },
-  'defense:immune': { name: 'Lucky Bubble', icon: '🫧' },
-  'defense:reflect': { name: 'Mirror Saddle', icon: '🪞' },
+  'defense:immune': { name: 'Lucky Bubble', icon: '🔮' },
+  'defense:reflect': { name: 'Mirror Saddle', icon: '🔁' },
   'dud:stop': { name: 'Snack Break', icon: '🍩' },
   'dud:slow': { name: 'Sleepy Jockey', icon: '😴' },
   'dud:trip': { name: 'Stumble', icon: '🤕' },
@@ -31,9 +31,9 @@ export function popupOf(event: RaceEvent): string {
     case 'hit':
       return `${ITEM_INFO[event.item].icon} Hit!`;
     case 'blocked':
-      return event.reason === 'immune' ? '🫧 Immune' : '🛡️ Blocked';
+      return event.reason === 'immune' ? '🔮 Immune' : '🛡️ Blocked';
     case 'reflected':
-      return '🪞 Reflected!';
+      return '🔁 Reflected!';
     case 'slip':
       return '💦 Slip!';
     case 'bump':

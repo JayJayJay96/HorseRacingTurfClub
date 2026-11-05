@@ -31,7 +31,7 @@ describe('items', () => {
         item: 'attack:front1',
         reason: 'immune',
       }),
-    ).toBe('🫧 Immune');
+    ).toBe('🔮 Immune');
     expect(
       popupOf({
         t: 1,
@@ -43,7 +43,7 @@ describe('items', () => {
       }),
     ).toBe('🛡️ Blocked');
     expect(popupOf({ t: 1, type: 'reflected', horse: 'a', by: 'b', item: 'attack:front1' })).toBe(
-      '🪞 Reflected!',
+      '🔁 Reflected!',
     );
     expect(popupOf({ t: 1, type: 'finish', horse: 'a', place: 2 })).toBe('🏁 2nd');
   });

@@ -9,11 +9,11 @@ export const BADGES = {
     name: 'Banana King',
     description: 'Landed the most attacks in a race.',
   },
-  untouchable: { icon: '🫥', name: 'Untouchable', description: 'Won without being hit.' },
+  untouchable: { icon: '👻', name: 'Untouchable', description: 'Won without being hit.' },
   long_shot: { icon: '🎯', name: 'Long Shot', description: 'Won a bet at 10× or more.' },
   big_spender: { icon: '💸', name: 'Big Spender', description: 'Bought 3 boxes in 5 races.' },
-  broke: { icon: '🪙', name: 'Broke', description: 'Hit the 50-coin floor.' },
-  sniper: { icon: '🪢', name: 'Sniper', description: 'Golden Lasso hit the leader.' },
+  broke: { icon: '💸', name: 'Broke', description: 'Hit the 50-coin floor.' },
+  sniper: { icon: '➰', name: 'Sniper', description: 'Golden Lasso hit the leader.' },
 } as const;
 export type BadgeCode = keyof typeof BADGES;
 

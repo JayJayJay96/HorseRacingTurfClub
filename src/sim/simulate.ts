@@ -15,12 +15,22 @@ import {
   PASS3_PLACES,
   SELF3_GAP_SECONDS,
   TICK_HZ,
+  WEATHER,
 } from './config.ts';
 import { resolveHit, type HeldDefense } from './effects.ts';
 import { rollBox } from './items.ts';
 import { round2, round3 } from './math.ts';
 import { createSeededRng, type Rng } from './rng.ts';
-import type { AttackTarget, HorseId, ItemCode, RaceEvent, RaceInput, Timeline } from './types.ts';
+import type {
+  AttackTarget,
+  HorseId,
+  ItemCode,
+  RaceEvent,
+  RaceInput,
+  Timeline,
+  Weather,
+} from './types.ts';
+import { placePuddles, puddlesByLane } from './weather.ts';
 
 interface Mod {
   readonly mult: number;
@@ -76,6 +86,9 @@ export function validateRaceInput(input: RaceInput): void {
     if (boxes.length > MAX_BOUGHT)
       throw new RangeError(`horse ${id} has more than ${MAX_BOUGHT} bought boxes`);
   }
+  const weathers: readonly Weather[] = ['clear', 'rain', 'fog'];
+  if (input.weather !== undefined && !weathers.includes(input.weather))
+    throw new RangeError(`unknown weather ${String(input.weather)}`);
 }
 
 /**
@@ -113,6 +126,25 @@ export function simulateRace(input: RaceInput): Timeline {
     finishTime: null,
     finishExact: 0,
   }));
+  const weather: Weather = input.weather ?? 'clear';
+  // Weather draws only happen off-clear, so clear races and old replays are unchanged.
+  const puddles =
+    weather === 'rain'
+      ? placePuddles(
+          rng,
+          horses.length,
+          input.horses.map((id) => boxes[id]!),
+          distance,
+          WEATHER.puddlesPerLane[input.length],
+        )
+      : [];
+  const lanePuddles = puddlesByLane(puddles, horses.length);
+  const nextPuddle = horses.map(() => 0);
+  /** Per neighbour pair (lane i and i + 1): the tick of its last bump. */
+  const lastBump = horses.map(() => -Infinity);
+  const bumpOdds = Math.round((WEATHER.bumpPerSecond / TICK_HZ) * 1_000_000);
+  const weatherMod = (h: Horse, e: { mult: number; seconds: number }, tick: number) =>
+    h.mods.push({ mult: e.mult, from: tick + 1, until: tick + 1 + toTicks(e.seconds) });
   const progress: Record<HorseId, number[]> = Object.fromEntries(
     input.horses.map((id) => [id, [0]]),
   );
@@ -240,6 +272,36 @@ export function simulateRace(input: RaceInput): Timeline {
       events.push({ t: h.finishTime!, type: 'finish', horse: h.id, place: finishOrder.length });
     }
 
+    if (weather === 'rain') {
+      for (const h of horses) {
+        const lane = lanePuddles[h.index]!;
+        while (
+          h.finishTime === null &&
+          nextPuddle[h.index]! < lane.length &&
+          lane[nextPuddle[h.index]!]!.at <= h.progress
+        ) {
+          nextPuddle[h.index]!++;
+          if (rng.nextInt(100) < WEATHER.slipChancePercent) {
+            weatherMod(h, WEATHER.slip, tick);
+            events.push({ t: round2(tick / TICK_HZ), type: 'slip', horse: h.id });
+          }
+        }
+      }
+    } else if (weather === 'fog') {
+      for (let i = 0; i + 1 < horses.length; i++) {
+        const a = horses[i]!;
+        const b = horses[i + 1]!;
+        if (a.finishTime !== null || b.finishTime !== null) continue;
+        if (Math.abs(a.progress - b.progress) > WEATHER.bumpRangeM) continue;
+        if (tick - lastBump[i]! < toTicks(WEATHER.bumpCooldownS)) continue;
+        if (rng.nextInt(1_000_000) >= bumpOdds) continue;
+        lastBump[i] = tick;
+        weatherMod(a, WEATHER.bump, tick);
+        weatherMod(b, WEATHER.bump, tick);
+        events.push({ t: round2(tick / TICK_HZ), type: 'bump', horse: a.id, with: b.id });
+      }
+    }
+
     // Boxes open after everyone has moved this tick, front-runner first so no lane is favoured;
     // the ranking is only computed when some horse crossed a box.
     const crossed = (h: Horse): boolean =>
@@ -290,6 +352,8 @@ export function simulateRace(input: RaceInput): Timeline {
     tickHz: TICK_HZ,
     horses: [...input.horses],
     boxes,
+    weather,
+    puddles,
     progress,
     events,
     finishOrder,

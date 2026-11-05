@@ -68,6 +68,12 @@ const PRIORITY: readonly SfxName[] = ['go', 'bell', 'cutin', 'count'];
 
 /** At most `max` cues, race-structure cues (go/bell/count) first so a pile-up can't drop them. */
 export function prioritise(cues: readonly SfxName[], max: number): SfxName[] {
-  const key = (c: SfxName) => (PRIORITY.includes(c) ? PRIORITY.indexOf(c) : PRIORITY.length);
+  // The rain bed is background: it always goes first in a pile-up.
+  const key = (c: SfxName) =>
+    c === 'rain'
+      ? PRIORITY.length + 1
+      : PRIORITY.includes(c)
+        ? PRIORITY.indexOf(c)
+        : PRIORITY.length;
   return [...cues].sort((a, b) => key(a) - key(b)).slice(0, max);
 }

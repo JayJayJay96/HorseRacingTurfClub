@@ -78,5 +78,6 @@ describe('raceCues weather', () => {
     expect(raceCues(rain, 2.9, 3)).toEqual(['rain']);
     expect(raceCues(fakeTimeline({ a: 10 }, 100), 2.9, 3)).toEqual([]);
     expect(prioritise(['hit', 'speed', 'shield', 'rain'], 3)).not.toContain('rain');
+    expect(prioritise(['rain', 'hit', 'speed', 'shield'], 3)).not.toContain('rain');
   });
 });

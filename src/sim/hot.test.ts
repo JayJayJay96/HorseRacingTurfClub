@@ -36,3 +36,20 @@ describe('hot items', () => {
     expect(buffOf(HOT_LIST, null)).toBeUndefined();
   });
 });
+
+describe('effectSeconds on more items', () => {
+  const ext = (item: HotItem['item']): HotItem[] => [{ item, buff: 'extended' }];
+
+  it('Extended lengthens each Golden Carrot burst, the Stampede and the Lucky Bubble', () => {
+    expect(effectSeconds('speed:self3', ext('speed:self3'))).toBe(
+      EFFECTS['speed:self3'].seconds * HOT.extendedFactor,
+    );
+    expect(effectSeconds('speed:pass3', ext('speed:pass3'))).toBe(12);
+    expect(effectSeconds('defense:immune', ext('defense:immune'))).toBe(9);
+  });
+
+  it('another hot item or none leaves the seconds alone', () => {
+    expect(effectSeconds('speed:pass3', ext('speed:self3'))).toBe(EFFECTS['speed:pass3'].seconds);
+    expect(effectSeconds('defense:immune')).toBe(EFFECTS['defense:immune'].seconds);
+  });
+});

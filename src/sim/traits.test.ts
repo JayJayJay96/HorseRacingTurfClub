@@ -31,3 +31,21 @@ describe('pace and kick by trait', () => {
     expect(kickExtraSecondsOf('stayer')).toBe(TRAITS.stayer.kickExtraSeconds);
   });
 });
+
+describe('toughen at the real item strengths', () => {
+  it('keeps slowdowns and boosts proportional', () => {
+    expect(toughen(0.5)).toBeGreaterThan(0.5);
+    expect(toughen(0.5)).toBeLessThan(1);
+    expect(toughen(1.8)).toBeCloseTo(1 + 0.8 * TRAITS.tough.boostFactor); // Stampede
+    expect(toughen(1.8)).toBeLessThan(1.8);
+    expect(toughen(1.8)).toBeGreaterThan(1);
+  });
+});
+
+describe('kickBoostOf', () => {
+  it('Normal keeps KICK.boost; Sprinter kicks less and Stayer more', () => {
+    expect(kickBoostOf('normal')).toBe(KICK.boost);
+    expect(kickBoostOf('sprinter')).toBeLessThan(KICK.boost);
+    expect(kickBoostOf('stayer')).toBeGreaterThan(KICK.boost);
+  });
+});

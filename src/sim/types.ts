@@ -65,8 +65,10 @@ export interface Puddle {
 
 /** `t` is seconds since the start. Events are listed in simulation order. */
 export type RaceEvent =
-  /** `item` is null when an attack had nobody to hit and fizzled. */
-  /** `hot` is set only when the picked item is one of the race's hot items. */
+  /**
+   * `item` is null when an attack had nobody to hit and fizzled. `hot` is set only when the
+   * picked item is one of the race's hot items.
+   */
   | {
       t: number;
       type: 'pickup';
@@ -76,14 +78,7 @@ export type RaceEvent =
       hot?: HotBuff;
     }
   | { t: number; type: 'hit'; horse: HorseId; by: HorseId; item: ItemCode }
-  | {
-      t: number;
-      type: 'blocked';
-      horse: HorseId;
-      by: HorseId;
-      item: ItemCode;
-      reason: 'immune' | 'shield';
-    }
+  | { t: number; type: 'blocked'; horse: HorseId; by: HorseId; item: ItemCode; reason: 'immune' | 'shield' }
   /** `horse` held the Mirror Saddle and sent the attack back to `by`. */
   | { t: number; type: 'reflected'; horse: HorseId; by: HorseId; item: ItemCode }
   /** Rain: the horse slipped in a puddle. */

@@ -764,3 +764,55 @@ a.button.primary {
     display: none;
   }
 }
+
+/* Phase banner (spec 2026-11-05 polish section 3). The layer clips the sweep, so it never scrolls the page. */
+.phase-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow: hidden;
+  pointer-events: none;
+}
+.phase-banner {
+  position: absolute;
+  top: 38%;
+  left: 0;
+  right: 0;
+  padding: 16px 0;
+  text-align: center;
+  background: linear-gradient(90deg, transparent, var(--panel) 12% 88%, transparent);
+  box-shadow:
+    0 -3px 0 var(--gold),
+    0 3px 0 var(--gold);
+  animation: phase-sweep 1.2s linear both;
+}
+.phase-banner span {
+  font-family: var(--font-pixel);
+  font-size: clamp(2rem, 7vw, 5rem);
+  font-weight: 700;
+  color: var(--gold);
+  text-shadow: 0 3px 0 var(--edge);
+  white-space: nowrap;
+}
+@keyframes phase-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  20%,
+  80% {
+    transform: none;
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+@keyframes phase-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phase-banner {
+    animation: phase-fade 0.4s ease-out both;
+  }
+}

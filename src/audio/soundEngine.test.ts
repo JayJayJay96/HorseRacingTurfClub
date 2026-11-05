@@ -11,6 +11,7 @@ describe('createSoundEngine without browser audio', () => {
       e.unlock();
       e.setMusic('race');
       e.sfx('bell');
+    e.sfx('phase');
       e.say('Hello');
       e.setMusic(null);
       e.dispose();

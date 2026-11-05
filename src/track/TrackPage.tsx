@@ -15,6 +15,7 @@ import {
   potOf,
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
+import { PhaseBanner } from '../app/PhaseBanner.tsx';
 import { TopBar } from '../app/TopBar.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { HotStrip, hotOf } from '../app/HotItems.tsx';
@@ -106,6 +107,7 @@ export function TrackPage() {
       <TopBar code={state.room.code}>
         <SoundToggle settings={settings} update={update} full />
       </TopBar>
+      <PhaseBanner phase={state.room.phase} />
       {state.race && <p>Track: {trackById(state.race.track).name}</p>}
       {Board ? (
         <Board {...state} online={online} act={act} busy={busy} />

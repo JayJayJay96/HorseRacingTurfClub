@@ -16,6 +16,7 @@ export type SfxName =
   | 'coin'
   | 'cheer'
   | 'cutin'
+  | 'phase'
   | 'splash'
   | 'bonk'
   | 'rain';

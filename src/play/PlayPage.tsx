@@ -17,6 +17,7 @@ import {
 } from '../betting/betting.ts';
 import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
+import { PhaseBanner } from '../app/PhaseBanner.tsx';
 import { TopBar } from '../app/TopBar.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { HotStrip, hotBoxTypes, hotOf } from '../app/HotItems.tsx';
@@ -238,6 +239,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       <p className="visually-hidden" role="status" aria-live="polite">
         {announcement}
       </p>
+      <PhaseBanner phase={room.phase} />
       <TopBar code={room.code} coins={props.balance}>
         <SoundToggle settings={settings} update={update} />
       </TopBar>

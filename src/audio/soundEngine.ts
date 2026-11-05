@@ -339,6 +339,9 @@ export function createSoundEngine(
       case 'cheer': // crowd swell
         noiseHit(c, bus, now, 0.7, 0.35, 'bandpass', 900);
         break;
+      case 'phase': // soft two-note sting under the phase banner (a quieter cousin of cutin)
+        [659, 988].forEach((f, i) => osc(c, bus, 'triangle', f, f, now + i * 0.08, 0.16, 0.14));
+        break;
       case 'cutin': // rising arpeggio and a sweep under the cut-in band
         [523, 659, 784, 1046].forEach((f, i) =>
           osc(c, bus, 'square', f, f, now + i * 0.06, 0.12, 0.22),

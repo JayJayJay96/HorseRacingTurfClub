@@ -153,3 +153,16 @@ describe('simulateOdds with history', () => {
     expect(blended.odds.h0).toEqual(plain.odds.h0);
   });
 });
+
+describe('weather in the odds', () => {
+  it('passes the weather to every simulated race', () => {
+    const race = {
+      horses: ids(6),
+      bought: { h0: ['speed', 'speed', 'speed'] },
+      length: 'short',
+    } as const; // equal horses give equal shares in any weather
+    const clear = simulateShares(race, createSeededRng(11), frozenClock);
+    const rain = simulateShares({ ...race, weather: 'rain' }, createSeededRng(11), frozenClock);
+    expect(rain).not.toEqual(clear);
+  });
+});

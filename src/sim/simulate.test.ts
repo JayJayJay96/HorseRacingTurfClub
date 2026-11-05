@@ -259,6 +259,51 @@ describe('weather', () => {
     expect(bumps).toBeGreaterThan(0);
   });
 
+  it('ignores defenses: a slip still lands on a horse holding or protected by one', () => {
+    const bought = Object.fromEntries(
+      ids(12).map((h) => [h, ['defense', 'defense', 'defense'] as BoxType[]]),
+    );
+    const found = { immune: false, held: false };
+    for (let seed = 1; seed <= 300 && !(found.immune && found.held); seed++) {
+      const tl = race({ seed, weather: 'rain', horses: ids(12), bought });
+      for (const slip of tl.events.filter((e) => e.type === 'slip')) {
+        // Nothing may block, reflect or otherwise answer the slip.
+        const answered = tl.events.some(
+          (e) =>
+            (e.type === 'blocked' || e.type === 'reflected') &&
+            e.horse === slip.horse &&
+            e.t === slip.t,
+        );
+        expect(answered).toBe(false);
+        const picks = tl.events.filter(
+          (e) =>
+            e.type === 'pickup' &&
+            e.horse === slip.horse &&
+            e.t < slip.t &&
+            e.item?.startsWith('defense:'),
+        );
+        for (const pick of picks) {
+          if (pick.type !== 'pickup') continue;
+          if (
+            pick.item === 'defense:immune' &&
+            slip.t <= pick.t + EFFECTS['defense:immune'].seconds
+          )
+            found.immune = true;
+          // Held shield/mirror: still unspent (no block or reflect for this horse since the pickup).
+          const spent = tl.events.some(
+            (e) =>
+              (e.type === 'blocked' || e.type === 'reflected') &&
+              e.horse === slip.horse &&
+              e.t > pick.t &&
+              e.t <= slip.t,
+          );
+          if (pick.item !== 'defense:immune' && !spent) found.held = true;
+        }
+      }
+    }
+    expect(found).toEqual({ immune: true, held: true });
+  });
+
   it('rain and fog keep every race finishing', () => {
     for (const weather of ['rain', 'fog'] as const) {
       for (let seed = 1; seed <= 20; seed++) {

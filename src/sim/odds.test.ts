@@ -160,7 +160,7 @@ describe('weather in the odds', () => {
       horses: ids(6),
       bought: { h0: ['speed', 'speed', 'speed'] },
       length: 'short',
-    } as const; // equal horses give equal shares in any weather
+    } as const; // identical seeds give identical shares, so a difference proves weather reached simulateRace; equal horses would tie in any weather
     const clear = simulateShares(race, createSeededRng(11), frozenClock);
     const rain = simulateShares({ ...race, weather: 'rain' }, createSeededRng(11), frozenClock);
     expect(rain).not.toEqual(clear);

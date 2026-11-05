@@ -40,6 +40,9 @@ export function drawHorse(
   let by = -12;
   let bw = 3;
   let bh = 4;
+  // Top-left of the jockey's 2×2 cap in this pose, which a bought cap decorates.
+  let cx = 0;
+  let cy = -14;
   const lift = frame % 2; // also the gallop bob
   ctx.save();
   ctx.translate(Math.round(x), Math.round(y) - lift * size);
@@ -59,6 +62,8 @@ export function drawHorse(
     px(-3, -10, 1, 2, silk); // jockey's legs either side
     px(2, -10, 1, 2, silk);
     px(-1, -15, 2, 2, silk); // cap
+    cx = -1;
+    cy = -15;
   } else if (pose === 'toward') {
     px(-2, -4 + lift, 1, 4 - lift, coat); // forelegs, alternating
     px(1, -3 - lift, 1, 3 + lift, coat);
@@ -67,6 +72,8 @@ export function drawHorse(
     bx = -4;
     by = -13;
     px(-4, -15, 2, 2, silk); // cap
+    cx = -4;
+    cy = -15;
     px(0, -12, 3, 4, coat); // head facing us
     px(0, -13, 1, 1, coat); // ears
     px(2, -13, 1, 1, coat);
@@ -116,6 +123,23 @@ export function drawHorse(
       px(bx + 1, by + 1, bw - 1, 1, bolt);
       px(bx, by + 2, bw - 1, 1, bolt);
       if (bh > 3) px(bx, by + 3, 1, 1, bolt);
+    }
+  }
+  if (colors.cap) {
+    // Highest pixel is cy - 2 (-17 in the away view): with the gallop lift it stays in the 22 px cell.
+    const gold = '#ffd54f';
+    if (colors.cap === 'cap:pompom') {
+      px(cx, cy - 2, 2, 2, contrastOf(silk)); // bobble
+    } else if (colors.cap === 'cap:horns') {
+      px(cx - 1, cy - 2, 1, 2, '#c62828');
+      px(cx + 2, cy - 2, 1, 2, '#c62828');
+    } else if (colors.cap === 'cap:halo') {
+      px(cx - 1, cy - 2, 4, 1, gold); // floats one pixel above the cap
+    } else if (colors.cap === 'cap:crown') {
+      px(cx - 1, cy - 1, 4, 1, gold);
+      px(cx - 1, cy - 2, 1, 1, gold);
+      px(cx + 2, cy - 2, 1, 1, gold);
+      px(cx, cy - 2, 2, 1, '#e53935'); // jewel between the points
     }
   }
   ctx.restore();

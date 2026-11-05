@@ -79,3 +79,41 @@ describe('drawHorse patterns', () => {
     }
   });
 });
+describe('drawHorse caps', () => {
+  const inCell = (r: Rect) => r.x >= 0 && r.y >= 0 && r.x + r.w <= CELL.w && r.y + r.h <= CELL.h;
+
+  it('every cap adds at least 2 px, differs from the others, and stays inside the cell', () => {
+    for (const pose of POSES) {
+      for (let f = 0; f < FRAMES; f++) {
+        const plain = paint(colorsOf(0), f, pose).length;
+        const looks = new Set<string>();
+        for (const code of codes('cap')) {
+          const all = paint({ ...colorsOf(0), cap: code }, f, pose);
+          const extra = all.slice(plain);
+          expect(
+            extra.reduce((a, r) => a + r.w * r.h, 0),
+            `${code} ${pose} ${f}`,
+          ).toBeGreaterThanOrEqual(2);
+          // The HD sheet and HorseSprite draw one CELL per frame: a pixel outside would bleed.
+          expect(
+            all.filter((r) => !inCell(r)),
+            `${code} ${pose} ${f}`,
+          ).toEqual([]);
+          looks.add(JSON.stringify(extra));
+        }
+        expect(looks.size).toBe(codes('cap').length);
+      }
+    }
+  });
+
+  it('a cap and a pattern together still draw both', () => {
+    const pattern = paint({ ...colorsOf(0), pattern: 'pattern:hoops' }, 1, 'side-right');
+    const both = paint(
+      { ...colorsOf(0), pattern: 'pattern:hoops', cap: 'cap:crown' },
+      1,
+      'side-right',
+    );
+    expect(both.length).toBeGreaterThan(pattern.length);
+    expect(both.some((r) => r.fill === '#ffd54f')).toBe(true);
+  });
+});

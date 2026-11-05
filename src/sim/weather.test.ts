@@ -27,27 +27,29 @@ describe('rollWeather', () => {
 });
 
 describe('placePuddles', () => {
-  it('spans 3 adjacent lanes inside the box zone, sorted', () => {
+  it('covers 1-3 adjacent lanes inside the box zone, sorted', () => {
     const puddles = placePuddles(createSeededRng(3), 12, noBoxes(12), 1800, 3);
-    expect(puddles.length).toBe(12); // ceil(12 * 3 / 3)
     for (const p of puddles) {
-      expect(p.lanes[1] - p.lanes[0]).toBe(WEATHER.puddleLanes - 1);
+      expect(p.lanes[1] - p.lanes[0]).toBeLessThanOrEqual(WEATHER.puddleLanes - 1);
       expect(p.lanes[0]).toBeGreaterThanOrEqual(0);
       expect(p.lanes[1]).toBeLessThan(12);
       expect(p.at).toBeGreaterThanOrEqual(1800 * BOX_ZONE.start);
       expect(p.at + WEATHER.puddleLengthM).toBeLessThanOrEqual(1800 * BOX_ZONE.end);
     }
-    expect(puddles.map((p) => p.at)).toEqual([...puddles.map((p) => p.at)].sort((a, b) => a - b));
+    const wide = puddles.filter((p) => p.lanes[1] - p.lanes[0] === WEATHER.puddleLanes - 1);
+    expect(wide.length).toBeGreaterThanOrEqual(puddles.length / 2);
+    expect(puddles.map((p) => p.at)).toEqual(puddles.map((p) => p.at).sort((a, b) => a - b));
   });
 
-  // Spread 2 (the spec) is not reachable in general: lanes next to the edge sit in every window that covers
-  // the edge lane, so the greedy placement leaves up to 4 in the worst seed; these seeds give 0, 2 and 3.
-  it('gives every lane about the same number of puddles, edges included', () => {
-    for (const n of [3, 12, 22]) {
-      const lanes = puddlesByLane(placePuddles(createSeededRng(n), n, noBoxes(n), 2700, 5), n);
-      const counts = lanes.map((l) => l.length);
-      expect(Math.max(...counts) - Math.min(...counts)).toBeLessThanOrEqual(3);
-      expect(Math.min(...counts)).toBeGreaterThanOrEqual(4);
+  it('gives every lane exactly perLane puddles, edges included', () => {
+    for (const n of [2, 3, 4, 5, 12, 22]) {
+      for (const perLane of [3, 5]) {
+        const lanes = puddlesByLane(
+          placePuddles(createSeededRng(n), n, noBoxes(n), 2700, perLane),
+          n,
+        );
+        expect(lanes.map((l) => l.length)).toEqual(Array.from({ length: n }, () => perLane));
+      }
     }
   });
 

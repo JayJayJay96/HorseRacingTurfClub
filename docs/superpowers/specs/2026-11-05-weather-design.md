@@ -11,7 +11,7 @@ the odds include it, and sets a mood on the big screen without ever hiding the h
 ## Decisions (owner)
 
 - **Weathers:** Clear 50 %, 🌧️ Rain 25 %, 🌫️ Fog 25 %.
-- **Rain:** wide puddles, each across **3 adjacent lanes**. A horse running into one has a **15 %**
+- **Rain:** wide puddles, each across **up to 3 adjacent lanes** (narrower by the rail). A horse running into one has a **15 %**
   chance to slip: **0.5× speed for 1.5 s**.
 - **Fog:** horses side by side in neighbouring lanes can bump: **both 0.7× for 1 s**.
 - **Items don't touch weather:** shields and mirrors never block a slip or a bump; boosts don't skip
@@ -47,12 +47,13 @@ the odds include it, and sets a mood on the big screen without ever hiding the h
   bump, `horse` = lower lane).
 - **Determinism:** weather draws come from the race RNG **only when weather ≠ clear**, so clear
   races, old replays and every existing seed test are unchanged.
-- **Rain puddles:** `PUDDLE_LENGTH_M = 4`. Per-lane quota `PUDDLES_PER_LANE {short: 3, long: 5}`;
-  total puddles `ceil(lanes × quota / 3)`. Each puddle is placed over the 3-lane window that
-  includes the lane with the fewest puddles so far (ties random), at a random distance inside
-  `BOX_ZONE`, not overlapping any box in its lanes (±2 m) nor another puddle in those lanes. Fewer than
-  3 horses: the puddle spans all lanes. Placement retries a bounded number of times, then drops
-  that puddle.
+- **Rain puddles:** `PUDDLE_LENGTH_M = 4`. Per-lane quota `PUDDLES_PER_LANE {short: 3, long: 5}`.
+  Placement is round-based tiling: each of `quota` rounds picks a random offset and cuts the lanes
+  into consecutive blocks of 3 from it (edge blocks may be 1-2 lanes wide), so every lane is in exactly
+  one block per round and meets exactly `quota` puddles. Each block becomes one puddle at a random
+  distance inside `BOX_ZONE`, not overlapping any box in its lanes (±2 m) nor another puddle in those
+  lanes. Fewer than 3 horses: one block covers all lanes. Placement retries a bounded number of times,
+  then drops that puddle.
 - **Slip:** the first tick a horse is inside a puddle, roll `SLIP_CHANCE_PERCENT = 15`; on a slip,
   apply a timed effect `{ mult: 0.5, seconds: 1.5 }` and emit `slip`.
 - **Fog bumps:** every tick, for each pair in neighbouring lanes, both racing, within
@@ -116,7 +117,7 @@ Light touch everywhere; the pack and leaders are never obscured.
 
 - `weather.test.ts` / `simulate.test.ts`:
   - clear race timeline identical to before for a fixed seed (no extra RNG draws);
-  - puddles span 3 lanes, sit in `BOX_ZONE`, avoid boxes, per-lane counts within 2 of each other;
+  - puddles span 1-3 lanes (mostly 3), sit in `BOX_ZONE`, avoid boxes, every lane has exactly the quota (no boxes);
   - slip rate ≈ 15 % over many entries; slips only inside puddles;
   - bumps only between neighbouring lanes within range, cooldown respected;
   - `rollWeather` weights (chi-square, existing helper) and off → always clear.

@@ -158,6 +158,9 @@ export async function fetchOwnedCosmetics(playerId: string): Promise<string[]> {
   return (rows ?? []).map((r) => r.code);
 }
 
+/** Mystery crate (office LOBBY): the server picks an unowned item, charges CRATE_PRICE, returns its code. */
+export const openCrate = (roomId: string) => call(supabase.rpc('open_crate', { p_room: roomId }));
+
 /** Null when the room doesn't exist or this device isn't in it (RLS hides it). */
 export async function fetchRoom(code: string): Promise<RoomState | null> {
   const room = await call(supabase.from('rooms').select('*').eq('code', code).maybeSingle());
@@ -248,6 +251,7 @@ const ERROR_TEXT: Record<string, string> = {
   already_owned: 'You already own that.',
   not_owned: 'Buy that first.',
   wrong_slot: "That item doesn't go there.",
+  nothing_left: 'You already own every item!',
 };
 
 export function errorText(e: unknown): string {

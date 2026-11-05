@@ -18,6 +18,7 @@ import {
 import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
 import { TopBar } from '../app/TopBar.tsx';
+import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { BADGES, formatForm } from '../history/badges.ts';
 import { soundEngine, useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
@@ -240,6 +241,7 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
         Room {room.code} · {room.race_length === 'long' ? 'Long (~3 min)' : 'Short (~2 min)'}
         {room.prize && ` · Prize: ${room.prize}`}
       </p>
+      <WeatherBadge weather={state.race?.weather} />
       {room.phase === 'LOBBY' && (
         <p>{mine.ticked ? "You're racing today! 🐎" : 'Waiting for the host to tick you in.'}</p>
       )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TopBar } from '../app/TopBar.tsx';
+import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { useAudioSettings } from '../audio/sound.ts';
 import { SoundToggle } from '../audio/SoundToggle.tsx';
 import { useRaceAudio } from '../audio/useRaceAudio.ts';
@@ -202,6 +203,7 @@ function Replay(props: { stats: OfficeStats; race: string; onClose: () => void }
         ← Back to stats
       </button>
       <SoundToggle settings={settings} update={update} />
+      <WeatherBadge weather={timeline?.weather} />
       {timeline ? (
         <RaceView timeline={timeline} startAtMs={gun} names={names} colors={colors} track={track} />
       ) : (

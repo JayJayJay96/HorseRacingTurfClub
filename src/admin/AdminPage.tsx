@@ -20,7 +20,7 @@ type RaceRow = {
   finished: boolean;
   current: boolean;
 };
-type Overview = { room: { phase: string }; members: Member[]; races: RaceRow[] };
+type Overview = { room: { phase: string; weather_enabled: boolean }; members: Member[]; races: RaceRow[] };
 
 const KEY = 'hrtc-admin';
 const loadPassword = () => {
@@ -149,6 +149,17 @@ export function AdminPage() {
         <button type="button" onClick={lock}>
           Lock
         </button>
+      </p>
+      <p>
+        <label>
+          <input
+            type="checkbox"
+            checked={data?.room.weather_enabled ?? true}
+            disabled={busy || !data}
+            onChange={(e) => run('weather', { on: e.target.checked })}
+          />{' '}
+          Weather (rain and fog races)
+        </label>
       </p>
       <h2>People</h2>
       <form onSubmit={add}>

@@ -17,6 +17,7 @@ import {
 } from '../betting/betting.ts';
 import { useSecondsLeft } from '../betting/useSecondsLeft.ts';
 import { TopBar } from '../app/TopBar.tsx';
+import { WeatherBadge } from '../app/WeatherBadge.tsx';
 import { formatForm } from '../history/badges.ts';
 import { canOpenShop, joinUrl, normalizeCode, OFFICE_CODE } from '../lobby/lobby.ts';
 import {
@@ -388,6 +389,7 @@ function BettingBoard({ room, players, race, purchases, bets, act, busy }: Board
   return (
     <section>
       <h1>Place your bets · room {room.code}</h1>
+      <WeatherBadge weather={race?.weather} />
       <div className="panel">
         <table className="odds board">
           <thead>
@@ -514,6 +516,7 @@ function RunningBoard({ room, players, race, act, busy }: BoardProps) {
   return (
     <section>
       <h1 className="visually-hidden">Race · room {room.code}</h1>
+      <WeatherBadge weather={race?.weather} />
       {timeline && race?.started_at ? (
         <RaceView
           timeline={timeline}

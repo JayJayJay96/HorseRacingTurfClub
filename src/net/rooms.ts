@@ -237,6 +237,7 @@ const ERROR_TEXT: Record<string, string> = {
   admin_locked: 'Too many wrong admin passwords. Try again in 10 minutes.',
   admin_not_configured: 'The admin password is not set on the server.',
   bad_action: 'Unknown admin action.',
+  bad_weather: 'Weather must be clear, rain or fog.',
   bad_amount: 'Amount must be a whole number, not 0.',
   bad_reason: 'Give a reason (up to 100 characters).',
   race_in_use: "Can't delete the race in progress.",

@@ -7,9 +7,10 @@ import {
   PASS3_CHANCE_PERCENT,
   SPEED_ITEMS,
   THUNDERCLAP_CHANCE_PERCENT,
+  TRAITS,
 } from './config.ts';
 import type { Rng } from './rng.ts';
-import type { AttackTarget, Band, BoxKind, ItemCode } from './types.ts';
+import type { AttackTarget, Band, BoxKind, ItemCode, MysteryType } from './types.ts';
 import { pickOne, pickWeighted } from './weighted.ts';
 
 /** Front, middle or back third of the field; each outer band holds at least one horse. */
@@ -28,6 +29,8 @@ export interface RollContext {
   readonly canTarget: Readonly<Record<AttackTarget, boolean>>;
   /** This race's Lucky hot items (spec C); missing = none. */
   readonly lucky?: ReadonlySet<ItemCode>;
+  /** The picking horse is Charmed (spec D). */
+  readonly charmed?: boolean;
 }
 
 /** A Lucky item's weight (or percent chance) is multiplied by HOT.luckyWeight. */
@@ -64,13 +67,19 @@ export function rollAttack(rng: Rng, ctx: RollContext): ItemCode | null {
 /** The item inside a box at the moment it is picked up. Null = an attack with nobody to hit. */
 export function rollBox(rng: Rng, kind: BoxKind, ctx: RollContext): ItemCode | null {
   const mystery = kind === 'mystery';
-  const type = mystery
-    ? pickWeighted(rng, MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)])
-    : kind;
+  const table = MYSTERY_TYPE_WEIGHTS[bandOf(ctx.rank, ctx.count)];
+  let type: MysteryType = mystery ? pickWeighted(rng, table) : kind;
+  // Charmed: some dud rolls become another type. Extra draws only for a Charmed horse's dud.
+  if (mystery && type === 'dud' && ctx.charmed && rng.nextInt(100) < TRAITS.charmed.rerollPercent) {
+    const { dud: _dud, ...rest } = table;
+    type = pickWeighted(rng, rest);
+  }
+  // Charmed never gets the rare upgrades, and makes no draw for them.
+  const rare = mystery && !ctx.charmed;
   switch (type) {
     case 'speed':
       if (
-        mystery &&
+        rare &&
         ctx.rank >= ctx.count / 2 &&
         rng.nextInt(100) < chance(ctx, 'speed:pass3', PASS3_CHANCE_PERCENT)
       ) {
@@ -79,7 +88,7 @@ export function rollBox(rng: Rng, kind: BoxKind, ctx: RollContext): ItemCode | n
       return pickItem(rng, SPEED_ITEMS, ctx);
     case 'attack':
       if (
-        mystery &&
+        rare &&
         ctx.rank === ctx.count - 1 &&
         rng.nextInt(100) < chance(ctx, 'attack:all', THUNDERCLAP_CHANCE_PERCENT)
       ) {

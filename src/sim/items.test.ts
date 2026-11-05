@@ -5,6 +5,7 @@ import {
   MYSTERY_TYPE_WEIGHTS,
   PASS3_CHANCE_PERCENT,
   THUNDERCLAP_CHANCE_PERCENT,
+  TRAITS,
 } from './config.ts';
 import { bandOf, rollAttack, rollBox, type RollContext } from './items.ts';
 import { createSeededRng } from './rng.ts';
@@ -211,6 +212,36 @@ describe('Lucky hot items', () => {
     for (let i = 0; i < 2000; i++) {
       const c = ctx(i % 10);
       expect(rollBox(b, 'mystery', { ...c, lucky: new Set() })).toBe(rollBox(a, 'mystery', c));
+    }
+  });
+});
+
+describe('Charmed', () => {
+  it('rolls (1 - rerollPercent) of the duds', () => {
+    const rng = createSeededRng(31);
+    const n = 20_000;
+    let duds = 0;
+    for (let i = 0; i < n; i++) {
+      if (rollBox(rng, 'mystery', { ...ctx(0), charmed: true })?.startsWith('dud:')) duds++;
+    }
+    const p = (MYSTERY_TYPE_WEIGHTS.front.dud / 100) * (1 - TRAITS.charmed.rerollPercent / 100);
+    expect(chiSquare([duds, n - duds], [p, 1 - p])).toBeLessThan(10.83); // df = 1
+  });
+
+  it('never gets Stampede or Thunderclap, even when they are Lucky', () => {
+    const rng = createSeededRng(32);
+    const c = { ...ctx(9), charmed: true, lucky: new Set<ItemCode>(['speed:pass3', 'attack:all']) };
+    for (let i = 0; i < 20_000; i++) {
+      expect(rollBox(rng, 'mystery', c)).not.toMatch(/^(speed:pass3|attack:all)$/);
+    }
+  });
+
+  it('a horse that is not Charmed draws exactly as before', () => {
+    const a = createSeededRng(33);
+    const b = createSeededRng(33);
+    for (let i = 0; i < 2000; i++) {
+      const c = ctx(i % 10);
+      expect(rollBox(b, 'mystery', { ...c, charmed: false })).toBe(rollBox(a, 'mystery', c));
     }
   });
 });

@@ -17,6 +17,7 @@ import {
 } from '../betting/betting.ts';
 import { GROUP_KINDS, groupLanes } from '../sim/odds.ts';
 import { phoneAnnouncement } from '../app/announce.ts';
+import { ActionBar, BET_FORM } from './ActionBar.tsx';
 import { PhaseBanner } from '../app/PhaseBanner.tsx';
 import { TopBar } from '../app/TopBar.tsx';
 import { WeatherBadge } from '../app/WeatherBadge.tsx';
@@ -284,17 +285,6 @@ function PlayRoom({ code, me }: { code: string; me: RoomPlayer }) {
       {room.phase === 'BETTING' && <BetPanel {...props} />}
       {room.phase === 'RUNNING' && <RunningPanel {...props} />}
       {room.phase === 'PODIUM' && <ResultPanel {...props} />}
-      {(room.phase === 'SHOP' || room.phase === 'BETTING') && (
-        <p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => act(() => setReady(room.id, !mine.ready))}
-          >
-            {mine.ready ? 'Ready ✅ (tap to undo)' : "I'm ready"}
-          </button>
-        </p>
-      )}
       {actionError && <p role="alert">{actionError}</p>}
     </main>
   );
@@ -326,8 +316,20 @@ function MyRecord({ stats, id }: { stats: OfficeStats | null; id: string }) {
 }
 
 function ShopPanel({ room, race, mine, purchases, balance, act, busy }: PanelProps) {
+  const bar = (
+    <ActionBar
+      ready={mine.ready}
+      busy={busy}
+      onReady={() => act(() => setReady(room.id, !mine.ready))}
+    />
+  );
   if (!mine.ticked) {
-    return <p>💰 {balance} coins. You're not racing, but you can bet once the odds lock.</p>;
+    return (
+      <>
+        <p>💰 {balance} coins. You're not racing, but you can bet once the odds lock.</p>
+        {bar}
+      </>
+    );
   }
   const boxes = boxesOf(purchases, mine.id);
   const hotTypes = hotBoxTypes(hotOf(race?.hot_items));
@@ -370,6 +372,7 @@ function ShopPanel({ room, race, mine, purchases, balance, act, busy }: PanelPro
         onPick={(trait) => act(() => setTrait(room.id, trait))}
       />
       <p>Boxes go in your own lane and open automatically. No refunds.</p>
+      {bar}
     </>
   );
 }
@@ -402,6 +405,13 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
     e.preventDefault();
     act(() => placeBet(room.id, group ? null : horse, kind, amount).then(playCoin));
   };
+  const betDisabled =
+    busy ||
+    !horse ||
+    typeof chosenOdds !== 'number' ||
+    !Number.isInteger(amount) ||
+    amount < 1 ||
+    amount > balance;
 
   return (
     <>
@@ -410,7 +420,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
           Trait: <span aria-hidden="true">{myTrait.icon}</span> {myTrait.name}
         </p>
       )}
-      <form className="shop" onSubmit={submit}>
+      <form id={BET_FORM} className="shop" onSubmit={submit}>
         <fieldset className="horse-pick">
           <legend>Horse</legend>
           {horses.map((id, lane) => (
@@ -506,20 +516,6 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
             That bet is closed: this pick is so likely that even the lowest odds would overpay.
           </p>
         )}
-        <button
-          type="submit"
-          className="primary"
-          disabled={
-            busy ||
-            !horse ||
-            typeof chosenOdds !== 'number' ||
-            !Number.isInteger(amount) ||
-            amount < 1 ||
-            amount > balance
-          }
-        >
-          Bet
-        </button>
       </form>
       <h2>Your bets</h2>
       {myBets.length === 0 ? (
@@ -541,6 +537,12 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
           ))}
         </ul>
       )}
+      <ActionBar
+        ready={mine.ready}
+        busy={busy}
+        onReady={() => act(() => setReady(room.id, !mine.ready))}
+        bet={{ disabled: betDisabled }}
+      />
     </>
   );
 }

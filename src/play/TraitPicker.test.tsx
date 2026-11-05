@@ -17,13 +17,19 @@ function buttons(node: ReactNode, out: ReactElement<Props>[] = []) {
 }
 
 describe('TraitPicker', () => {
-  it('six buttons, the current pick pressed, effect text in each', () => {
+  it('a grid of six icon + name buttons; the chosen effect under it', () => {
     const html = renderToStaticMarkup(
       <TraitPicker current="tough" disabled={false} onPick={() => {}} />,
     );
     expect(html.match(/<button/g)).toHaveLength(6);
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
-    expect(html).toMatch(/aria-pressed="true"[^>]*>.*Tough.*hits hurt less, boosts help less/);
+    expect(html).toMatch(/aria-pressed="true"><span aria-hidden="true">[^<]+<\/span> Tough</);
+    expect(html).toContain(
+      '<p class="trait-effect" aria-hidden="true">hits hurt less, boosts help less</p>',
+    );
+    // Screen readers still hear every effect, on its button.
+    expect(html.match(/class="visually-hidden"> · /g)).toHaveLength(6);
+    expect(html).not.toContain('<br');
     expect(html).toContain('Your trait');
   });
 

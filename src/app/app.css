@@ -500,13 +500,22 @@ a.button.primary {
   white-space: normal;
   text-wrap: pretty;
 }
+/* 2x3 grid of icon + name; the chosen trait's effect underneath. */
 .trait-pick {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 .trait-pick button {
   min-height: 44px;
-  text-align: left;
+  justify-content: center;
+  text-align: center;
+}
+.trait-effect {
+  grid-column: 1 / -1;
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
 }
 /* Badges are chips; body font because the descriptions are small text. */
 .badges li {
@@ -844,5 +853,33 @@ a.button.primary {
   min-width: 44px;
   min-height: 44px;
   padding: 0;
+  font-size: 1.25rem;
+}
+
+/* Sticky phone action bar; full-bleed over main's 16px padding, clear of the home indicator. */
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  margin: 16px -16px 0;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg);
+  box-shadow:
+    0 -1px 0 var(--gold-dim),
+    0 -2px 0 var(--edge),
+    0 -3px 0 var(--gold);
+}
+.action-bar button {
+  flex: 1;
+  min-height: 44px;
+}
+/* Tabbing to a field scrolls it clear of the bar (focus not obscured). */
+:root:has(.action-bar) {
+  scroll-padding-bottom: 96px;
+}
+.play h2 {
+  margin: 16px 0 8px;
   font-size: 1.25rem;
 }

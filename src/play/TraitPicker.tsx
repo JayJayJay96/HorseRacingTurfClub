@@ -1,4 +1,4 @@
-import { TraitLabel } from '../app/Traits.tsx';
+import { TRAIT_INFO } from '../app/Traits.tsx';
 import { TRAIT_CODES } from '../sim/config.ts';
 import type { Trait } from '../sim/types.ts';
 
@@ -20,9 +20,15 @@ export function TraitPicker(props: {
           disabled={props.disabled}
           onClick={() => props.onPick(t)}
         >
-          <TraitLabel trait={t} />
+          <span aria-hidden="true">{TRAIT_INFO[t].icon}</span>
+          {` ${TRAIT_INFO[t].name}`}
+          <span className="visually-hidden">{` · ${TRAIT_INFO[t].effect}`}</span>
         </button>
       ))}
+      {/* Sighted users see the chosen effect here; screen readers hear each one on its button. */}
+      <p className="trait-effect" aria-hidden="true">
+        {TRAIT_INFO[props.current].effect}
+      </p>
     </fieldset>
   );
 }

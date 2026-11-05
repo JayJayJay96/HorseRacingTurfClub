@@ -389,3 +389,17 @@ Spec: `docs/superpowers/specs/2026-11-05-weather-design.md` (sub-project B). Pla
 - `npm test` 250 pass (39 files); `npm run test:db` 128 pass (the realtime test flaked once, passed on rerun); E2E 6/6; typecheck, lint and build clean.
 - Not done: real-TV frame-rate check.
 - Deploy pending owner approval, in this order: `npx supabase db push --linked`, then `npx supabase functions deploy admin lock-odds start-race`, then `git push origin master`.
+
+## Hot items and horse traits (master, 2026-11-05)
+
+Specs C and D and plan: `docs/superpowers/plans/2026-11-05-hot-items-and-traits.md`.
+
+- Hot items: 3 per race, rolled at shop open (any 3 of the 14 non-dud items, at most 2 per type). 🍀 Lucky gives 2x weight, ⏱️ Extended gives 1.5x duration; Stampede, Shield and Mirror are Lucky only. Office switch "Hot items" on /admin, default on.
+- Shown as a strip on the shop, betting and replay screens, 🔥 on the buy buttons and on in-race pickups, plus a commentary line.
+- Traits: picked per race on the phone in the shop: Normal, 🧿 Charmed, 🛡️ Tough, ⚡ Sprinter, 🐢 Stayer, 🌧️ Mudder. Snapshotted at odds lock; icons on the boards and standings.
+- Final `TRAITS` (`src/sim/config.ts`): charmed rerollPercent 10; tough hitFactor 0.9, boostFactor 0.7; sprinter earlyPace 1.05, kickBoost 0.09; stayer earlyPace 0.90, kickBoost 0.105, kickExtraSeconds 1; mudder slipChancePercent 5, bumpFactor 0.5, clearPace 0.996.
+- Balance (win share, Normal 0.169): charmed 0.178 (+5 %), tough 0.167 (-1 %), sprinter 0.153 (-9 %), stayer 0.177 (+5 %), mudder 0.155 (-8 %); all within the +-15 % gate.
+- Notes: odds group horses by boxes and trait; private rooms always have hot items; traits reset to Normal each new race. Sandbox has hot-item and trait pickers.
+- `npm test` 303 pass (44 files); `test:balance` 9 pass; `npm run test:db` 137 pass (18 files); E2E 6/6; typecheck, lint and build clean.
+- Not done: real-TV frame-rate check.
+- Deploy pending owner approval, in this order: `npx supabase db push --linked`, then `npx supabase functions deploy admin lock-odds start-race`, then `git push origin master`.

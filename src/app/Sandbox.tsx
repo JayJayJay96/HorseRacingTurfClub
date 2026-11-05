@@ -22,7 +22,9 @@ import { BUFF_TEXT, HotStrip, hotText } from './HotItems.tsx';
 import { TRAIT_INFO } from './Traits.tsx';
 import { TRACKS, type TrackId } from '../render/track.ts';
 import { colorsOf } from '../render/palette.ts';
-import { COSMETICS, type CosmeticSlot } from '../shop/cosmetics.ts';
+import { COSMETICS, SLOTS, type CosmeticSlot } from '../shop/cosmetics.ts';
+import { HorseSprite } from '../render/HorseSprite.tsx';
+import { Celebration } from '../track/Podium.tsx';
 
 const SAMPLE_HORSES = [
   'Nasi Lemak Express',
@@ -64,7 +66,7 @@ export function Sandbox() {
   const [lookTest, setLookTest] = useState(false);
   const [frameMs, setFrameMs] = useState(0);
   const horses = field === 6 ? SAMPLE_HORSES : FULL_FIELD;
-  // Lane 0 wears the picked looks, so each pattern and trail can be checked by eye.
+  // Lane 0 wears the picked looks, so each pattern, trail and cap can be checked by eye.
   const colors = useMemo(
     () => (_horse: string, lane: number) =>
       lane === 0 ? { ...colorsOf(0), ...looks } : colorsOf(lane),
@@ -161,7 +163,7 @@ export function Sandbox() {
             <option value={22}>22</option>
           </select>
         </label>
-        {(['pattern', 'trail'] as const).map((slot) => (
+        {SLOTS.map((slot) => (
           <label key={slot}>
             {' '}
             Lane 1 {slot}{' '}
@@ -259,6 +261,19 @@ export function Sandbox() {
           ` Seed ${run.timeline.seed} · ${run.timeline.events.length} events · ${run.timeline.weather ?? 'clear'}`}
         {import.meta.env.DEV && frameMs > 0 && ` · ${frameMs.toFixed(1)} ms/frame`}
       </p>
+      {/* Lane 1 as the podium winner, wearing the picked cap and celebration. */}
+      <section className="podium-stage sandbox-podium" aria-label="Podium preview">
+        <ol className="podium">
+          <li>
+            <span className="podium-horse">
+              <Celebration code={looks.celebration || null}>
+                <HorseSprite colors={{ ...colorsOf(0), ...looks }} size="lg" animated />
+              </Celebration>
+            </span>
+            {SAMPLE_HORSES[0]}
+          </li>
+        </ol>
+      </section>
       {shown && <HotStrip hot={shown.timeline.hot} />}
       {shown && (
         <RaceView

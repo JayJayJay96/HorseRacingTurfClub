@@ -34,4 +34,16 @@ describe('hot items UI', () => {
     expect(renderToStaticMarkup(<HotStrip hot={[]} />)).toBe('');
     expect(renderToStaticMarkup(<HotStrip hot={HOT} />)).toContain('Hot items');
   });
+
+  it('the legend names only the buffs present, without numbers', () => {
+    const html = renderToStaticMarkup(<HotStrip hot={[HOT[0]]} />);
+    expect(html).toContain('more likely from its box');
+    expect(html).not.toContain('lasts longer');
+    expect(html).not.toMatch(/\d/);
+  });
+
+  it('a hot Speed Carrot flames the Speed box, a hot Stampede does not', () => {
+    expect(hotBoxTypes([{ item: 'speed:self1', buff: 'lucky' }]).has('speed')).toBe(true);
+    expect(hotBoxTypes([{ item: 'speed:pass3', buff: 'lucky' }]).has('speed')).toBe(false);
+  });
 });

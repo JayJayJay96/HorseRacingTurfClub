@@ -364,6 +364,7 @@ function ShopPanel({ room, race, mine, purchases, balance, act, busy }: PanelPro
 function BetPanel({ room, players, race, bets, mine, balance, act, busy }: PanelProps) {
   const odds = oddsOf(race);
   const horses = race?.horses ?? [];
+  const myTrait = TRAIT_INFO[traitOf(race?.traits, mine.id)];
   const [pick, setPick] = useState('');
   // Until they pick, a player's own horse is preselected.
   const horse = horses.includes(pick)
@@ -393,8 +394,7 @@ function BetPanel({ room, players, race, bets, mine, balance, act, busy }: Panel
     <>
       {horses.includes(mine.id) && (
         <p>
-          Trait: <span aria-hidden="true">{TRAIT_INFO[traitOf(race?.traits, mine.id)].icon}</span>{' '}
-          {TRAIT_INFO[traitOf(race?.traits, mine.id)].name}
+          Trait: <span aria-hidden="true">{myTrait.icon}</span> {myTrait.name}
         </p>
       )}
       <form className="shop" onSubmit={submit}>

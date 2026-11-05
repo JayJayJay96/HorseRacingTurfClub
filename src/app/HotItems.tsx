@@ -1,9 +1,11 @@
 import { ITEM_INFO } from '../render/items.ts';
 import type { BoxType, HotBuff, HotItem } from '../sim/types.ts';
 
+const BUFF_ICON: Readonly<Record<HotBuff, string>> = { lucky: '🍀', extended: '⏱️' };
+const BUFF_NAME: Readonly<Record<HotBuff, string>> = { lucky: 'Lucky', extended: 'Extended' };
 export const BUFF_TEXT: Readonly<Record<HotBuff, string>> = {
-  lucky: '🍀 Lucky',
-  extended: '⏱️ Extended',
+  lucky: `${BUFF_ICON.lucky} ${BUFF_NAME.lucky}`,
+  extended: `${BUFF_ICON.extended} ${BUFF_NAME.extended}`,
 };
 
 /** A race row's `hot_items` or a timeline's `hot`; anything malformed (or an old race) is none. */
@@ -30,14 +32,36 @@ export const hotBoxTypes = (hot: readonly HotItem[]): ReadonlySet<BoxType> =>
       .map((x) => x.item.split(':')[0] as BoxType),
   );
 
+const BUFF_NOTE: Readonly<Record<HotBuff, string>> = {
+  lucky: 'more likely from its box',
+  extended: 'lasts longer',
+};
+
+const Icon = ({ children }: { children: string }) => <span aria-hidden="true">{children}</span>;
+
 /** Shop to finish and replays (spec C); nothing when the list is empty. */
 export function HotStrip({ hot }: { hot: unknown }) {
-  const text = hotText(hotOf(hot));
-  if (!text) return null;
+  const list = hotOf(hot);
+  if (list.length === 0) return null;
+  const buffs = (['lucky', 'extended'] as const).filter((b) => list.some((x) => x.buff === b));
   return (
     <p className="chip hot-strip">
-      <span aria-hidden="true">🔥</span> Hot items: {text}{' '}
-      <small>· 🍀 2× more likely from its box · ⏱️ lasts 50 % longer</small>
+      <Icon>🔥</Icon> Hot items:{' '}
+      {list.map(({ item, buff }, i) => (
+        <span key={item}>
+          {i > 0 && ' · '}
+          <Icon>{ITEM_INFO[item].icon}</Icon> {ITEM_INFO[item].name} <Icon>{BUFF_ICON[buff]}</Icon>{' '}
+          {BUFF_NAME[buff]}
+        </span>
+      ))}{' '}
+      <small>
+        {buffs.map((b, i) => (
+          <span key={b}>
+            {i > 0 ? ' · ' : '· '}
+            <Icon>{BUFF_ICON[b]}</Icon> {BUFF_NOTE[b]}
+          </span>
+        ))}
+      </small>
     </p>
   );
 }

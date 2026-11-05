@@ -350,8 +350,8 @@ function ShopBoard({ room, players, race, purchases, online, act, busy }: BoardP
       </div>
       <p>
         <small>
-          Chances from {chances?.sims ?? '…'} simulated races with these boxes, traits and hot items. Luck still counts: a
-          horse with no boxes often makes the top 3.
+          Chances from {chances?.sims ?? '…'} simulated races with these boxes, traits and hot
+          items. Luck still counts: a horse with no boxes often makes the top 3.
         </small>
       </p>
       <p>

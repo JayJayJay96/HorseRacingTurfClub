@@ -14,6 +14,15 @@ export const TRAIT_INFO: Readonly<Record<Trait, { icon: string; name: string; ef
 export const traitLabel = (t: Trait) =>
   `${TRAIT_INFO[t].icon} ${TRAIT_INFO[t].name} · ${TRAIT_INFO[t].effect}`;
 
+/** Picker button content: decorative icon, name, effect on its own line. */
+export const TraitLabel = ({ trait }: { trait: Trait }) => (
+  <span>
+    <span aria-hidden="true">{TRAIT_INFO[trait].icon}</span> {TRAIT_INFO[trait].name}
+    <br />
+    <small>{TRAIT_INFO[trait].effect}</small>
+  </span>
+);
+
 export const TRAIT_LEGEND = TRAIT_CODES.map(
   (t) => `${TRAIT_INFO[t].icon} ${TRAIT_INFO[t].name}`,
 ).join(' · ');

@@ -1,4 +1,4 @@
-import { traitLabel } from '../app/Traits.tsx';
+import { TraitLabel } from '../app/Traits.tsx';
 import { TRAIT_CODES } from '../sim/config.ts';
 import type { Trait } from '../sim/types.ts';
 
@@ -20,7 +20,7 @@ export function TraitPicker(props: {
           disabled={props.disabled}
           onClick={() => props.onPick(t)}
         >
-          {traitLabel(t)}
+          <TraitLabel trait={t} />
         </button>
       ))}
     </fieldset>

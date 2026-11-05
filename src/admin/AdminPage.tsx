@@ -20,7 +20,11 @@ type RaceRow = {
   finished: boolean;
   current: boolean;
 };
-type Overview = { room: { phase: string; weather_enabled: boolean; hot_items_enabled: boolean }; members: Member[]; races: RaceRow[] };
+type Overview = {
+  room: { phase: string; weather_enabled: boolean; hot_items_enabled: boolean };
+  members: Member[];
+  races: RaceRow[];
+};
 
 const KEY = 'hrtc-admin';
 const loadPassword = () => {

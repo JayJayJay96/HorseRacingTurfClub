@@ -374,3 +374,18 @@ Spec: `docs/superpowers/specs/2026-11-05-cutins-design.md` (sub-project A of the
 - Derived from the stored timeline at playback: no sim, Edge Function or database change; old replays get it too. Box counts unchanged (8 short / 12 long).
 - Sandbox: Moment buttons jump to 4 s before each moment; "Freeze on band / effect" holds HD there for screenshots.
 - `npm test` 223 pass; E2E 5/6 in the full run, the a11y track-lobby test is the known flake and passes alone (4/4).
+
+## Weather (master, 2026-11-05)
+
+Spec: `docs/superpowers/specs/2026-11-05-weather-design.md` (sub-project B). Plan: `docs/superpowers/plans/2026-11-05-weather.md`.
+
+- Weather is rolled at odds lock: 50 % clear, 25 % rain, 25 % fog. The odds are priced with it and it is stored on `races.weather`; `start-race` reads it back. Optional `RaceInput.weather`: clear races and old replays are bit-identical.
+- Office switch on /admin (default on); off means every race is clear.
+- Rain: puddles tiled so every lane meets the same number (3 short, 5 long), edge puddles cover 1-2 lanes. Stepping in one has a 15 % chance to slip: 0.5x speed for 1.5 s. Fog: neighbour bumps at 0.7x for 1 s, 3 s cooldown per pair. Defenses do not block either.
+- Badge on the big screen, phones and replay; commentary lines; splash, bonk and rain-bed SFX.
+- 2D and HD-2D visuals: puddles, rain streaks, fog haze, "Slip!" / "Bump!" popups, splash and bonk particles; HD-2D puddle reflections are stencil-clipped so they never show outside a puddle or over a horse.
+- Measured per race. 12 horses short: rain about 14 puddles and 5.4 slips, fog about 3.7 bumps. 22 horses long: rain 40 puddles and 16.5 slips, fog about 9.9 bumps.
+- Sandbox: Weather picker (Clear / Rain / Fog), Slip and Bump moment buttons, weather in the status line.
+- `npm test` 250 pass (39 files); `npm run test:db` 128 pass (the realtime test flaked once, passed on rerun); E2E 6/6; typecheck, lint and build clean.
+- Not done: real-TV frame-rate check.
+- Deploy pending owner approval, in this order: `npx supabase db push --linked`, then `npx supabase functions deploy admin lock-odds start-race`, then `git push origin master`.

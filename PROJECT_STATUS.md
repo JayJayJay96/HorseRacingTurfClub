@@ -413,3 +413,12 @@ Specs C and D and plan: `docs/superpowers/plans/2026-11-05-hot-items-and-traits.
 - Icons: five Emoji 13–14 icons swapped for older ones (Mirror 🔁, Lasso ➰, Bubble 🔮, Broke 💸, Untouchable 👻); `src/app/emojiSupport.test.ts` blocks newer emoji.
 - Checks: `npm test` 339 pass, typecheck, lint, build clean, `npm run test:e2e` 6/6.
 - Known: the two `join_room` 400s in a phone's console on first load are the deliberate rejoin probe (empty name), harmless. Not done: real-TV/monitor frame-rate check.
+
+## Cosmetics shop (master, 2026-11-05, live)
+
+- Office Looks shop on the phone: preview of your horse with try-on, tabs Patterns · Trails · Caps · Celebrations · 🎁 Crate (3 + 2 grid), item cards with a sprite and Buy (confirm) / Wear / Remove.
+- Catalogue (`src/shop/cosmetics.ts` mirrors `private.cosmetic_catalog()`; a test compares them): 7 patterns 150–250, 6 trails 250–500, 4 caps 200–400 (new slot, drawn on the jockey everywhere), 4 victory celebrations 500–800 (new slot, podium winner only: spin, fireworks, moonwalk, confetti cannon; default hop).
+- Mystery crate 250 coins (`open_crate`): random unowned item, weight 1/price (celebrations ≈ 1 in 12), office lobby only, locked like `buy_cosmetic` (two concurrent opens charge once — tested), `nothing_left` / `not_enough_coins`.
+- Migration `20261105000022_cosmetics_shop.sql`; no Edge Function change. The sim never reads cosmetics.
+- Bet slip: Win/Place under the horse list, number bets (Odd/Even/Low/High) below.
+- Checks: `npm test` 372, `npm run test:db` 147, `npm run test:e2e` 6/6, typecheck, lint, build clean.

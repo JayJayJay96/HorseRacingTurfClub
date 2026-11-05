@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { HorseId, Timeline } from '../sim/types.ts';
 import { cutinAt, cutinsOf, type CutIn } from './cutins.ts';
-import { CELL, outlineCell } from './hd2d/sheet.ts';
+import { HorseSprite } from './HorseSprite.tsx';
 import { ITEM_INFO } from './items.ts';
 import type { ColorsOf } from './Pixel2DRenderer.ts';
-import { drawHorse } from './sprites.ts';
 
 /** How long the Thunderclap flash is on screen (the CSS fade is shorter). */
 const FLASH_SECONDS = 0.6;
@@ -16,21 +15,6 @@ type Props = {
   names: Readonly<Record<HorseId, string>>;
   colors: ColorsOf;
 };
-
-/** The horse's side sprite, outlined like the HD sheet, scaled up crisply by CSS. */
-function Portrait({ colors }: { colors: ReturnType<ColorsOf> }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const ctx = ref.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, CELL.w, CELL.h);
-    drawHorse(ctx, CELL.footX, CELL.footY, colors, 1, 'side-right', 1);
-    const img = ctx.getImageData(0, 0, CELL.w, CELL.h);
-    outlineCell(img.data, CELL.w, 0, 0, CELL.w, CELL.h);
-    ctx.putImageData(img, 0, 0);
-  }, [colors]);
-  return <canvas ref={ref} className="cutin-portrait" width={CELL.w} height={CELL.h} />;
-}
 
 /**
  * One band. The lag is read once at mount: a 4 Hz tick can land up to 0.25 s late, so the CSS
@@ -52,7 +36,7 @@ function Band({
   const style = { '--silk': colors.silk, animationDelay: `-${lag}s` } as CSSProperties;
   return (
     <div className="cutin" style={style}>
-      <Portrait colors={colors} />
+      <HorseSprite colors={colors} size="lg" className="cutin-portrait" />
       <div className="cutin-text">
         <span className="cutin-name">{name}</span>
         <span className="cutin-move">

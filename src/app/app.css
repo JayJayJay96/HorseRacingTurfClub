@@ -384,21 +384,21 @@ button.primary {
   align-content: center;
   background: var(--bg);
 }
-.race:fullscreen canvas {
+.race:fullscreen .race-frame > canvas {
   max-height: calc(100vh - 32px);
   object-fit: contain;
 }
 .race:fullscreen .standings {
   font-size: 1.5rem;
 }
-.race canvas {
+.race-frame > canvas {
   display: block;
   width: 100%;
   image-rendering: pixelated;
   background: var(--turf);
 }
 /* HD draws at the element's size (pixel ratio 1), so it needs its own height. */
-.race canvas.hd {
+.race-frame > canvas.hd {
   image-rendering: auto;
   aspect-ratio: 16 / 9;
   height: auto;
@@ -635,4 +635,44 @@ a.button.primary {
   width: 100%;
   max-width: 480px;
   margin: 0 auto;
+}
+
+/* HorseSprite: one 24x22 CELL canvas (src/render/hd2d/sheet.ts) scaled by whole pixels (--px). */
+.horse-sprite {
+  display: inline-block;
+  width: calc(24px * var(--px));
+  height: auto;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+.horse-sprite-sm {
+  --px: 1;
+}
+.horse-sprite-md {
+  --px: 2;
+}
+.horse-sprite-lg {
+  --px: 4;
+}
+/* Animated: a 4-frame strip behind a one-frame window, stepped by CSS (no JS timer). */
+.horse-sprite.is-animated {
+  overflow: hidden;
+  aspect-ratio: 24 / 22;
+}
+.horse-sprite.is-animated canvas {
+  display: block;
+  width: 400%;
+  height: auto;
+  image-rendering: pixelated;
+  animation: sprite-gallop 0.4s steps(4) infinite;
+}
+@keyframes sprite-gallop {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .horse-sprite.is-animated canvas {
+    animation: none;
+  }
 }

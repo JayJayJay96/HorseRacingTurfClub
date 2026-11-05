@@ -57,6 +57,29 @@ export function colorsByPlayer(players: readonly ({ id: string } & Choice)[]) {
   return (horse: string, lane: number) => colorsFor(lane, byId.get(horse));
 }
 
+/**
+ * A horse's colours anywhere outside the race renderer, matching the colours it will race in.
+ * Lane = its place in `horses` (the race order); before odds lock `horses` is empty and
+ * lock_odds_begin will fill it with the ticked players ordered by (joined_at, id), so a ticked
+ * horse takes its index in that order. Non-ticked horses don't race: roster position, else lane 0.
+ */
+export function horseColors(
+  players: readonly ({ id: string; ticked?: boolean; joined_at?: string } & Choice)[],
+  horses: readonly string[],
+  id: string,
+): HorseColors {
+  let lane = horses.indexOf(id);
+  if (lane < 0 && players.find((p) => p.id === id)?.ticked) {
+    const t = (p: { joined_at?: string }) => Date.parse(p.joined_at ?? '') || 0;
+    lane = players
+      .filter((p) => p.ticked)
+      .sort((a, b) => t(a) - t(b) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .findIndex((p) => p.id === id);
+  }
+  if (lane < 0) lane = Math.max(0, players.findIndex((p) => p.id === id));
+  return colorsByPlayer(players)(id, lane);
+}
+
 /** Black or white, whichever stands out on `hex` (#rrggbb). */
 export function contrastOf(hex: string): string {
   const n = parseInt(hex.slice(1), 16);

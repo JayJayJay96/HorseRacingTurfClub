@@ -7,6 +7,7 @@ import {
   colorsFor,
   colorsOf,
   contrastOf,
+  horseColors,
 } from './palette.ts';
 
 describe('colorsOf', () => {
@@ -49,5 +50,46 @@ describe('contrastOf', () => {
     expect(contrastOf('#fdd835')).toBe('#1a1a1a');
     expect(contrastOf('#3949ab')).toBe('#ffffff');
     expect(contrastOf('#e53935')).toBe('#ffffff');
+  });
+});
+
+describe('horseColors', () => {
+  const players = [
+    { id: 'a', coat: null, silk: null },
+    { id: 'b', coat: 2, silk: 3, pattern: 'pattern:hoops' },
+  ];
+  it('uses the race lane when the horse is in the race', () => {
+    expect(horseColors(players, ['b', 'a'], 'a')).toEqual(colorsOf(1));
+    expect(horseColors(players, ['b', 'a'], 'b')).toEqual(colorsByPlayer(players)('b', 0));
+  });
+  it('off the race: the roster position; an unknown id gets lane 0', () => {
+    expect(horseColors(players, [], 'a')).toEqual(colorsOf(0));
+    expect(horseColors([{ id: 'z', coat: null, silk: null }, ...players], [], 'a')).toEqual(
+      colorsOf(1),
+    );
+    expect(horseColors(players, [], 'x')).toEqual(colorsOf(0));
+  });
+  it('before odds lock a ticked horse gets the lane lock_odds_begin will give it', () => {
+    const p = (id: string, joined_at: string, ticked: boolean) => ({
+      id,
+      joined_at,
+      ticked,
+      coat: null,
+      silk: null,
+    });
+    const roster = [
+      p('a', '2026-01-01T00:00:03Z', true),
+      p('b', '2026-01-01T00:00:01Z', false),
+      p('d', '2026-01-01T00:00:02Z', true),
+      p('c', '2026-01-01T00:00:02Z', true),
+    ];
+    // ticked by (joined_at, id): c, d, a
+    expect(horseColors(roster, [], 'c')).toEqual(colorsOf(0));
+    expect(horseColors(roster, [], 'd')).toEqual(colorsOf(1));
+    expect(horseColors(roster, [], 'a')).toEqual(colorsOf(2));
+    // not ticked: roster position (1)
+    expect(horseColors(roster, [], 'b')).toEqual(colorsOf(1));
+    // once the race exists its lane wins
+    expect(horseColors(roster, ['a', 'c', 'd'], 'a')).toEqual(colorsOf(0));
   });
 });

@@ -112,3 +112,27 @@ describe('effects', () => {
     }
   });
 });
+
+describe('weather effects', () => {
+  it('splashes the slipper and bonks both bumped horses', () => {
+    const fx = effectsOf([
+      { t: 2, type: 'slip', horse: 'a' },
+      { t: 3, type: 'bump', horse: 'a', with: 'b' },
+    ]);
+    expect(fx).toEqual([
+      { kind: 'splash', horse: 'a', t0: 2 },
+      { kind: 'bonk', horse: 'a', t0: 3 },
+      { kind: 'bonk', horse: 'b', t0: 3 },
+    ]);
+  });
+
+  it('weather particles are finite', () => {
+    for (const kind of ['splash', 'bonk'] as const) {
+      for (const age of [0, 0.2, 0.5, 0.9]) {
+        for (const p of particlesOf(kind, age)) {
+          expect(Number.isFinite(p.ahead + p.up + p.side + p.alpha)).toBe(true);
+        }
+      }
+    }
+  });
+});

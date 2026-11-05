@@ -12,7 +12,9 @@ export type EffectKind =
   | 'stampede'
   | 'thunder'
   | 'lasso'
-  | 'swarm';
+  | 'swarm'
+  | 'splash'
+  | 'bonk';
 
 /** The four special-item animations (spec 2026-11-05); the 2D view draws these too. */
 export const SPECIAL_KINDS: ReadonlySet<EffectKind> = new Set([
@@ -34,6 +36,8 @@ export const EFFECT_SECONDS: Readonly<Record<EffectKind, number>> = {
   thunder: EFFECTS['attack:all'].seconds,
   lasso: EFFECTS['attack:leader'].seconds + 0.4,
   swarm: EFFECTS['attack:top3'].seconds,
+  splash: 0.9,
+  bonk: 0.7,
 };
 const MISS_SECONDS = { thunder: 0.5, lasso: 0.5, swarm: 0.6 } as const;
 /** The lasso rope and the swarm fly in for this long before they wrap the horse. */
@@ -67,7 +71,15 @@ export function effectsOf(events: readonly RaceEvent[]): Effect[] {
       if (e.item?.startsWith('dud:')) out.push({ kind: 'dud', horse: e.horse, t0: e.t });
       continue;
     }
-    if (e.type === 'finish' || e.type === 'slip' || e.type === 'bump') continue; // Task 9 adds these
+    if (e.type === 'finish') continue;
+    if (e.type === 'slip') {
+      out.push({ kind: 'splash', horse: e.horse, t0: e.t });
+      continue;
+    }
+    if (e.type === 'bump') {
+      out.push({ kind: 'bonk', horse: e.horse, t0: e.t }, { kind: 'bonk', horse: e.with, t0: e.t });
+      continue;
+    }
     const special = SPECIAL_ATTACK[e.item];
     if (special) {
       const miss = e.type === 'hit' ? {} : { seconds: MISS_SECONDS[special] };
@@ -174,6 +186,22 @@ export function particlesOf(
           up: 0.4 + u * 0.8,
           side: Math.sin(ang) * (0.3 + u * 1.2),
           color: '#ffffff',
+          alpha: fade,
+        };
+      case 'splash': // water thrown up and out from the hooves
+        return {
+          ahead: Math.cos(ang) * (0.3 + u * 1.4),
+          up: 0.1 + Math.sin(u * Math.PI) * (0.6 + h1 * 0.8),
+          side: Math.sin(ang) * (0.3 + u * 1.4),
+          color: i % 3 ? '#b3e5fc' : '#ffffff',
+          alpha: fade,
+        };
+      case 'bonk': // a small yellow star beside the head
+        return {
+          ahead: Math.cos(ang) * (0.2 + u * 0.6),
+          up: 1.8 + Math.sin(ang) * (0.2 + u * 0.6),
+          side: 0.6,
+          color: i % 2 ? '#fff176' : '#ffffff',
           alpha: fade,
         };
       case 'stampede': {

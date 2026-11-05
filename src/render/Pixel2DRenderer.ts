@@ -1,5 +1,5 @@
 import { eventsBetween, progressAt } from '../sim/playback.ts';
-import type { BoxSpot, HorseId, RaceEvent, Timeline } from '../sim/types.ts';
+import type { BoxSpot, HorseId, RaceEvent, Timeline, Weather } from '../sim/types.ts';
 import { WIDE, cameraAt, type Camera } from './camera.ts';
 import {
   SPECIAL_KINDS,
@@ -14,6 +14,7 @@ import { BOX_COLOR, colorsOf, type HorseColors } from './palette.ts';
 import { drawHorse, drawNumber, poseOf } from './sprites.ts';
 import type { RaceRenderer } from './renderer.ts';
 import { finishS, horsePoint, trackBounds, trackPoint, type Point, type Track } from './track.ts';
+import { FOG, RAIN, puddleOutline, rainDrop } from './weatherFx.ts';
 
 export type { RaceRenderer } from './renderer.ts';
 
@@ -73,6 +74,9 @@ export class Pixel2DRenderer implements RaceRenderer {
   private held: Extract<RaceEvent, { type: 'pickup' }>[] = [];
   /** Special-item animations only; the 2D view keeps its popups for the rest. */
   private effects: Effect[] = [];
+  /** World outlines of this race's puddles. */
+  private puddles: Point[][] = [];
+  private weather: Weather = 'clear';
   /** Both rails as one closed path in world metres; draw() maps it to screen space. */
   private ribbon = new Path2D();
   private halfWidth = 1;
@@ -99,7 +103,11 @@ export class Pixel2DRenderer implements RaceRenderer {
       [...(timeline.boxes[h] ?? [])].sort((a, b) => a.at - b.at),
     );
     this.held = timeline.events.filter((e) => e.type === 'pickup');
-    this.effects = effectsOf(timeline.events).filter((e) => SPECIAL_KINDS.has(e.kind));
+    this.effects = effectsOf(timeline.events).filter(
+      (e) => SPECIAL_KINDS.has(e.kind) || e.kind === 'splash' || e.kind === 'bonk',
+    );
+    this.weather = timeline.weather ?? 'clear';
+    this.puddles = (timeline.puddles ?? []).map((p) => puddleOutline(track, timeline.distance, p));
     this.grabs = timeline.horses.map((h) =>
       this.held
         .filter((e) => e.horse === h)
@@ -211,6 +219,25 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.moveTo(f0.x, f0.y);
     ctx.lineTo(f1.x, f1.y);
     ctx.stroke();
+
+    // Puddles: blue-grey water with a lighter rim, under the boxes and horses.
+    ctx.fillStyle = '#6f8796';
+    ctx.strokeStyle = '#a9bfcc';
+    ctx.lineWidth = 1;
+    for (const ring of this.puddles) {
+      const first = screen(ring[0]!);
+      if (first.x < -60 || first.x > VIEW.width + 60 || first.y < -60 || first.y > VIEW.height + 60)
+        continue;
+      ctx.beginPath();
+      ring.forEach((pt, i) => {
+        const s = screen(pt);
+        if (i === 0) ctx.moveTo(s.x, s.y);
+        else ctx.lineTo(s.x, s.y);
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
 
     // Unopened boxes: a horse passes its lane's boxes in order, one pickup each. A box only shows
     // when its own horse is close, so nobody runs over a box that does nothing for them.
@@ -339,6 +366,29 @@ export class Pixel2DRenderer implements RaceRenderer {
       ctx.fillStyle = '#fff';
       ctx.strokeText(popupOf(e), p.x, y);
       ctx.fillText(popupOf(e), p.x, y);
+    }
+
+    if (this.weather === 'rain' && this.motion) {
+      ctx.strokeStyle = '#dfe9f3';
+      ctx.globalAlpha = RAIN.alpha2d;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i < 90; i++) {
+        const d = rainDrop(i, t);
+        const x = ((d.x / RAIN.half + 1) / 2) * VIEW.width;
+        const y = (1 - d.y / RAIN.top) * VIEW.height;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 3, y + 9);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (this.weather === 'fog') {
+      // Soft haze over the far (top) part of the view only; the pack below stays clear.
+      const g = ctx.createLinearGradient(0, 0, 0, VIEW.height * 0.55);
+      g.addColorStop(0, `rgba(227,232,236,${FOG.alpha2d})`);
+      g.addColorStop(1, 'rgba(227,232,236,0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, VIEW.width, VIEW.height * 0.55);
     }
 
     // Countdown, then GO!

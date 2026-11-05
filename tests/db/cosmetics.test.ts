@@ -320,6 +320,19 @@ describe('open_crate', () => {
     expect(await balanceOf(m.client, room.id, m.player.id)).toBe(CRATE_PRICE - 1);
   });
 
+  it('two crates opened at once charge once', async () => {
+    const { room } = await officeRoom();
+    const m = await richMember(CRATE_PRICE - 100); // exactly one crate's worth
+    const res = await Promise.all([open(m, room.id), open(m, room.id)]);
+    expect(res.filter((r) => !r.error)).toHaveLength(1);
+    expect(res.find((r) => r.error)?.error?.message).toBe('not_enough_coins');
+    expect(await owned(m.player.id)).toHaveLength(1);
+    expect(await ledger(m.player.id)).toEqual([
+      { type: 'cosmetic', amount: -CRATE_PRICE, race_id: null },
+    ]);
+    expect(await balanceOf(m.client, room.id, m.player.id)).toBe(0);
+  });
+
   it('only in the LOBBY', async () => {
     const r = await officeRoom();
     const m = await richMember(500);

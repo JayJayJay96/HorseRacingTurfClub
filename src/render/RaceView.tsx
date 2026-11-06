@@ -7,6 +7,7 @@ import { CutInOverlay } from './CutInOverlay.tsx';
 import { cutinAt, cutinsOf } from './cutins.ts';
 import type { HD2DOptions } from './hd2d/HD2DRenderer.ts';
 import { HorseSprite } from './HorseSprite.tsx';
+import { MiniOval } from './MiniOval.tsx';
 import { Pixel2DRenderer, VIEW, defaultColors, type ColorsOf } from './Pixel2DRenderer.ts';
 import type { RaceRenderer } from './renderer.ts';
 import {
@@ -152,20 +153,26 @@ export function RaceView({
       <p className="visually-hidden" role="status" aria-live="polite">
         {raceAnnouncement(timeline, t, names)}
       </p>
-      <ol className="standings panel">
-        {standingsAt(timeline, t).map((h) => {
-          const time = timeline.finishTimes[h]!;
-          const lane = timeline.horses.indexOf(h);
-          return (
-            <li key={h}>
-              <HorseSprite colors={(colors ?? defaultColors)(h, lane)} size="sm" /> #{lane + 1}{' '}
-              {timeline.traits && <TraitIcon trait={asTrait(timeline.traits[h])} />}{' '}
-              {names[h] ?? '?'}
-              {time <= t && ` · ${time.toFixed(2)} s`}
-            </li>
-          );
-        })}
-      </ol>
+      {/* Right column: standings scroll (big fields) so the corner map stays put, fullscreen too. */}
+      <div className="race-side">
+        <ol className="standings panel">
+          {standingsAt(timeline, t).map((h) => {
+            const time = timeline.finishTimes[h]!;
+            const lane = timeline.horses.indexOf(h);
+            return (
+              <li key={h}>
+                <HorseSprite colors={(colors ?? defaultColors)(h, lane)} size="sm" /> #{lane + 1}{' '}
+                {timeline.traits && <TraitIcon trait={asTrait(timeline.traits[h])} />}{' '}
+                {names[h] ?? '?'}
+                {time <= t && ` · ${time.toFixed(2)} s`}
+              </li>
+            );
+          })}
+        </ol>
+        <div className="panel race-mini">
+          <MiniOval timeline={timeline} t={t} colors={colors ?? defaultColors} track={track} />
+        </div>
+      </div>
       {children}
     </div>
   );

@@ -47,7 +47,8 @@ export function GuideContent() {
             <b>Betting:</b> bet coins on any horse, yours included.
           </li>
           <li>
-            <b>Race:</b> watch the big screen; tap cheers to float them on it.
+            <b>Race:</b> watch the big screen (the corner map shows the whole field) or the map on
+            your phone; tap cheers to float them on the big screen.
           </li>
           <li>
             <b>Results:</b> winning bets pay out at the locked odds.

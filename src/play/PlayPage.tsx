@@ -56,7 +56,7 @@ import { useRaceTime } from '../render/useRaceTime.ts';
 import { MAX_BOUGHT, PRICES } from '../sim/config.ts';
 import { gunMs, standingsAt } from '../sim/playback.ts';
 import { HorsePanel } from './HorsePanel.tsx';
-import { MiniOval } from './MiniOval.tsx';
+import { MiniOval } from '../render/MiniOval.tsx';
 import { OfficeLogin } from './OfficeLogin.tsx';
 import { ResultCard } from './ResultCard.tsx';
 

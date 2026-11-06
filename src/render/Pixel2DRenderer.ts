@@ -210,9 +210,12 @@ export class Pixel2DRenderer implements RaceRenderer {
     };
     const outer = timeline.horses.length * track.laneWidth;
     const scale = (VIEW.width / (2 * this.halfWidth + 20)) * this.camera.zoom;
+    // World to screen turned 180°: the HD camera watches from the infield with the stands behind
+    // the track, so 2D shows the same side (stands at the top) and only the graphics change.
+    const k = -scale;
     const screen = (p: Point): Point => ({
-      x: (p.x - this.camera.x) * scale + VIEW.width / 2,
-      y: (p.y - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2,
+      x: (p.x - this.camera.x) * k + VIEW.width / 2,
+      y: (p.y - this.camera.y) * k * VIEW.tilt + VIEW.height / 2,
     });
 
     ctx.imageSmoothingEnabled = false;
@@ -223,12 +226,12 @@ export class Pixel2DRenderer implements RaceRenderer {
     // under the identity transform so the rails stay 1 px wide.
     const ribbon = new Path2D();
     const world = new DOMMatrix([
-      scale,
+      k,
       0,
       0,
-      scale * VIEW.tilt,
-      VIEW.width / 2 - this.camera.x * scale,
-      VIEW.height / 2 - this.camera.y * scale * VIEW.tilt,
+      k * VIEW.tilt,
+      VIEW.width / 2 - this.camera.x * k,
+      VIEW.height / 2 - this.camera.y * k * VIEW.tilt,
     ]);
     ribbon.addPath(this.ribbon, world);
     if (this.ground.length === 0) {
@@ -274,11 +277,11 @@ export class Pixel2DRenderer implements RaceRenderer {
     ctx.fillStyle = '#6f8796';
     ctx.strokeStyle = '#a9bfcc';
     ctx.lineWidth = 1;
-    // screen() inlined: an affine map with positive scale, so a world box maps to a screen box.
-    const sx = (x: number) => (x - this.camera.x) * scale + VIEW.width / 2;
-    const sy = (y: number) => (y - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2;
+    // screen() inlined: an affine map with negative scale, so a world box maps to a flipped box.
+    const sx = (x: number) => (x - this.camera.x) * k + VIEW.width / 2;
+    const sy = (y: number) => (y - this.camera.y) * k * VIEW.tilt + VIEW.height / 2;
     for (const pd of this.puddles) {
-      if (sx(pd.x1) < 0 || sx(pd.x0) > VIEW.width || sy(pd.y1) < 0 || sy(pd.y0) > VIEW.height)
+      if (sx(pd.x0) < 0 || sx(pd.x1) > VIEW.width || sy(pd.y0) < 0 || sy(pd.y1) > VIEW.height)
         continue;
       ctx.beginPath();
       for (let i = 0; i < pd.ring.length; i++) {
@@ -334,9 +337,9 @@ export class Pixel2DRenderer implements RaceRenderer {
       const ring = this.trails[h.lane]!;
       const head = this.trailHead[h.lane]!;
       for (let i = 0; i < count; i++) {
-        const k = ((head - 1 - i + TRAIL) % TRAIL) * 2; // newest first
-        const x = (ring[k]! - this.camera.x) * scale + VIEW.width / 2;
-        const y = (ring[k + 1]! - this.camera.y) * scale * VIEW.tilt + VIEW.height / 2;
+        const j = ((head - 1 - i + TRAIL) % TRAIL) * 2; // newest first
+        const x = (ring[j]! - this.camera.x) * k + VIEW.width / 2;
+        const y = (ring[j + 1]! - this.camera.y) * k * VIEW.tilt + VIEW.height / 2;
         ctx.globalAlpha = 1 - (i + 1) / (TRAIL + 1);
         ctx.fillStyle = style.color(i, t);
         drawMark(ctx, style.shape, Math.round(x), Math.round(y) - style.lift(i) * size, size);

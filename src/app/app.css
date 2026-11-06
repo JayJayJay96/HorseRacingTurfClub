@@ -552,9 +552,43 @@ button.primary {
   width: 100%;
   height: auto;
 }
+/* Race view right column: as tall as the race frame (size containment keeps the list from
+   stretching the row); standings scroll, the map stays at the bottom, fullscreen too. */
+.race-side {
+  align-self: stretch;
+  contain: size;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.race-side .standings {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.race-mini {
+  flex: none;
+  padding: 6px;
+  color: var(--ink);
+}
+.race-mini .mini {
+  display: block;
+  max-height: 160px;
+}
+.race:fullscreen .race-mini .mini {
+  max-height: 28vh;
+}
 @media (max-width: 700px) {
   .race {
     grid-template-columns: 1fr;
+  }
+  .race-side {
+    contain: none;
+  }
+  .race-side .standings {
+    max-height: 40vh;
   }
 }
 .swatches {

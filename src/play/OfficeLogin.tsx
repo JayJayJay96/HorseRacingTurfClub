@@ -69,9 +69,13 @@ export function OfficeLogin({ onLogin }: { onLogin: (player: RoomPlayer) => void
                     pattern="[0-9]{4}"
                     maxLength={4}
                     value={pin}
+                    aria-describedby="pin-tip"
                     onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
                   />
                 </label>
+                <p id="pin-tip">
+                  <small>💡 Tip: your default PIN is 00 followed by your ID.</small>
+                </p>
                 <button type="submit" className="primary" disabled={busy || pin.length !== 4}>
                   Sign in
                 </button>
